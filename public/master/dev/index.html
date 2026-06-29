@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logbook Plus • Dev Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/dev-portal.css">
+  <style>
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* Stack avatars */
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="lockScreen">
+    <div class="lock-card">
+      <div class="lock-icon">🔐</div>
+      <div class="lock-title">Dev Portal</div>
+      <div class="lock-subtitle">Master access required to continue</div>
+      <div class="form-group"><label>Username</label><input type="text" id="lockUser" placeholder="master username"
+          autocomplete="off"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="lockPass" placeholder="••••••••"></div>
+      <button class="btn-primary" id="lockBtn">Sign in</button>
+      <div class="lock-error" id="lockError"></div>
+    </div>
+  </div>
+
+  <div id="portal">
+
+    <div class="navbar">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="mobileMenuBtn"
+          style="display: none; background: none; border: none; color: #475569; font-size: 1.3rem; cursor: pointer;">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="logo" style="display: flex; align-items: center; gap: 8px;"><img src="/assets/images/app_logo.png"
+            alt="Logbook Plus Logo" style="height: 32px; width: auto; border-radius: 6px;">Logbook Plus</div>
+      </div>
+      <div class="nav-right" style="display: flex; align-items: center; gap: 16px;">
+        <span class="master-pill">👑 Master</span>
+
+        <div class="profile-wrapper">
+          <div class="profile-icon" id="profileIconBtn">
+            <i class="fas fa-user-circle" style="color:#94a3b8;"></i>
+          </div>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <div class="dropdown-user">
+              <div class="dropdown-user-name" id="dropdownUserName">Master Admin</div>
+              <div class="dropdown-user-email" id="dropdownUserEmail">admin@logbook</div>
+            </div>
+            <div class="dropdown-item" id="editProfileItem"><i class="fas fa-user-edit"></i> Edit Profile</div>
+            <div class="dropdown-item" id="changePasswordItem"><i class="fas fa-key"></i> Change Password</div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item logout-item" id="logoutItem"><i class="fas fa-sign-out-alt"></i> Logout</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div id="sidebarOverlay"
+        style="display: none; position: fixed; inset: 0; top: 65px; background: rgba(0,0,0,0.6); z-index: 998; backdrop-filter: blur(2px);">
+      </div>
+
+      <aside class="sidebar">
+        <div class="sidebar-section">Navigation</div>
+        <a class="sidebar-link" href="/master/" style="color: #818cf8; font-weight: 600;"><i
+            class="fas fa-arrow-left" style="color:#818cf8; width: 14px; margin-right: 4px;"></i> Back to Panel</a>
+
+        <div class="sidebar-section">Authentication</div>
+        <a class="sidebar-link" href="#auth"><span class="method-pill pill-POST">POST</span>/api/signup</a>
+        <a class="sidebar-link" href="#auth"><span class="method-pill pill-POST">POST</span>/api/login</a>
+        <a class="sidebar-link" href="#auth"><span class="method-pill pill-POST">POST</span>/api/logout</a>
+
+        <div class="sidebar-section">Profile</div>
+        <a class="sidebar-link" href="#profile"><span class="method-pill pill-GET">GET</span>/api/profile</a>
+        <a class="sidebar-link" href="#profile"><span class="method-pill pill-POST">POST</span>/api/profile</a>
+        <a class="sidebar-link" href="#profile"><span class="method-pill pill-POST">POST</span>/api/change-password</a>
+
+        <div class="sidebar-section">Backups</div>
+        <a class="sidebar-link" href="#backups"><span class="method-pill pill-GET">GET</span>/api/info</a>
+        <a class="sidebar-link" href="#backups"><span class="method-pill pill-GET">GET</span>/api/backups</a>
+        <a class="sidebar-link" href="#backups"><span class="method-pill pill-POST">POST</span>/api/backup</a>
+        <a class="sidebar-link" href="#backups"><span class="method-pill pill-GET">GET</span>/api/restore/:filename</a>
+        <a class="sidebar-link" href="#backups"><span
+            class="method-pill pill-DELETE">DEL</span>/api/backup/:filename</a>
+
+        <div class="sidebar-section">Master Control</div>
+        <a class="sidebar-link" href="#master"><span class="method-pill pill-MASTER">POST</span>/api/master/login</a>
+        <a class="sidebar-link" href="#master"><span class="method-pill pill-MASTER">GET</span>/api/master/users</a>
+        <a class="sidebar-link" href="#master"><span class="method-pill pill-MASTER">DEL</span>/api/master/users/:id</a>
+        <a class="sidebar-link" href="#master"><span class="method-pill pill-MASTER">GET</span>/api/master/stats</a>
+      </aside>
+
+      <main class="main">
+
+        <div class="page-hero">
+          <div
+            style="display: flex; align-items: center; gap: 12px; font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 8px;">
+            <img src="/assets/images/app_logo.png" alt="Logbook Plus Logo"
+              style="height: 38px; width: auto; border-radius: 6px;">
+            Logbook Plus API
+          </div>
+          <p style="margin-top: 12px;">Complete reference for all backend endpoints. Authentication uses server-side
+            sessions with cookies. All
+            protected routes require an active session from <code style="background:#f1f5f9;
+                padding:2px 6px;
+                border: 1px solid #e2e8f0;
+                border-radius:6px;
+                font-size:0.82rem;
+                color:#4f46e5;font-family:monospace;">/api/login</code>.
+          </p>
+          <div class="base-url-tag">
+            <span>Base URL</span><span>http://localhost:8080</span>
+          </div>
+        </div>
+
+        <div class="info-pills">
+          <div class="info-pill">Protocol <b>HTTP / HTTPS</b></div>
+          <div class="info-pill">Auth <b>Session Cookie</b></div>
+          <div class="info-pill">Body format <b>JSON</b></div>
+          <div class="info-pill">File upload <b>multipart/form-data</b></div>
+          <div class="info-pill">Quota <b>240 MB / user</b></div>
+        </div>
+
+        <section class="api-section" id="auth">
+          <h2 class="section-heading">🔑 Authentication</h2>
+          <p class="section-sub">// No session required on these endpoints</p>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/signup</span>
+              <span class="ep-desc">Create a new account</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Registers a new user. The <code
+                  style="color:#58a6ff;font-family:monospace;">username</code> field is stored as both the login ID and
+                email. Returns plain text on success.</div>
+              <div class="det-label">Request Body — application/json</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">username</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">Email or unique identifier used to log in.</td>
+                </tr>
+                <tr>
+                  <td class="pn">password</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">Plain text — bcrypt-hashed on the server.</td>
+                </tr>
+                <tr>
+                  <td class="pn">name</td>
+                  <td class="pt">string</td>
+                  <td class="po">optional</td>
+                  <td class="pd">Display name. Falls back to username if omitted.</td>
+                </tr>
+              </table>
+              <div class="det-label">Mobile Example</div>
+              <div class="tabs">
+                <button class="tab active" onclick="switchTab(event,'su-dart')">Dart (Flutter)</button>
+                <button class="tab" onclick="switchTab(event,'su-js')">JS Fetch</button>
+              </div>
+              <div id="su-dart" class="tab-content active">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="cc">//
+                    Flutter + http package</span>
+                  <span class="ck">final</span> res = <span class="ck">await</span> http.post(
+                  Uri.parse(<span class="cs">'http://localhost:8080/api/signup'</span>),
+                  headers: {<span class="cs">'Content-Type'</span>: <span class="cs">'application/json'</span>},
+                  body: jsonEncode({
+                  <span class="cs">'username'</span>: <span class="cs">'user@example.com'</span>,
+                  <span class="cs">'password'</span>: <span class="cs">'secret123'</span>,
+                  <span class="cs">'name'</span>: <span class="cs">'Alex'</span>,
+                  }),
+                  );
+                  <span class="cc">// 201 → "Success! Account created."</span>
+                </div>
+              </div>
+              <div id="su-js" class="tab-content">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="ck">const</span> res = <span class="ck">await</span> fetch(<span
+                    class="cs">'/api/signup'</span>,
+                  {
+                  method: <span class="cs">'POST'</span>,
+                  headers: { <span class="cs">'Content-Type'</span>: <span class="cs">'application/json'</span> },
+                  body: JSON.stringify({ username, password, name }),
+                  credentials: <span class="cs">'include'</span>,
+                  });</div>
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">201 Success! Account created.</div>
+                <div class="r-chip chip-4">400 User already exists.</div>
+                <div class="r-chip chip-5">500 Server Error</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/login</span>
+              <span class="ep-desc">Start a session</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Authenticates the user and sets a <code
+                  style="color:#58a6ff;font-family:monospace;">connect.sid</code> session cookie. All subsequent
+                protected calls must send this cookie.</div>
+              <div class="notice">📱 <b>Mobile cookie tip:</b> Flutter — use <code>dio</code> + <code>cookie_jar</code>
+                + <code>dio_cookie_manager</code>. React Native — use <code>@react-native-cookies/cookies</code> with
+                <code>credentials: 'include'</code>.
+              </div>
+              <div class="det-label">Request Body</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">username</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">Registered username/email.</td>
+                </tr>
+                <tr>
+                  <td class="pn">password</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">Plain text password.</td>
+                </tr>
+              </table>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">{ <span class="ck">"name"</span>: <span class="cs">"Alex"</span>, <span
+                  class="ck">"email"</span>: <span class="cs">"user@example.com"</span> }</div>
+              <div class="det-label">Mobile Example</div>
+              <div class="tabs">
+                <button class="tab active" onclick="switchTab(event,'li-dart')">Dart (Flutter)</button>
+                <button class="tab" onclick="switchTab(event,'li-rn')">React Native</button>
+              </div>
+              <div id="li-dart" class="tab-content active">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="cc">//
+                    Dio + CookieManager — cookie saved automatically</span>
+                  <span class="ck">final</span> cookieJar = CookieJar();
+                  <span class="ck">final</span> dio = Dio();
+                  dio.interceptors.add(CookieManager(cookieJar));
+
+                  <span class="ck">final</span> res = <span class="ck">await</span> dio.post(
+                  <span class="cs">'http://localhost:8080/api/login'</span>,
+                  data: {<span class="cs">'username'</span>: email, <span class="cs">'password'</span>: pass},
+                  );
+                  <span class="ck">final</span> name = res.data[<span class="cs">'name'</span>];
+                </div>
+              </div>
+              <div id="li-rn" class="tab-content">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="ck">const</span> res = <span class="ck">await</span> fetch(<span
+                    class="cs">'http://localhost:8080/api/login'</span>, {
+                  method: <span class="cs">'POST'</span>,
+                  headers: { <span class="cs">'Content-Type'</span>: <span class="cs">'application/json'</span> },
+                  body: JSON.stringify({ username, password }),
+                  credentials: <span class="cs">'include'</span>,
+                  });</div>
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { name, email }</div>
+                <div class="r-chip chip-4">401 Invalid Login</div>
+                <div class="r-chip chip-5">500 Server error</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/logout</span>
+              <span class="ep-desc">Destroy session</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Destroys the server-side session and clears <code
+                  style="color:#58a6ff;font-family:monospace;">connect.sid</code>. No request body required.</div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Logged out</div>
+                <div class="r-chip chip-5">500 Logout failed</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section" id="profile">
+          <h2 class="section-heading">👤 Profile</h2>
+          <p class="section-sub">// Requires active session cookie</p>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/profile</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Fetch user profile</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Returns name, email, and avatar index. Call on app launch after restoring a session
+                to populate the UI.</div>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">{
+                <span class="ck">"name"</span>: <span class="cs">"Alex"</span>,
+                <span class="ck">"email"</span>: <span class="cs">"user@example.com"</span>,
+                <span class="ck">"profilePicIndex"</span>: <span class="cn">2</span> <span class="cc">// 0–8</span>
+                }
+              </div>
+              <div class="det-label">Avatar Index Map</div>
+              <table class="p-table">
+                <tr>
+                  <th>Index</th>
+                  <th>Icon class</th>
+                  <th>Colour</th>
+                </tr>
+                <tr>
+                  <td class="pn">0</td>
+                  <td class="pd">fa-user-astronaut</td>
+                  <td style="color:#6c5ce7">#6c5ce7</td>
+                </tr>
+                <tr>
+                  <td class="pn">1</td>
+                  <td class="pd">fa-cat</td>
+                  <td style="color:#e17055">#e17055</td>
+                </tr>
+                <tr>
+                  <td class="pn">2</td>
+                  <td class="pd">fa-dog</td>
+                  <td style="color:#6ab04c">#6ab04c</td>
+                </tr>
+                <tr>
+                  <td class="pn">3</td>
+                  <td class="pd">fa-robot</td>
+                  <td style="color:#0984e3">#0984e3</td>
+                </tr>
+                <tr>
+                  <td class="pn">4</td>
+                  <td class="pd">fa-user-ninja</td>
+                  <td style="color:#8ba3b8">#2d3436</td>
+                </tr>
+                <tr>
+                  <td class="pn">5</td>
+                  <td class="pd">fa-feather-alt</td>
+                  <td style="color:#a29bfe">#a29bfe</td>
+                </tr>
+                <tr>
+                  <td class="pn">6</td>
+                  <td class="pd">fa-crown</td>
+                  <td style="color:#fdcb6e">#fdcb6e</td>
+                </tr>
+                <tr>
+                  <td class="pn">7</td>
+                  <td class="pd">fa-cloud-sun</td>
+                  <td style="color:#00b894">#00b894</td>
+                </tr>
+                <tr>
+                  <td class="pn">8</td>
+                  <td class="pd">fa-music</td>
+                  <td style="color:#e84393">#e84393</td>
+                </tr>
+              </table>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { name, email, profilePicIndex }</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+                <div class="r-chip chip-4">404 User not found</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/profile</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Update profile & avatar</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Partial update — only provided fields are changed. Returns <code
+                  style="color:#58a6ff;font-family:monospace;">{ success: true }</code>.</div>
+              <div class="det-label">Request Body (all optional)</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">name</td>
+                  <td class="pt">string</td>
+                  <td class="pd">New display name.</td>
+                </tr>
+                <tr>
+                  <td class="pn">email</td>
+                  <td class="pt">string</td>
+                  <td class="pd">New email address.</td>
+                </tr>
+                <tr>
+                  <td class="pn">profilePicIndex</td>
+                  <td class="pt">number</td>
+                  <td class="pd">Avatar index 0–8.</td>
+                </tr>
+              </table>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { success: true }</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+                <div class="r-chip chip-5">500 Update failed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/change-password</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Update password</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Verifies current password then replaces it (bcrypt). Returns plain text
+                confirmation.</div>
+              <div class="det-label">Request Body</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">oldPass</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">The user's current password.</td>
+                </tr>
+                <tr>
+                  <td class="pn">newPass</td>
+                  <td class="pt">string</td>
+                  <td class="pr">required</td>
+                  <td class="pd">The desired new password.</td>
+                </tr>
+              </table>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Password updated</div>
+                <div class="r-chip chip-4">400 Wrong password</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section" id="backups">
+          <h2 class="section-heading">📦 Backups</h2>
+          <p class="section-sub">// All require session • 240 MB quota per user • oldest auto-deleted on overflow</p>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/info</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Storage summary</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Quick stats for dashboard cards — total file count and storage consumed.</div>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">{ <span class="ck">"totalBackups"</span>: <span class="cn">7</span>, <span
+                  class="ck">"storageUsedMB"</span>: <span class="cs">"142.35"</span> }</div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { totalBackups, storageUsedMB }</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/backups</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">List all backups</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Returns all backup files for the user, sorted newest first.</div>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">[
+                {
+                <span class="ck">"name"</span>: <span class="cs">"backup_1719000000000.zip"</span>,
+                <span class="ck">"size"</span>: <span class="cs">"23.14 MB"</span>,
+                <span class="ck">"time"</span>: <span class="cs">"2024-06-21T12:00:00.000Z"</span>
+                }
+                ]
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Array (empty [] if none)</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/backup</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Upload a backup file</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Upload as <code
+                  style="color:#58a6ff;font-family:monospace;">multipart/form-data</code>.
+                Saved as <code style="color:#58a6ff;font-family:monospace;">{policy}_{timestamp}.zip</code>. Oldest file
+                auto-removed
+                if quota exceeded.</div>
+              <div class="det-label">Form Fields</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">file</td>
+                  <td class="pt">File</td>
+                  <td class="pr">required</td>
+                  <td class="pd">Any file — stored as .zip.</td>
+                </tr>
+                <tr>
+                  <td class="pn">policy</td>
+                  <td class="pt">string</td>
+                  <td class="po">optional</td>
+                  <td class="pd">Label prefix e.g. "Daily", "Weekly". Default: "Daily".</td>
+                </tr>
+              </table>
+              <div class="det-label">Mobile Example</div>
+              <div class="tabs">
+                <button class="tab active" onclick="switchTab(event,'up-dart')">Dart (Flutter)</button>
+                <button class="tab" onclick="switchTab(event,'up-rn')">React Native</button>
+              </div>
+              <div id="up-dart" class="tab-content active">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="ck">final</span> formData = FormData.fromMap({
+                  <span class="cs">'file'</span>: <span class="ck">await</span> MultipartFile.fromFile(filePath,
+                  filename: <span class="cs">'backup.zip'</span>),
+                  <span class="cs">'policy'</span>: <span class="cs">'Daily'</span>,
+                  });
+                  <span class="ck">final</span> res = <span class="ck">await</span> dio.post(<span
+                    class="cs">'http://localhost:8080/api/backup'</span>, data: formData);
+                </div>
+              </div>
+              <div id="up-rn" class="tab-content">
+                <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button><span
+                    class="ck">const</span> fd = <span class="ck">new</span> FormData();
+                  fd.append(<span class="cs">'file'</span>, { uri: fileUri, name: <span class="cs">'backup.zip'</span>,
+                  type: <span class="cs">'application/zip'</span> });
+                  fd.append(<span class="cs">'policy'</span>, <span class="cs">'Daily'</span>);
+                  <span class="ck">await</span> fetch(<span class="cs">'/api/backup'</span>, { method: <span
+                    class="cs">'POST'</span>, body: fd, credentials: <span class="cs">'include'</span> });
+                </div>
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { message: "Backup saved" }</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/restore/:policy</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Download latest by policy</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Downloads the most recent file matching the given policy prefix as a binary stream.
+              </div>
+              <div class="det-label">URL Params</div>
+              <table class="p-table">
+                <tr>
+                  <th>Param</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">:policy</td>
+                  <td class="pt">string</td>
+                  <td class="pd">Policy prefix, e.g. <code style="font-family:monospace">Daily</code></td>
+                </tr>
+              </table>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Binary file stream</div>
+                <div class="r-chip chip-4">404 No backups found</div>
+                <div class="r-chip chip-5">500 Restore failed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/latest</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Download newest backup</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Downloads the most recently uploaded file regardless of policy. Good for a one-tap
+                "restore latest" button in mobile.</div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Binary file stream</div>
+                <div class="r-chip chip-4">404 No backups</div>
+                <div class="r-chip chip-5">500 Download failed</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-DELETE">DELETE</span>
+              <span class="ep-path">/api/backup/:filename</span>
+              <span class="auth-tag">🔒 auth</span>
+              <span class="ep-desc">Delete a specific backup</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Permanently removes a file. Use the exact <code
+                  style="color:#58a6ff;font-family:monospace;">name</code> from <code
+                  style="color:#58a6ff;font-family:monospace;">GET /api/backups</code>. Path traversal rejected.</div>
+              <div class="notice">ℹ️ This route is implemented in <code>server.js</code> and is active by default.</div>
+              <div class="det-label">Add to server.js</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>app.delete(<span
+                  class="cs">'/api/backup/:filename'</span>, isAuthenticated, <span class="ck">async</span> (req, res)
+                => {
+                <span class="ck">const</span> userDir = path.join(__dirname, <span class="cs">'uploads'</span>,
+                req.session.userId);
+                <span class="ck">const</span> filePath = path.join(userDir, req.params.filename);
+                <span class="ck">if</span> (!filePath.startsWith(userDir)) <span class="ck">return</span>
+                res.status(<span class="cn">400</span>).send(<span class="cs">"Invalid filename"</span>);
+                <span class="ck">try</span> {
+                <span class="ck">await</span> fs.remove(filePath);
+                res.json({ message: <span class="cs">"Deleted"</span> });
+                } <span class="ck">catch</span> (e) { res.status(<span class="cn">500</span>).send(<span
+                  class="cs">"Delete
+                  failed"</span>); }
+                });
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { message: "Deleted" }</div>
+                <div class="r-chip chip-4">400 Invalid filename</div>
+                <div class="r-chip chip-4">401 Unauthorized</div>
+                <div class="r-chip chip-5">500 Delete failed</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section master-section" id="master">
+          <h2 class="section-heading">👑 Master Control</h2>
+          <p class="section-sub">// Requires master session • add snippets below to server.js</p>
+
+          <div class="gold-notice">
+            Credentials live in env vars (<code>MASTER_USER</code> / <code>MASTER_PASS</code>). Login sets
+            <code>req.session.isMaster = true</code>. All master routes are guarded by <code>isMasterAuth</code>
+            middleware. This portal's lock screen validates against those same values.
+            <br><br><b>Add once to server.js:</b>
+            <div class="code-block" style="margin-top:10px;"><button class="copy-btn"
+                onclick="copyCode(this)">copy</button><span class="ck">const</span> MASTER_USER =
+              process.env.MASTER_USER || <span class="cs">'admin'</span>;
+              <span class="ck">const</span> MASTER_PASS = process.env.MASTER_PASS || <span
+                class="cs">'changeme123'</span>;
+              <span class="ck">const</span> isMasterAuth = (req, res, next) => {
+              <span class="ck">if</span> (req.session.isMaster) <span class="ck">return</span> next();
+              res.status(<span class="cn">403</span>).json({ error: <span class="cs">'Master access required'</span> });
+              };
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-POST">POST</span>
+              <span class="ep-path">/api/master/login</span>
+              <span class="master-tag">👑 master</span>
+              <span class="ep-desc">Authenticate as master</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Sets <code
+                  style="color:#58a6ff;font-family:monospace;">req.session.isMaster = true</code>. This is what the
+                portal lock screen calls.</div>
+              <div class="det-label">Request Body</div>
+              <table class="p-table">
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+                <tr>
+                  <td class="pn">username</td>
+                  <td class="pt">string</td>
+                  <td class="pd">Value of MASTER_USER.</td>
+                </tr>
+                <tr>
+                  <td class="pn">password</td>
+                  <td class="pt">string</td>
+                  <td class="pd">Value of MASTER_PASS.</td>
+                </tr>
+              </table>
+              <div class="det-label">Add to server.js</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>app.post(<span
+                  class="cs">'/api/master/login'</span>, (req, res) => {
+                <span class="ck">const</span> { username, password } = req.body;
+                <span class="ck">if</span> (username === MASTER_USER && password === MASTER_PASS) {
+                req.session.isMaster = <span class="ck">true</span>;
+                <span class="ck">return</span> res.json({ success: <span class="ck">true</span> });
+                }
+                res.status(<span class="cn">403</span>).json({ error: <span class="cs">'Invalid master
+                  credentials'</span> });
+                });
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { success: true }</div>
+                <div class="r-chip chip-4">403 Invalid credentials</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/master/users</span>
+              <span class="master-tag">👑 master</span>
+              <span class="ep-desc">List all users</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">All registered users with metadata. Passwords never returned. Includes per-user
+                backup count and storage usage.</div>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">[{ <span class="ck">"_id"</span>: <span class="cs">"abc"</span>, <span
+                  class="ck">"username"</span>: <span class="cs">"user@e.com"</span>, <span class="ck">"name"</span>:
+                <span class="cs">"Alex"</span>,
+                <span class="ck">"profilePicIndex"</span>: <span class="cn">2</span>, <span
+                  class="ck">"backupCount"</span>:
+                <span class="cn">7</span>, <span class="ck">"storageMB"</span>: <span class="cs">"142.35"</span> }]
+              </div>
+              <div class="det-label">Add to server.js</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>app.get(<span
+                  class="cs">'/api/master/users'</span>, isMasterAuth, <span class="ck">async</span> (req, res) => {
+                <span class="ck">const</span> users = <span class="ck">await</span> db.find({}, { password: <span
+                  class="cn">0</span> });
+                <span class="ck">const</span> result = <span class="ck">await</span> Promise.all(users.map(<span
+                  class="ck">async</span> u => {
+                <span class="ck">const</span> dir = path.join(__dirname, <span class="cs">'uploads'</span>, u._id);
+                <span class="ck">let</span> count = <span class="cn">0</span>, size = <span class="cn">0</span>;
+                <span class="ck">try</span> {
+                <span class="ck">const</span> files = <span class="ck">await</span> fs.readdir(dir);
+                count = files.length;
+                <span class="ck">for</span> (<span class="ck">const</span> f <span class="ck">of</span> files) size +=
+                (await fs.stat(path.join(dir,f))).size;
+                } <span class="ck">catch</span> {}
+                <span class="ck">return</span> { ...u, backupCount: count, storageMB: (size/<span
+                  class="cn">1024</span>/<span class="cn">1024</span>).toFixed(<span class="cn">2</span>) };
+                }));
+                res.json(result);
+                });
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 Array of user objects</div>
+                <div class="r-chip chip-4">403 Master access required</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-DELETE">DELETE</span>
+              <span class="ep-path">/api/master/user/:id</span>
+              <span class="master-tag">👑 master</span>
+              <span class="ep-desc">Delete user + all backups</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Permanently deletes user record and entire backup directory. Irreversible.</div>
+              <div class="det-label">Add to server.js</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>app.delete(<span
+                  class="cs">'/api/master/user/:id'</span>, isMasterAuth, <span class="ck">async</span> (req, res) => {
+                <span class="ck">await</span> db.remove({ _id: req.params.id }, {});
+                <span class="ck">await</span> fs.remove(path.join(__dirname, <span class="cs">'uploads'</span>,
+                req.params.id));
+                res.json({ message: <span class="cs">'User deleted'</span> });
+                });
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { message: "User deleted" }</div>
+                <div class="r-chip chip-4">403 Master access required</div>
+                <div class="r-chip chip-5">500 Error</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-card" onclick="toggleCard(this, event)">
+            <div class="ep-header">
+              <span class="method-tag tag-GET">GET</span>
+              <span class="ep-path">/api/master/stats</span>
+              <span class="master-tag">👑 master</span>
+              <span class="ep-desc">Server-wide statistics</span>
+              <span class="ep-chevron">▼</span>
+            </div>
+            <div class="ep-body">
+              <div class="det-label">Description</div>
+              <div class="det-text">Aggregate totals: user count, backup count, total storage across all users.</div>
+              <div class="det-label">Response Body (200)</div>
+              <div class="code-block">{ <span class="ck">"totalUsers"</span>: <span class="cn">42</span>, <span
+                  class="ck">"totalBackups"</span>: <span class="cn">318</span>, <span
+                  class="ck">"totalStorageGB"</span>:
+                <span class="cs">"7.24"</span> }
+              </div>
+              <div class="det-label">Add to server.js</div>
+              <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>app.get(<span
+                  class="cs">'/api/master/stats'</span>, isMasterAuth, <span class="ck">async</span> (req, res) => {
+                <span class="ck">const</span> users = <span class="ck">await</span> db.find({}, { _id: <span
+                  class="cn">1</span> });
+                <span class="ck">let</span> totalBackups = <span class="cn">0</span>, totalSize = <span
+                  class="cn">0</span>;
+                <span class="ck">for</span> (<span class="ck">const</span> u <span class="ck">of</span> users) {
+                <span class="ck">try</span> {
+                <span class="ck">const</span> dir = path.join(__dirname, <span class="cs">'uploads'</span>, u._id);
+                <span class="ck">const</span> files = <span class="ck">await</span> fs.readdir(dir);
+                totalBackups += files.length;
+                <span class="ck">for</span> (<span class="ck">const</span> f <span class="ck">of</span> files) totalSize
+                += (await fs.stat(path.join(dir,f))).size;
+                } <span class="ck">catch</span> {}
+                }
+                res.json({ totalUsers: users.length, totalBackups,
+                totalStorageGB: (totalSize/<span class="cn">1024</span>/<span class="cn">1024</span>/<span
+                  class="cn">1024</span>).toFixed(<span class="cn">2</span>) });
+                });
+              </div>
+              <div class="det-label">Responses</div>
+              <div class="r-chips">
+                <div class="r-chip chip-2">200 { totalUsers, totalBackups, totalStorageGB }</div>
+                <div class="r-chip chip-4">403 Master access required</div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="editProfileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span>✏️ Edit Profile</span><span class="close-modal">&times;</span></div>
+      <div class="form-group"><label>Name (Display name)</label><input type="text" id="editName"
+          placeholder="Your name"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="editEmail" placeholder="your@email.com"></div>
+      <div class="form-group">
+        <label>Profile picture (click to select)</label>
+        <div class="avatar-grid" id="editAvatarGrid"></div>
+      </div>
+      <button class="btn-primary" id="saveProfileBtn">Save changes</button>
+    </div>
+  </div>
+
+  <div id="changePwdModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span>🔐 Change Password</span><span class="close-modal">&times;</span></div>
+      <div class="form-group"><label>Current Password</label><input type="password" id="currentPwd"></div>
+      <div class="form-group"><label>New Password (min 8)</label><input type="password" id="newPwd"></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPwd"></div>
+      <div id="pwdError" class="error-msg"></div>
+      <button class="btn-primary" id="updatePwdBtn">Update Password</button>
+    </div>
+  </div>
+
+  <script src="/assets/js/dev-portal.js"></script>
+</body>
+
+</html>

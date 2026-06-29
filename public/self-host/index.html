@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Host Setup Guide - Logbook Plus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/self-host.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Logbook Plus Self-Hosting</h1>
+            <p>Complete deployment specification & integration setup guide</p>
+        </header>
+
+        <section>
+            <h2>Deployment Quickstart</h2>
+            <p>Logbook Plus self-hosted backend is written in lightweight Node.js. Deploy it locally on your Raspberry
+                Pi, private server, or home lab.</p>
+            <ol>
+                <li><strong>Clone or Copy the Server Repository</strong> to your private server.</li>
+                <li><strong>Install dependencies</strong> by running command:<br>
+                    <pre><code>npm install</code></pre>
+                </li>
+                <li><strong>Configure Environment Variables</strong> by editing or creating a <code>.env</code> file in
+                    the project root folder.</li>
+                <li><strong>Launch the Server</strong> using a production daemon manager like PM2:<br>
+                    <pre><code>npx pm2 start server.js --name "logbook-server"</code></pre>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Environment Variables Configuration</h2>
+            <p>Define these parameters in your <code>.env</code> file to enable license key checks and offline sync:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Required Status</th>
+                        <th>Purpose / Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>PORT</code></td>
+                        <td><span class="badge">Optional</span></td>
+                        <td>Default Port (e.g. <code>8080</code>)</td>
+                    </tr>
+                    <tr>
+                        <td><code>IS_SELF_HOSTED</code></td>
+                        <td><span class="badge badge-req">Required</span></td>
+                        <td>Must set to <code class="highlight-blue">true</code> to enforce local license checks.</td>
+                    </tr>
+                    <tr>
+                        <td><code>LICENSE_KEY</code></td>
+                        <td><span class="badge badge-req">Required</span></td>
+                        <td>Copy the JWT license key generated during your app purchase.</td>
+                    </tr>
+                    <tr>
+                        <td><code>SESSION_SECRET</code></td>
+                        <td><span class="badge badge-req">Required</span></td>
+                        <td>Cryptographic session key. Change to a random long string.</td>
+                    </tr>
+                    <tr>
+                        <td><code>JWT_SECRET</code></td>
+                        <td><span class="badge badge-req">Required</span></td>
+                        <td>User authorization token encryption key.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>API Contract Specifications</h2>
+            <p>To communicate properly with the Android application client, your self-hosted server exposes the
+                following API routes:</p>
+
+            <h3>Authentication Endpoints</h3>
+            <ul>
+                <li><strong><code>POST /api/signup</code></strong>: Register a new local account. Input:
+                    <code>{ username, password, name, securityQuestion, securityAnswer }</code>.
+                </li>
+                <li><strong><code>POST /api/login</code></strong>: Log in to fetch local JWT. Input:
+                    <code>{ username, password }</code>. Returns standard JSON session token.
+                </li>
+            </ul>
+
+            <h3>Sync & Cloud Vault Endpoints</h3>
+            <ul>
+                <li><strong><code>POST /api/backup</code></strong>: Upload a local backup package (multi-part form data
+                    ZIP payload).</li>
+                <li><strong><code>GET /api/backups</code></strong>: Retrieve all stored backups.</li>
+                <li><strong><code>GET /api/restore/:filename</code></strong>: Download a selected backup ZIP for device
+                    restoration.</li>
+                <li><strong><code>DELETE /api/backup/:filename</code></strong>: Permanently delete a backup from server
+                    storage.</li>
+            </ul>
+        </section>
+
+        <!-- Centralized Footer Placeholder -->
+        <div id="shared-footer"></div>
+        <script src="/assets/js/footer.js" defer></script>
+    </div>
+</body>
+
+</html>

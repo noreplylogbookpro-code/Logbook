@@ -1,0 +1,105 @@
+<!-- public/blog/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Blog | Logbook Plus</title>
+    <!-- Google Fonts + modern system stack -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/blog.css">
+
+</head>
+
+<body>
+
+    <!-- Minimal brand header -->
+    <div class="brand-header">
+        <a href="/" class="brand-logo">
+            <img src="/assets/images/app_logo.png" alt="Logbook Plus"
+                style="height: 36px; width: auto; vertical-align: middle; margin-right: 8px; border-radius: 6px;">Logbook
+            Plus
+        </a>
+    </div>
+
+    <!-- Blog content -->
+    <div class="blog-wrapper">
+        <div class="blog-card">
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+
+            <!-- Page Header -->
+            <header class="blog-header">
+                <h1>Logbook Chronicles</h1>
+                <p>Guides, insights, and stories on data self-hosting and personal finance privacy.</p>
+            </header>
+
+            <!-- Featured Post Container -->
+            <div id="featured-post-container"></div>
+
+            <!-- Recent Posts Grid Container -->
+            <div id="recent-posts-container" class="hidden">
+                <section class="recent-posts">
+                    <div class="posts-grid" id="posts-grid">
+                        <!-- Dynamic post cards -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Newsletter Box -->
+            <section class="newsletter-section">
+                <div class="newsletter-content">
+                    <h2>Subscribe to our security digests</h2>
+                    <p>Get notified about security updates, self-hosting guides, and new encryption releases. No spam,
+                        ever.</p>
+                    <form class="newsletter-form" id="newsletterForm">
+                        <input type="email" id="newsletterEmail" placeholder="Enter your email address" required
+                            autocomplete="off">
+                        <button type="submit">Subscribe</button>
+                    </form>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <!-- Centralized Footer Placeholder -->
+    <div id="shared-footer"></div>
+    <script src="/assets/js/footer.js" defer></script>
+
+    <!-- Article Reader Overlay Modal -->
+    <div class="article-reader-overlay" id="articleReaderOverlay" onclick="handleOverlayClick(event)">
+        <div class="reader-container">
+            <button class="reader-close-btn" onclick="closeArticle()" aria-label="Close article">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="reader-header">
+                <div class="reader-meta">
+                    <span class="post-badge" id="modalCategory">Guides</span>
+                    <span id="modalDate">December 16, 2025</span>
+                </div>
+                <h1 id="modalTitle">Article Title</h1>
+            </div>
+            <div class="reader-body" id="modalBody">
+                <!-- Dyn Content -->
+            </div>
+            <div class="reader-footer">
+                <a href="#" id="bloggerLink" target="_blank" class="btn-read-more">
+                    Read original post on Blogger <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/blog.js"></script>
+
+</body>
+
+</html>

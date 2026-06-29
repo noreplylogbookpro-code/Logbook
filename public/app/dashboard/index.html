@@ -1,0 +1,263 @@
+<!--DASHBOARD-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logbook Plus • Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+  <div class="navbar">
+    <div class="logo" style="display: flex; align-items: center; gap: 8px;">
+      <img src="/assets/images/app_logo.png" alt="Logbook Plus Logo"
+        style="height: 32px; width: auto; border-radius: 6px;">
+      Logbook Plus
+    </div>
+    <div class="nav-right">
+      <div class="profile-wrapper" style="position:relative;">
+        <div class="profile-icon" id="profileIconBtn"><i class="fas fa-user-circle"></i></div>
+        <div class="dropdown-menu" id="dropdownMenu">
+          <div class="dropdown-user">
+            <div class="dropdown-user-name" id="dropdownUserName">User</div>
+            <div class="dropdown-user-email" id="dropdownUserEmail">user@example.com</div>
+          </div>
+          <div class="dropdown-item" id="editProfileItem"><i class="fas fa-user-edit"></i> Edit Profile</div>
+          <div class="dropdown-item" id="changePasswordItem"><i class="fas fa-key"></i> Change Password</div>
+          <div class="dropdown-item" id="securityQItem"><i class="fas fa-shield-alt"></i> Security Question</div>
+          <div class="dropdown-item" id="mfaSettingsItem"><i class="fas fa-user-shield"></i> 2FA Authenticator</div>
+          <div class="dropdown-item" id="billingItem"><i class="fas fa-credit-card"></i> Billing &amp; Subscriptions
+          </div>
+          <div class="dropdown-item" id="selfHostItem" style="display:none;"><i class="fas fa-server"></i> Self-Host
+            Guide</div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item logout-item" id="logoutItem"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="welcome" style="margin-bottom: 24px;">
+      <h2 id="welcomeMsg" style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #0b2b3f, #1c6ef2);
+         -webkit-background-clip: text; background-clip: text; color: transparent;">
+        Welcome</h2>
+    </div>
+
+    <div class="warning-banner" id="storageWarning"
+      style="display: none; background: #fff8e7; border-left: 4px solid #f5a623; padding: 12px 20px; border-radius: 16px; margin-bottom: 20px; font-size: 0.85rem; color: #8a6e2d;">
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <h3>Total Backups</h3>
+        <p id="backupCount">0</p>
+      </div>
+      <div class="card">
+        <h3>Storage Used</h3>
+        <p id="storageUsed">0 MB</p>
+      </div>
+      <div class="card">
+        <h3>Last Backup</h3>
+        <p id="lastBackup">—</p>
+      </div>
+      <div class="card">
+        <h3>Status</h3>
+        <p id="secureStatus"><span style="color:#94a3b8;">● Empty</span></p>
+      </div>
+    </div>
+
+    <div class="backup-section"
+      style="box-shadow: 0 10px 30px rgba(0,0,0,0.03); border-radius: 28px; border: 1px solid #eef2f8; background: white; padding: 24px 28px; margin-bottom: 32px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <h3 style="font-size: 1.35rem; font-weight: 700; color: #1d4d6f;">📦 Backup Vault</h3>
+        <button id="clearAllBtn"
+          style="background:#f4f7fc; border:1px solid #dce5ef; padding:8px 16px; border-radius:40px; color:#2c5a7a; font-weight:600; cursor:pointer; font-size:0.85rem; transition:0.2s;">Clear
+          all</button>
+      </div>
+      <div class="spacer" style="height: 20px;"></div>
+      <div id="backupListContainer" class="backup-list">
+        <div style="text-align:center;padding:30px; color:#6c8eaa;">No Backup Found, Upload Backup Files From App!</div>
+      </div>
+    </div>
+
+    <div class="activity"
+      style="box-shadow: 0 10px 30px rgba(0,0,0,0.03); border-radius: 28px; border: 1px solid #eef2f8; background: white; padding: 20px 26px;">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #1d4d6f;">📋 Recent Activity</h3>
+      <ul id="activityLog" style="margin-top: 14px; max-height: 180px; overflow-y: auto; list-style: none;">
+        <li> Dashboard ready
+          <div class="w-full flex items-center justify-center space-x-2 text-slate-400 hover:text-red-400
+            hover:bg-slate-800 py-2 rounded transition">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal (with avatar grid) -->
+  <div id="editProfileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span>Edit Profile</span><span class="close-modal"
+          data-modal="editProfileModal">&times;</span></div>
+      <div class="form-group"><label>Name (Display name)</label><input type="text" id="editName"
+          placeholder="Your name"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="editEmail" placeholder="your@email.com"></div>
+      <div class="form-group">
+        <label>Profile picture (click to select)</label>
+        <div class="avatar-grid" id="editAvatarGrid"></div>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Or upload a custom photo (Circular cropped)</label>
+        <input type="file" id="customAvatarFile" accept="image/*">
+      </div>
+      <button class="btn-primary" id="saveProfileBtn">Save changes</button>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="changePwdModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span>Change Password</span><span class="close-modal"
+          data-modal="changePwdModal">&times;</span></div>
+      <div class="form-group"><label>Current Password</label><input type="password" id="currentPwd"></div>
+      <div class="form-group"><label>New Password (min 8)</label><input type="password" id="newPwd"></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPwd"></div>
+      <div id="pwdError" class="error-msg"></div>
+      <button class="btn-primary" id="updatePwdBtn">Update Password</button>
+    </div>
+  </div>
+
+  <!-- Security Question Modal -->
+  <div id="securityQModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span> Security Question</span>
+        <span class="close-modal" data-modal="securityQModal">&times;</span>
+      </div>
+      <p style="font-size:0.82rem; color:#6a8ba4; margin-bottom:16px; line-height:1.5;">
+        This question is used to verify your identity if you forget your password.
+        Your current password is required to save changes.
+      </p>
+      <div class="form-group">
+        <label>Security Question</label>
+        <select id="sqQuestion"
+          style="width:100%; padding:10px 12px; border:1.5px solid #dce8f0; border-radius:12px; font-family:inherit; font-size:0.9rem; color:#2c5a7a; background:#f8fafd; outline:none; cursor:pointer;">
+          <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+          <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+          <option value="What city were you born in?">What city were you born in?</option>
+          <option value="What was the name of your elementary school?">What was the name of your elementary school?
+          </option>
+          <option value="What is your oldest sibling's middle name?">What is your oldest sibling's middle name?</option>
+          <option value="What was the make of your first car?">What was the make of your first car?</option>
+          <option value="What is the name of the street you grew up on?">What is the name of the street you grew up on?
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>New Answer <span style="font-weight:400; color:#8aabbc;">(case-insensitive)</span></label>
+        <input type="text" id="sqAnswer" placeholder="Type your answer" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Current Password <span style="font-weight:400; color:#8aabbc;">(required to save)</span></label>
+        <input type="password" id="sqCurrentPwd" placeholder="Confirm with your password">
+      </div>
+      <div id="sqMsg" class="error-msg"></div>
+      <button class="btn-primary" id="saveSecurityQBtn">Save Security Question</button>
+    </div>
+  </div>
+
+  <!-- 2FA Authenticator Modal -->
+  <div id="mfaModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>2FA Authenticator</span>
+        <span class="close-modal" data-modal="mfaModal">&times;</span>
+      </div>
+
+      <!-- Setup View -->
+      <div id="mfa-setup-view" style="display: none; flex-direction: column; gap: 14px;">
+        <p style="font-size:0.85rem; color:#5d7f9c; line-height:1.5;">Scan the QR code with your authenticator app
+          (Google Authenticator, Authy, Microsoft Authenticator) or enter the secret key manually.</p>
+        <div
+          style="display: flex; justify-content: center; padding: 14px; background: #fafcff; border: 1.5px solid #dce8f0; border-radius: 16px;">
+          <div id="mfa-qrcode" style="background: white; padding: 8px; border: 1px solid #dce8f0; border-radius: 8px;">
+          </div>
+        </div>
+        <div
+          style="background: #fafcff; border: 1.5px dashed #cbd5e1; padding: 12px; border-radius: 12px; font-family: monospace; font-size: 0.95rem; text-align: center; color: #1e293b; user-select: all; cursor: pointer;"
+          onclick="navigator.clipboard.writeText(this.innerText); alert('Key copied!')">
+          <span id="mfa-secret-text">Generating...</span>
+        </div>
+        <p style="font-size: 0.72rem; text-align: center; color: #94a3b8; margin-top: -6px;">Click key to copy</p>
+        <div class="form-group" style="margin-top: 10px;">
+          <label>Enter 6-Digit Code</label>
+          <input type="text" id="mfa-setup-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+            style="text-align: center; letter-spacing: 0.2em; font-size: 1.25rem;">
+        </div>
+        <div id="mfa-setup-msg" class="error-msg"></div>
+        <button class="btn-primary" id="confirmMfaSetupBtn">Enable Two-Factor Auth</button>
+      </div>
+
+      <!-- Active View -->
+      <div id="mfa-active-view" style="display: none; flex-direction: column; gap: 14px; text-align: center;">
+        <div
+          style="width: 56px; height: 56px; background: #e6fcf5; color: #0ca678; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 10px auto;">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h4 style="font-weight: 700; color: #0f1c2e; font-size: 1.15rem;">2FA is Enabled</h4>
+        <p style="font-size: 0.85rem; color: #5d7f9c; line-height: 1.5;">Your account is secured using two-factor
+          authentication.</p>
+        <button class="btn-primary" id="showMfaDisableBtn"
+          style="background: #fff2f2; color: #dc6b6b; border: 1.5px solid #fecdd3; margin-top: 16px;">Disable Two-Factor
+          Auth</button>
+      </div>
+
+      <!-- Disable Form View -->
+      <div id="mfa-disable-view" style="display: none; flex-direction: column; gap: 14px;">
+        <p style="font-size:0.85rem; color:#5d7f9c;">Confirm your password and enter the authenticator code to turn off
+          2FA.</p>
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" id="mfa-disable-pwd" placeholder="Enter your password">
+        </div>
+        <div class="form-group">
+          <label>Authenticator Code</label>
+          <input type="text" id="mfa-disable-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+            style="text-align: center; letter-spacing: 0.2em; font-size: 1.25rem;">
+        </div>
+        <div id="mfa-disable-msg" class="error-msg"></div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button class="btn-primary" id="cancelMfaDisableBtn"
+            style="background: #f1f5f9; color: #475569; width: 50%; border: 1px solid #cbd5e1; font-weight: 600; margin-top: 8px;">Cancel</button>
+          <button class="btn-primary" id="confirmMfaDisableBtn"
+            style="background: #dc6b6b; width: 50%; border: none;">Disable 2FA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Billing Modal -->
+  <div id="billingModal" class="modal">
+    <div class="modal-content" style="max-width: 600px; width: 95%;">
+      <div class="modal-header">
+        <span>Billing &amp; Subscriptions</span>
+        <span class="close-modal" data-modal="billingModal">&times;</span>
+      </div>
+      <div id="billingContent" style="padding: 10px 0;">
+        <!-- Dynamic content injected via dashboard.js -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pricing Plans | Logbook Plus</title>
+    <!-- Google Fonts Inter -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/pricing.css">
+</head>
+
+<body>
+
+    <!-- Minimal Header -->
+    <div class="brand-header">
+        <a href="/" class="brand-logo">
+            <img src="/assets/images/app_logo.png" alt="Logbook Plus"
+                style="height: 36px; width: auto; vertical-align: middle; margin-right: 8px; border-radius: 6px;">Logbook
+            Plus
+        </a>
+    </div>
+
+    <!-- Pricing Container -->
+    <div class="pricing-wrapper">
+        <div class="pricing-container">
+            <div class="pricing-header">
+                <a href="/" class="back-link">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+                <h1>Simple, Transparent Pricing</h1>
+                <p>Unlock the power of secure, local-first backup management. No hidden fees. Cancel anytime.</p>
+            </div>
+
+            <!-- Pricing Grid -->
+            <div class="pricing-grid">
+
+                <!-- Free Plan -->
+                <div class="pricing-card free">
+                    <div class="card-icon"><i class="fas fa-download"></i></div>
+                    <h2>Free Plan</h2>
+                    <p class="description">Essential features for everyone. Keep your data locally secured.</p>
+                    <div class="price">
+                        <span class="currency">₹</span><span class="amount">0</span><span class="period">/
+                            forever</span>
+                    </div>
+
+                    <ul class="features">
+                        <li><i class="fas fa-check-circle"></i> 2 entries per day</li>
+                        <li><i class="fas fa-check-circle"></i> 2 photos per entry</li>
+                        <li><i class="fas fa-check-circle"></i> 2 exports per month (Excel & Word)</li>
+                        <li><i class="fas fa-check-circle"></i> Local backup only</li>
+                        <li><i class="fas fa-check-circle"></i> Encrypted local backups</li>
+                        <li><i class="fas fa-times-circle" style="color: #ea4335;"></i> No tags / categories</li>
+                        <li><i class="fas fa-times-circle" style="color: #ea4335;"></i> No PDF export</li>
+                    </ul>
+
+                    <button class="btn-secondary" onclick="window.location.href='/app/'">
+                        Use Free Tier <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Cloud Premium API -->
+                <div class="pricing-card premium">
+                    <div class="card-badge">Most Popular</div>
+                    <div class="discount-badge">50% OFF</div>
+                    <div class="card-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <h2>Cloud Premium Backup</h2>
+                    <p class="description">Secure API access to host your backups directly on our secure, encrypted
+                        cloud vault.</p>
+                    <div class="price">
+                        <span class="currency">₹</span><span class="original-amount"
+                            style="text-decoration: line-through; opacity: 0.6; font-size: 1.8rem; margin-right: 8px; font-weight: normal; color: var(--text-muted);">100</span><span
+                            class="amount">50</span><span class="period">/ month</span>
+                    </div>
+
+                    <ul class="features">
+                        <li><i class="fas fa-check-circle"></i> Everything in Free</li>
+                        <li><i class="fas fa-check-circle"></i> Unlimited daily entries</li>
+                        <li><i class="fas fa-check-circle"></i> Unlimited monthly exports</li>
+                        <li><i class="fas fa-check-circle"></i> Unlock PDF export</li>
+                        <li><i class="fas fa-check-circle"></i> Up to 10 photos per entry</li>
+                        <li><i class="fas fa-check-circle"></i> Unlock all tags categories</li>
+                        <li><i class="fas fa-check-circle"></i> Premium Analytics Dashboard</li>
+                        <li><i class="fas fa-check-circle"></i> Auto quota management</li>
+                        <li><i class="fas fa-check-circle"></i> Priority support</li>
+                    </ul>
+
+                    <button class="btn-primary" onclick="initiateCheckout('subscription')">
+                        Subscribe Now <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Self Hosted License -->
+                <div class="pricing-card self-hosted">
+                    <div class="discount-badge">50% OFF</div>
+                    <div class="card-icon"><i class="fas fa-server"></i></div>
+                    <h2>Self-Hosted License</h2>
+                    <p class="description">Deploy Logbook Plus on your private hardware. Full database control,
+                        unlimited users, offline validation.</p>
+                    <div class="price">
+                        <span class="currency">₹</span><span class="original-amount"
+                            style="text-decoration: line-through; opacity: 0.6; font-size: 1.8rem; margin-right: 8px; font-weight: normal; color: var(--text-muted);">2,999</span><span
+                            class="amount">1,499</span><span class="period">/
+                            year</span>
+                    </div>
+
+                    <ul class="features">
+                        <li><i class="fas fa-check-circle"></i> Everything in Premium</li>
+                        <li><i class="fas fa-check-circle"></i> Run on private server / Pi</li>
+                        <li><i class="fas fa-check-circle"></i> Unlimited local users</li>
+                        <li><i class="fas fa-check-circle"></i> Cryptographic offline activation</li>
+                        <li><i class="fas fa-check-circle"></i> Zero external servers required</li>
+                        <li><i class="fas fa-check-circle"></i> Full control over backup size limits</li>
+                    </ul>
+
+                    <button class="btn-secondary" onclick="initiateCheckout('license')">
+                        Purchase License <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="trust-footer">
+                <div class="trust-item">
+                    <i class="fas fa-lock"></i>
+                    <span>AES-256 Encrypted Backups</span>
+                </div>
+                <div class="trust-item">
+                    <i class="fas fa-undo"></i>
+                    <span>7-day Money Back Guarantee</span>
+                </div>
+                <div class="trust-item">
+                    <i class="fas fa-headphones"></i>
+                    <span>Premium Self-Hosting Support</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <!-- Centralized Footer Placeholder -->
+    <div id="shared-footer"></div>
+    <script src="/assets/js/footer.js" defer></script>
+    <script src="/assets/js/pricing.js"></script>
+</body>
+
+</html>

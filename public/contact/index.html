@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Contact Us | Logbook Plus</title>
+  <!-- Google Fonts & Font Awesome -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/assets/css/contact.css">
+</head>
+
+<body>
+  <!-- HERO SECTION: corrected class name from "contect-hero" to "contact-hero" -->
+  <section class="contact-hero">
+    <div class="badge">
+      <i class="fas fa-comments"></i> Support & Communication
+    </div>
+    <h1>Contact Us</h1>
+    <p>
+      Need help with Logbook Plus? Have feedback, feature ideas, or a technical issue?
+      We're always happy to hear from you.
+    </p>
+  </section>
+
+  <!-- CONTACT METHODS: fixed typo "contect-methods" + grid & cards structure -->
+  <section class="contact-methods">
+    <div class="section-header">
+      <h2>How can we help?</h2>
+      <p>Select the best way to reach us.</p>
+    </div>
+    <div class="contact-grid">
+      <!-- Card 1: Email Support -->
+      <div class="contact-card">
+        <div class="card-icon">
+          <i class="fas fa-envelope"></i>
+        </div>
+        <h3>Email Support</h3>
+        <p>Contact our support team for general assistance.</p>
+      </div>
+      <!-- Card 2: Bug Reports -->
+      <div class="contact-card">
+        <div class="card-icon">
+          <i class="fas fa-bug"></i>
+        </div>
+        <h3>Bug Reports</h3>
+        <p>Report issues and help improve the app experience.</p>
+      </div>
+      <!-- Card 3: Feature Requests -->
+      <div class="contact-card">
+        <div class="card-icon">
+          <i class="fas fa-lightbulb"></i>
+        </div>
+        <h3>Feature Requests</h3>
+        <p>Share ideas for future Logbook Plus updates.</p>
+      </div>
+      <!-- Card 4: Privacy Questions -->
+      <div class="contact-card">
+        <div class="card-icon">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <h3>Privacy Questions</h3>
+        <p>Questions regarding backup, cloud storage, or security.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT FORM SECTION: corrected container, form id, typos (contect-section => contact-section) -->
+  <section class="contact-section">
+    <div class="contact-container">
+      <div class="section-header">
+        <h2>Send a message</h2>
+        <p>We'll respond as soon as possible.</p>
+      </div>
+      <form id="contactForm"> <!-- fixed id spelling: contectForm -> contactForm -->
+        <div class="form-row">
+          <input type="text" name="name" placeholder="Your Name" required>
+          <input type="email" name="email" placeholder="Email Address" required>
+        </div>
+        <input type="text" name="subject" placeholder="Subject" required> <!-- fixed name"subject" -->
+        <textarea name="message" rows="6" placeholder="Tell us how we can help..." required></textarea>
+        <button type="submit" class="btn-primary">
+          <i class="fas fa-paper-plane"></i> Send Message
+        </button>
+      </form>
+      <!-- small inline success message (optional, will be shown via JS) -->
+      <div id="formStatus" style="margin-top: 1rem; text-align: center; font-size: 0.9rem;"></div>
+    </div>
+  </section>
+
+  <!-- FAQ SECTION: properly structured with grid, fixing previous unclosed tags & spelling -->
+  <section class="faq-section">
+    <div class="section-header">
+      <h2>Frequently Asked Questions</h2>
+    </div>
+    <div class="faq-grid">
+      <!-- 1. What is Logbook Plus? -->
+      <div class="faq-card">
+        <h3><span>Question:</span> What is Logbook Plus?</h3>
+        <p><span>Answer:</span> Logbook Plus is a digital logbook for tracking entries with photos and financial
+          details.</p>
+      </div>
+      <!-- 2. Is my data secure? (Merged) -->
+      <div class="faq-card">
+        <h3><span>Question:</span> Is my data secure?</h3>
+        <p><span>Answer:</span> Your data is encrypted using AES-256 encryption. All backups remain under your control
+          with transparent storage policies.</p>
+      </div>
+      <!-- 3. How do I export my data? -->
+      <div class="faq-card">
+        <h3><span>Question:</span> How do I export my data?</h3>
+        <p><span>Answer:</span> Select date range then select to export data in Excel (.xlsx) and Word (.docx)</p>
+      </div>
+      <!-- 4. Can I attach receipts? -->
+      <div class="faq-card">
+        <h3><span>Question:</span> Can I attach receipts?</h3>
+        <p><span>Answer:</span> Yes, you can attach multiple receipts to each entry.</p>
+      </div>
+      <!-- 5. Does it support backups? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Does it support backups?</h3>
+        <p><span>Answer:</span> Both automatic and manual backups are supported.</p>
+      </div>
+      <!-- 6. Is dark mode available? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Is dark mode available?</h3>
+        <p><span>Answer:</span> Yes, dark and light themes are available.</p>
+      </div>
+      <!-- 7. Can I restore data? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I restore data?</h3>
+        <p><span>Answer:</span> You can restore data from encrypted backups.</p>
+      </div>
+      <!-- 8. Is internet required? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Is internet required?</h3>
+        <p><span>Answer:</span> No, the app works fully offline.</p>
+      </div>
+      <!-- 9. How can I contact support? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> How can I contact support?</h3>
+        <p><span>Answer:</span> Contact us at noreply.logbookpro@gmail.com</p>
+      </div>
+      <!-- 10. Is the app free? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Is the app free?</h3>
+        <p><span>Answer:</span> Yes, core features are free.</p>
+      </div>
+      <!-- 11. Which formats are supported? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Which formats are supported?</h3>
+        <p><span>Answer:</span> Excel (.xlsx) and Word (.docx).</p>
+      </div>
+      <!-- 12. How do I add an entry? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> How do I add an entry?</h3>
+        <p><span>Answer:</span> Tap the + button and fill in the details.</p>
+      </div>
+      <!-- 13. How do I export a backup? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> How do I export a backup?</h3>
+        <p><span>Answer:</span> Go to Export → Select date range → Export.</p>
+      </div>
+      <!-- 14. How do I restore a backup? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> How do I restore a backup?</h3>
+        <p><span>Answer:</span> Go to Settings → Backup → Import Backup.</p>
+      </div>
+      <!-- 15. Where are photos stored? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Where are photos stored?</h3>
+        <p><span>Answer:</span> Photos are stored in app-specific storage and included in backups.</p>
+      </div>
+      <!-- 16. Can I delete an entry? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I delete an entry?</h3>
+        <p><span>Answer:</span> Yes, long-press an entry and select Delete.</p>
+      </div>
+      <!-- 17. Can I add multiple entries? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I add multiple entries?</h3>
+        <p><span>Answer:</span> No, entries can be added one at a time.</p>
+      </div>
+      <!-- 18. Can I delete multiple entries? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I delete multiple entries?</h3>
+        <p><span>Answer:</span> Yes, long-press and select multiple entries to delete.</p>
+      </div>
+      <!-- 19. Can I share my backup? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I share my backup?</h3>
+        <p><span>Answer:</span> Yes, backups can be shared securely.</p>
+      </div>
+      <!-- 20. Can I encrypt my backup? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I encrypt my backup?</h3>
+        <p><span>Answer:</span> Yes, backups can be encrypted.</p>
+      </div>
+      <!-- 21. Can I change my backup password? (Hidden) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I change my backup password?</h3>
+        <p><span>Answer:</span> Yes, you can change your backup password anytime.</p>
+      </div>
+      <!-- 22. How long does support take? (Hidden, Old FAQ) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> How long does support take?</h3>
+        <p><span>Answer:</span> Most inquiries receive a response within 24-48 hours.</p>
+      </div>
+      <!-- 23. Can I transfer backup to another device? (Hidden, Old FAQ) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Can I transfer backup to another device?</h3>
+        <p><span>Answer:</span> Yes, restore your latest backup on any supported device.</p>
+      </div>
+      <!-- 24. Do you accept feature suggestions? (Hidden, Old FAQ) -->
+      <div class="faq-card hidden-faq">
+        <h3><span>Question:</span> Do you accept feature suggestions?</h3>
+        <p><span>Answer:</span> Absolutely, community feedback helps shape our roadmap.</p>
+      </div>
+    </div>
+    <div class="faq-actions" style="text-align: center; margin-top: 3rem;">
+      <button id="loadMoreFaqBtn" class="btn-secondary">
+        Load More FAQs <i class="fas fa-chevron-down"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- CTA SECTION: fixed arrow icon class (arrow-rigth -> arrow-right) -->
+  <section class="contact-cta">
+    <h2>Ready to continue managing expenses?</h2>
+    <p>Open Logbook Plus and keep your data secure, organized, and always under your control.</p>
+    <a href="/app/" class="cta-button">
+      <i class="fas fa-arrow-right"></i> Open App
+    </a>
+  </section>
+
+  <!-- Centralized Footer Placeholder -->
+  <div id="shared-footer"></div>
+  <script src="/assets/js/footer.js" defer></script>
+
+  <!-- SIMPLE JAVASCRIPT: dynamic year, form submission handler (prevents actual submit, shows success) -->
+  <script src="/assets/js/contact.js">
+
+  </script>
+
+</body>
+
+</html>

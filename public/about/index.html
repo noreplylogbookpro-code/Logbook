@@ -1,0 +1,117 @@
+<!-- public/about/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>About Us | Logbook Plus</title>
+    <!-- Google Fonts + modern system stack -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/about.css">
+</head>
+
+<body>
+
+    <!-- Minimal brand header -->
+    <div class="brand-header">
+        <a href="/" class="brand-logo">
+            <img src="/assets/images/app_logo.png" alt="Logbook Plus"
+                style="height: 36px; width: auto; vertical-align: middle; margin-right: 8px; border-radius: 6px;">Logbook
+            Plus
+        </a>
+    </div>
+
+    <!-- About content -->
+    <div class="about-wrapper">
+        <div class="about-card">
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+
+            <!-- Hero inside About Card -->
+            <section class="about-hero">
+                <div class="about-hero-text">
+                    <h1>Sovereign finance tracking in a cloud-first era.</h1>
+                    <p>Logbook Plus was founded on a simple conviction: you shouldn't have to trade your financial
+                        privacy for modern backup convenience. We build beautiful, local-first tools that let you own
+                        your logs entirely.</p>
+                </div>
+                <div class="about-hero-image">
+                    <img src="/assets/images/about_hero.png" alt="Privacy Shield Illustration">
+                </div>
+            </section>
+
+            <!-- Mission statement -->
+            <section class="mission-section">
+                <h2><i class="fas fa-bullseye"></i> Our Mission</h2>
+                <p>To deliver advanced expense intelligence with zero vendor lock-in. We provide the encryption, storage
+                    isolation, and sync protocols — but the keys and servers will always belong to you.</p>
+            </section>
+
+            <!-- Core Values -->
+            <section class="values-section">
+                <div class="values-header">
+                    <h2>Our Core Values</h2>
+                    <p>The principles that direct our design and architectural decisions.</p>
+                </div>
+                <div class="values-grid">
+                    <div class="modern-card">
+                        <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
+                        <h3>Absolute Privacy</h3>
+                        <p>No telemetry, no tracking scripts, and no secret analytical tracking. What you log in Logbook
+                            Plus stays between you and your device.</p>
+                    </div>
+                    <div class="modern-card">
+                        <div class="card-icon"><i class="fas fa-code"></i></div>
+                        <h3>Self-Host Freedom</h3>
+                        <p>Complete flexibility. Host backups on your private server via WebDAV or Nextcloud, easily
+                            moving between services whenever you like.</p>
+                    </div>
+                    <div class="modern-card">
+                        <div class="card-icon"><i class="fas fa-server"></i></div>
+                        <h3>Local-First Data</h3>
+                        <p>Never rely on a remote server to load your metrics. All records are stored locally on-device
+                            and load instantly even offline.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Philosophy Section -->
+            <section class="philosophy-section">
+                <div class="philosophy-text">
+                    <h2>Our Architectural Creed</h2>
+                    <p>We reject the modern data-harvesting business model. Most financial applications parse and sell
+                        your transactions to credit brokers. Logbook Plus uses strong client-side AES-256 encryption,
+                        meaning your logs are mathematically secure before they ever sync.</p>
+                    <p>Whether you're organizing daily receipts, managing weekly project accounts, or exporting monthly
+                        statements, you are in absolute command.</p>
+                </div>
+                <div class="philosophy-bullets">
+                    <ul class="philosophy-list">
+                        <li><i class="fas fa-check-circle"></i> Local database with sub-millisecond response times.</li>
+                        <li><i class="fas fa-check-circle"></i> Fully customizable storage policy structures (Daily,
+                            Weekly, Monthly).</li>
+                        <li><i class="fas fa-check-circle"></i> Seamless token-based JWT administrative panel sync.</li>
+                        <li><i class="fas fa-check-circle"></i> One-click full recovery using secure question
+                            verifications.</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Centralized Footer Placeholder -->
+    <div id="shared-footer"></div>
+    <script src="/assets/js/footer.js" defer></script>
+
+    <!-- Reusing home.js scroll observers for core values Cards fade stagger -->
+    <script src="/assets/js/home.js"></script>
+
+</body>
+
+</html>
