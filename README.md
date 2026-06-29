@@ -97,3 +97,19 @@ When deploying behind a reverse proxy (e.g. Nginx, Cloudflare):
 - Server logs are automatically kept in a sliding window of 500 events to prevent disk space exhaustion.
 - Password hashes are stored using strong BcryptJS hashing.
 
+## Dependencies
+- @google-cloud/local-auth: For Google Play API authentication
+- @googleapis/androidpublisher: For Google Play Android Publisher API
+- bcryptjs: For password hashing
+- cors: For Cross-Origin Resource Sharing
+- dotenv: For environment variables
+- express: For the web framework
+- express-rate-limit: For rate limiting
+- jsonwebtoken: For JSON Web Tokens
+- nedb-promises: For the database
+- serve-favicon: For serving favicons
+- zip-local: For creating zip files
+- zlib: For compression
+
+
+
