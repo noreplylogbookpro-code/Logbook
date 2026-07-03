@@ -65,7 +65,6 @@ SERVICE_ACCOUNT_KEY_PATH=google_auth/key.json  # Path to Google Play API Service
 ---
 
 ## Dependencies
-- @google-cloud/local-auth: For Google Play API authentication
 - @googleapis/androidpublisher: For Google Play Android Publisher API
 - bcryptjs: For password hashing
 - cors: For Cross-Origin Resource Sharing
