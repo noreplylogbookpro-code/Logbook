@@ -21,44 +21,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const h2 = card.querySelector('h2');
         if (h2 && plan.title) h2.innerText = plan.title;
 
-        // Discount badge
-        if (plan.originalAmount && plan.amount && plan.originalAmount > plan.amount) {
-            const discountPercent = Math.round(((plan.originalAmount - plan.amount) / plan.originalAmount) * 100);
-            let badge = card.querySelector('.discount-badge');
-            if (!badge) {
-                badge = document.createElement('div');
-                badge.className = 'discount-badge';
-                card.insertBefore(badge, card.firstChild);
+        // Price container – we'll rebuild it completely
+        const priceDiv = card.querySelector('.price');
+        if (!priceDiv) return;
+
+        // Build the price content (currency, original, amount, period)
+        let html = `<div class="price-content">`;
+        html += `<span class="currency">${plan.currency || '₹'}</span>`;
+        if (plan.originalAmount && plan.originalAmount > plan.amount) {
+            html += `<span class="original-amount">${plan.originalAmount.toLocaleString()}</span>`;
+        }
+        html += `<span class="amount">${plan.amount.toLocaleString()}</span>`;
+        let displayPeriod = plan.period || '';
+        if (displayPeriod) {
+            if (displayPeriod.toLowerCase() === 'forever') {
+                displayPeriod = '/ forever';
+            } else if (!displayPeriod.startsWith('/')) {
+                displayPeriod = '/ ' + displayPeriod;
             }
-            badge.textContent = `${discountPercent}% OFF`;
-        } else {
-            // Remove badge if no discount
-            const badge = card.querySelector('.discount-badge');
-            if (badge) badge.remove();
+        }
+        html += `<span class="period">${displayPeriod}</span>`;
+        html += `</div>`; // close price-content
+
+        // Add discount badge inside price container (if discount exists)
+        if (plan.originalAmount && plan.originalAmount > plan.amount) {
+            const discountPercent = Math.round(((plan.originalAmount - plan.amount) / plan.originalAmount) * 100);
+            html += `<div class="discount-badge ${className}-discount-badge">${discountPercent}% OFF</div>`;
         }
 
-        // Price elements
-        const priceDiv = card.querySelector('.price');
-        if (priceDiv) {
-            let html = `<span class="currency">${plan.currency || '₹'}</span>`;
-            if (plan.originalAmount) {
-                html += `<span class="original-amount" style="text-decoration: line-through; opacity: 0.6; font-size: 1.8rem; margin-right: 8px; font-weight: normal; color: var(--text-muted);">${plan.originalAmount.toLocaleString()}</span>`;
-            }
-            html += `<span class="amount">${plan.amount.toLocaleString()}</span>`;
-            
-            let displayPeriod = plan.period;
-            if (displayPeriod) {
-                if (displayPeriod.toLowerCase() === 'forever') {
-                    displayPeriod = '/ forever';
-                } else if (!displayPeriod.startsWith('/')) {
-                    displayPeriod = '/ ' + displayPeriod;
-                }
-            } else {
-                displayPeriod = '';
-            }
-            html += `<span class="period">${displayPeriod}</span>`;
-            priceDiv.innerHTML = html;
-        }
+        // Replace the entire price HTML
+        priceDiv.innerHTML = html;
 
         // Features list
         const featuresUl = card.querySelector('.features');

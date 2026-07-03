@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# 🔹 Block direct /master access on non-subdomain host
+RewriteCond %{HTTP_HOST} !^master\. [NC]
+RewriteRule ^master(/.*)?$ - [R=404,L]
+
+
 # 🔹 Allow direct access to existing files/folders
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
@@ -8,11 +13,24 @@ RewriteRule ^ - [L]
 # 🔹 API requests → forward to Node backend
 RewriteRule ^api/(.*)$ http://localhost:8080/api/$1 [P,L]
 
+# 🔹 Subdomain: master.yourdomain.com -> route to master/ folder
+RewriteCond %{HTTP_HOST} ^master\. [NC]
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/master/
+RewriteRule ^(.*)$ master/$1 [L]
+
+# 🔹 SPA fallback for master subdomain (if file/dir doesn't exist)
+RewriteCond %{HTTP_HOST} ^master\. [NC]
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^master/(.*)$ master/index.html [L]
+
 # 🔹 Remove .html from URLs (optional clean URLs)
 RewriteCond %{REQUEST_FILENAME}.html -f
 RewriteRule ^([^\.]+)$ $1.html [L]
 
 # 🔹 Force everything else to index (SPA fallback if needed)
 RewriteRule ^ index.html [L]
-
-

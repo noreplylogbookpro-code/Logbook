@@ -128,6 +128,7 @@ body {
     border: 2px solid var(--primary);
 }
 
+/* "Most Popular" badge – stays at top‑right */
 .card-badge {
     position: absolute;
     top: 20px;
@@ -142,27 +143,77 @@ body {
     letter-spacing: 0.5px;
 }
 
-.discount-badge {
+/* ----- FIXED DISCOUNT BADGE POSITIONING ----- */
+/* .price becomes the anchor for the absolute badge */
+.pricing-card .price {
+    position: relative;
+    /* anchor */
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    padding-right: 90px;
+    /* reserve space for the badge */
+}
+
+.price-content {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+}
+
+/* The discount badge – absolutely positioned on the right, vertically centered */
+.pricing-card .discount-badge {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    transform: translateY(-50%);
+    display: inline-block;
     background: linear-gradient(135deg, #10b981, #059669);
     color: white;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    padding: 5px 11px;
+    padding: 5px 14px;
     border-radius: 40px;
     letter-spacing: 0.3px;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
     animation: badge-pulse 2s ease-in-out infinite;
+    white-space: nowrap;
     z-index: 2;
 }
 
-@keyframes badge-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.06); }
+.pricing-card .discount-badge.premium-discount-badge {
+    top: 13%;
+    right: 19%;
 }
 
+.pricing-card .discount-badge.self-hosted-discount-badge {
+    top: 25%;
+    right: 0%;
+}
+
+@keyframes badge-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.06);
+    }
+}
+
+/* Original price (strikethrough) */
+.original-amount {
+    text-decoration: line-through;
+    opacity: 0.6;
+    font-size: 1.8rem;
+    font-weight: normal;
+    color: var(--text-muted);
+    margin-right: 6px;
+}
+
+/* Card Icon */
 .card-icon {
     width: 60px;
     height: 60px;
@@ -195,12 +246,7 @@ body {
     min-height: 48px;
 }
 
-.price {
-    display: flex;
-    align-items: baseline;
-    margin-bottom: 30px;
-}
-
+/* Price typography – shared for all cards */
 .price .currency {
     font-size: 1.8rem;
     font-weight: 700;
@@ -245,7 +291,8 @@ body {
 }
 
 /* Buttons */
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
     width: 100%;
     padding: 14px 24px;
     border-radius: 40px;
@@ -303,58 +350,6 @@ body {
 .trust-item i {
     color: var(--primary);
     font-size: 1.1rem;
-}
-
-/* Footer styling */
-footer {
-    background: #0f172a;
-    color: #94a3b8;
-    padding: 40px 20px;
-}
-
-.footer-container {
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-
-.footer-brand {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: white;
-}
-
-.footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 24px;
-}
-
-.footer-links a {
-    color: #94a3b8;
-    text-decoration: none;
-    font-size: 0.9rem;
-    transition: 0.2s;
-}
-
-.footer-links a:hover {
-    color: white;
-}
-
-@media (max-width: 640px) {
-    .pricing-header h1 {
-        font-size: 2.2rem;
-    }
-    .pricing-grid {
-        grid-template-columns: 1fr;
-    }
-    .brand-header {
-        padding: 20px;
-    }
 }
 
 /* ===== MODERN DARK FOOTER ===== */
@@ -430,7 +425,8 @@ footer {
     margin-top: 20px;
 }
 
-.download-app h4, .follow-us h4 {
+.download-app h4,
+.follow-us h4 {
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
@@ -438,19 +434,22 @@ footer {
     margin-top: 0;
 }
 
-.app-icons, .social-icons {
+.app-icons,
+.social-icons {
     display: flex;
     gap: 16px;
     font-size: 20px;
     color: #ffffff;
 }
 
-.app-icons i, .social-icons i {
+.app-icons i,
+.social-icons i {
     cursor: pointer;
     transition: color 0.2s ease;
 }
 
-.app-icons i:hover, .social-icons i:hover {
+.app-icons i:hover,
+.social-icons i:hover {
     color: #00e676;
 }
 
@@ -464,18 +463,55 @@ footer {
     color: #888888;
 }
 
+/* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .footer-grid-container {
         grid-template-columns: 1fr 1fr;
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
+    .pricing-header h1 {
+        font-size: 2.2rem;
+    }
+
+    .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .brand-header {
+        padding: 20px;
+    }
+
+    /* For small screens, switch badge to static flow to avoid overlap */
+    .pricing-card .price {
+        padding-right: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .pricing-card .discount-badge {
+        position: static;
+        transform: none;
+        align-self: flex-start;
+    }
+
     .footer-grid-container {
         grid-template-columns: 1fr;
     }
+
     .footer-social-download {
         flex-direction: column;
         gap: 24px;
+    }
+}
+
+@media (max-width: 600px) {
+
+    /* Additional small‑screen tweaks if needed */
+    .pricing-card .discount-badge {
+        font-size: 0.7rem;
+        padding: 4px 12px;
     }
 }

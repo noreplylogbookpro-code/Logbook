@@ -32,4 +32,4 @@ logs/
 .DS_Store
 Thumbs.db
 #Google_auth
-google_auth/*.json"google_auth/" 
+google_auth/

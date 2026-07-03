@@ -145,6 +145,27 @@ app.use((req, res, next) => {
     next();
 });
 
+// Subdomain routing for master dashboard (e.g. master.localhost:8080)
+app.use((req, res, next) => {
+    const host = req.headers.host || '';
+    if (host.startsWith('master.')) {
+        if (!req.url.startsWith('/api/') && !req.url.startsWith('/assets/') && !req.url.startsWith('/master/')) {
+            req.url = '/master' + req.url;
+        }
+    }
+    next();
+});
+
+// Block direct access to /master path on non-subdomain host
+app.use((req, res, next) => {
+    const host = req.headers.host || '';
+    const url = req.url.toLowerCase();
+    if ((url === '/master' || url.startsWith('/master/')) && !host.startsWith('master.')) {
+        return res.status(404).send('Not Found');
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
@@ -230,8 +251,8 @@ function verifyLicenseKey(licenseKey) {
 }
 
 // --- Google Play Billing Verification Engine ---
-const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.logbookplus';
-const SERVICE_ACCOUNT_KEY_PATH = path.join(__dirname, 'logbook-493517-f5beb867f381.json');
+const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME;
+const SERVICE_ACCOUNT_KEY_PATH = process.env.SERVICE_ACCOUNT_KEY_PATH;
 
 let androidPublisher = null;
 try {
@@ -253,7 +274,12 @@ try {
  * Verify a Google Play subscription purchase token.
  * Returns { valid: true, expiryTimeMillis, planType } on success.
  */
-async function verifyPlaySubscription(purchaseToken, productId) {
+async function verifyPlaySubscription(purchaseToken, productId, packageName) {
+    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+    if (packageName === indusPkg) {
+        logServerEvent('info', `Indus App Store subscription bypass for ${productId}`);
+        return { valid: true, expiryTimeMillis: Date.now() + 30 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
+    }
     if (!androidPublisher) {
         // Fallback: accept the purchase without verification (dev/self-hosted mode)
         logServerEvent('warning', `Google Play API not available — accepting purchase token for ${productId} without verification (fallback mode)`);
@@ -280,7 +306,12 @@ async function verifyPlaySubscription(purchaseToken, productId) {
  * Verify a Google Play in-app (one-time) product purchase token.
  * Returns { valid: true, purchaseTimeMillis, planType } on success.
  */
-async function verifyPlayProduct(purchaseToken, productId) {
+async function verifyPlayProduct(purchaseToken, productId, packageName) {
+    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+    if (packageName === indusPkg) {
+        logServerEvent('info', `Indus App Store product bypass for ${productId}`);
+        return { valid: true, expiryTimeMillis: Date.now() + 365 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
+    }
     if (!androidPublisher) {
         logServerEvent('warning', `Google Play API not available — accepting product purchase for ${productId} without verification (fallback mode)`);
         return { valid: true, expiryTimeMillis: Date.now() + 365 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
@@ -436,9 +467,9 @@ function generateHOTP(secretBuffer, counter) {
 
     const offset = hmacResult[hmacResult.length - 1] & 0xf;
     const code = ((hmacResult[offset] & 0x7f) << 24) |
-                 ((hmacResult[offset + 1] & 0xff) << 16) |
-                 ((hmacResult[offset + 2] & 0xff) << 8) |
-                 (hmacResult[offset + 3] & 0xff);
+        ((hmacResult[offset + 1] & 0xff) << 16) |
+        ((hmacResult[offset + 2] & 0xff) << 8) |
+        (hmacResult[offset + 3] & 0xff);
 
     const pin = code % 1000000;
     return pin.toString().padStart(6, '0');
@@ -575,8 +606,8 @@ app.post('/api/master/2fa/verify', isMasterAuth, async (req, res) => {
         }
         const matchedCounter = verifyTOTP(code, profile.tempTwoFactorSecret);
         if (matchedCounter !== null) {
-            await db.update({ _id: 'master_profile' }, { 
-                $set: { twoFactorEnabled: true, twoFactorSecret: profile.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter } 
+            await db.update({ _id: 'master_profile' }, {
+                $set: { twoFactorEnabled: true, twoFactorSecret: profile.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter }
             }, { upsert: true });
             db.compactDatafile();
             logServerEvent('info', 'Master admin successfully enabled 2FA');
@@ -603,8 +634,8 @@ app.post('/api/master/2fa/disable', isMasterAuth, async (req, res) => {
         }
         const disableResult = verifyTOTPWithReplay(code, masterProfile.twoFactorSecret, masterProfile.lastUsedTOTPCounter || null);
         if (disableResult.valid) {
-            await db.update({ _id: 'master_profile' }, { 
-                $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null } 
+            await db.update({ _id: 'master_profile' }, {
+                $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
             }, { upsert: true });
             db.compactDatafile();
             logServerEvent('warning', 'Master admin disabled 2FA');
@@ -924,17 +955,39 @@ app.post('/api/check-email', signupLimiter, async (req, res) => {
 app.post('/api/check-username', signupLimiter, async (req, res) => {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: "Username parameter is required." });
-    
+
     // Check if any user has this username (stored in the 'name' field in database)
     const exists = await db.findOne({ name: { $regex: new RegExp(`^${username.trim()}$`, 'i') } });
     res.json({ exists: !!exists });
 });
 
+// Check if app is on the Indus App Store package name (called during onboarding page 0)
+function handleCheckStore(req, res) {
+    const packageName = req.body.packageName || req.query.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
+    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+    const isIndus = (packageName === indusPkg);
+    logServerEvent('info', `Store check request for package: ${packageName} (Is Indus: ${isIndus})`);
+    res.json({
+        success: isIndus,
+        valid: isIndus,
+        isIndusStore: isIndus,
+        isIndus: isIndus,
+        isIndusPackage: isIndus,
+        packageNameMatch: isIndus
+    });
+}
+app.get('/api/check-store', handleCheckStore);
+app.post('/api/check-store', handleCheckStore);
+app.get('/api/check-package', handleCheckStore);
+app.post('/api/check-package', handleCheckStore);
+
 app.post('/api/signup', signupLimiter, async (req, res) => {
+
     if (!serverConfig.signupsEnabled) {
         logServerEvent('warning', 'Signup blocked: signups are disabled', { ip: req.ip });
         return res.status(403).json({ error: "Signups are temporarily disabled." });
     }
+
     const { username, password, name, securityQuestion, securityAnswer } = req.body;
 
     if (!username || !password || password.length < 8) return res.status(400).json({ error: "Valid Username and password (min 8 chars) are required." });
@@ -1231,8 +1284,8 @@ app.post('/api/profile/2fa/verify', isAuthenticated, async (req, res) => {
         }
         const matchedCounter = verifyTOTP(code, user.tempTwoFactorSecret);
         if (matchedCounter !== null) {
-            await db.update({ _id: req.userId }, { 
-                $set: { twoFactorEnabled: true, twoFactorSecret: user.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter } 
+            await db.update({ _id: req.userId }, {
+                $set: { twoFactorEnabled: true, twoFactorSecret: user.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter }
             });
             db.compactDatafile();
             logServerEvent('info', `User ID '${req.userId}' successfully enabled 2FA`);
@@ -1260,8 +1313,8 @@ app.post('/api/profile/2fa/disable', isAuthenticated, async (req, res) => {
         }
         const userDisableResult = verifyTOTPWithReplay(code, user.twoFactorSecret, user.lastUsedTOTPCounter || null);
         if (userDisableResult.valid) {
-            await db.update({ _id: req.userId }, { 
-                $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null } 
+            await db.update({ _id: req.userId }, {
+                $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
             });
             db.compactDatafile();
             logServerEvent('warning', `User ID '${req.userId}' disabled 2FA`);
@@ -1278,17 +1331,24 @@ app.post('/api/profile/2fa/disable', isAuthenticated, async (req, res) => {
 app.get('/api/site-settings', async (req, res) => {
     try {
         const settings = await db.findOne({ _id: 'site_settings' });
-        if (settings) {
-            res.json(settings);
-        } else {
-            res.json({
-                heroBadge: "Local-first · Zero vendor lock",
-                heroTitle: "Expense intelligence <br>that stays yours.",
-                heroDesc: "Logbook Plus combines encrypted backups, multi‑policy storage, and seamless device sync — all hosted on your private cloud.",
-                featuresTitle: "Engineered for control & clarity",
-                featuresDesc: "Smart expense management designed around privacy-first architecture."
-            });
-        }
+        const packageName = req.query.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
+        const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+        const isIndus = (packageName === indusPkg);
+
+        let responseData = settings ? { ...settings } : {
+            heroBadge: "Local-first · Zero vendor lock",
+            heroTitle: "Expense intelligence <br>that stays yours.",
+            heroDesc: "Logbook Plus combines encrypted backups, multi‑policy storage, and seamless device sync — all hosted on your private cloud.",
+            featuresTitle: "Engineered for control & clarity",
+            featuresDesc: "Smart expense management designed around privacy-first architecture."
+        };
+
+        responseData.isIndus = isIndus;
+        responseData.isIndusStore = isIndus;
+        responseData.success = isIndus;
+        responseData.valid = isIndus;
+
+        res.json(responseData);
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch site settings." });
     }
@@ -1395,11 +1455,19 @@ app.post('/api/master/pricing', isMasterAuth, async (req, res) => {
 app.get('/api/pricing', async (req, res) => {
     try {
         const pricingConfig = await db.findOne({ _id: 'pricing_config' });
+        const packageName = req.query.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
+        const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+        const isIndus = (packageName === indusPkg);
+
         if (pricingConfig && pricingConfig.free && pricingConfig.premium && pricingConfig.selfHosted) {
             return res.json({
                 free: pricingConfig.free,
                 premium: pricingConfig.premium,
-                selfHosted: pricingConfig.selfHosted
+                selfHosted: pricingConfig.selfHosted,
+                isIndus: isIndus,
+                isIndusStore: isIndus,
+                success: isIndus,
+                valid: isIndus
             });
         }
 
@@ -1452,10 +1520,18 @@ app.get('/api/pricing', async (req, res) => {
         res.json({
             free: freeData,
             premium: premiumData,
-            selfHosted: selfHostedData
+            selfHosted: selfHostedData,
+            isIndus: isIndus,
+            isIndusStore: isIndus,
+            success: isIndus,
+            valid: isIndus
         });
     } catch (e) {
         console.error("Failed to parse pricing from HTML:", e);
+        const packageName = req.query.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
+        const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+        const isIndus = (packageName === indusPkg);
+
         res.json({
             free: {
                 amount: 0,
@@ -1505,7 +1581,11 @@ app.get('/api/pricing', async (req, res) => {
                     "Zero external servers required",
                     "Full control over backup size limits"
                 ]
-            }
+            },
+            isIndus: isIndus,
+            isIndusStore: isIndus,
+            success: isIndus,
+            valid: isIndus
         });
     }
 });
@@ -1579,6 +1659,7 @@ app.post('/api/subscription/activate-mock', isAuthenticated, handleActivateSubsc
 
 app.post('/api/verify-purchase', isAuthenticated, async (req, res) => {
     const { purchaseToken, productId } = req.body;
+    const packageName = req.body.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
 
     if (!purchaseToken || !productId) {
         return res.status(400).json({ error: "Missing purchase token or product ID" });
@@ -1590,10 +1671,10 @@ app.post('/api/verify-purchase', isAuthenticated, async (req, res) => {
         let verifyResult;
 
         // Try subscription verification first, then fall back to product (one-time) verification
-        verifyResult = await verifyPlaySubscription(purchaseToken, productId);
+        verifyResult = await verifyPlaySubscription(purchaseToken, productId, packageName);
         if (!verifyResult.valid && verifyResult.error) {
             // Maybe it's a one-time product, try product verification
-            verifyResult = await verifyPlayProduct(purchaseToken, productId);
+            verifyResult = await verifyPlayProduct(purchaseToken, productId, packageName);
         }
 
         if (!verifyResult.valid) {
@@ -1616,11 +1697,11 @@ app.post('/api/verify-purchase', isAuthenticated, async (req, res) => {
         if (plan === 'licensed') {
             const user = await db.findOne({ _id: req.userId });
             const licensee = user ? (user.email || user.username) : 'licensee@logbookplus';
-            
+
             // Check if active license already exists
             const existingLicenses = await db.find({ type: 'generated_license', licensee });
             const activeLicense = existingLicenses.find(lic => lic.expiresAt > Date.now());
-            
+
             if (!activeLicense) {
                 const licenseKey = jwt.sign(
                     { type: 'self-hosted', licensee, expiresAt },
