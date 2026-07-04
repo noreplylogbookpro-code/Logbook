@@ -12,6 +12,7 @@ jspm_packages/
 # Databases & local storage
 *.db
 server_users.db
+server_logs.db
 users.db
 
 # User uploads & data vault
