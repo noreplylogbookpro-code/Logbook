@@ -34,3 +34,5 @@ logs/
 Thumbs.db
 #Google_auth
 google_auth/
+#Hosting Platform
+.htaccess
