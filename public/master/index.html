@@ -101,11 +101,6 @@
                     <i class="fa-solid fa-chart-pie w-5"></i>
                     <span class="font-medium">Overview</span>
                 </a>
-                <a href="#" id="nav-homepage" onclick="switchMainView('homepage', event)"
-                    class="flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition">
-                    <i class="fa-solid fa-house w-5"></i>
-                    <span class="font-medium">Home Page</span>
-                </a>
                 <a href="#" id="nav-blogs" onclick="switchMainView('blogs', event)"
                     class="flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition">
                     <i class="fa-solid fa-blog w-5"></i>
@@ -120,6 +115,11 @@
                     class="flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition">
                     <i class="fa-solid fa-terminal w-5"></i>
                     <span class="font-medium">Server Logs</span>
+                </a>
+                <a href="#" id="nav-changelog" onclick="switchMainView('changelog', event)"
+                    class="flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition">
+                    <i class="fa-solid fa-clock-rotate-left w-5"></i>
+                    <span class="font-medium">Changelog</span>
                 </a>
                 <a href="./dev/" id="nav-help"
                     class="flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition">
@@ -329,43 +329,6 @@
                 </div>
             </div>
 
-            <!-- Home Page View Content -->
-            <div id="homepage-view-content" class="flex-1 overflow-hidden hidden flex flex-col md:flex-row h-full">
-                <!-- Editor Form Panel (Left) -->
-                <div class="w-full md:w-1/3 bg-white p-6 border-r border-slate-200 overflow-y-auto flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800 mb-4"><i class="fa-solid fa-house-laptop text-indigo-500 mr-2"></i> Website Setup</h2>
-                        <form id="site-setup-form" onsubmit="updateSiteSettings(event)" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hero Badge Text</label>
-                                <input type="text" id="site-badge" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hero Title (HTML Allowed)</label>
-                                <input type="text" id="site-title" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hero Description</label>
-                                <textarea id="site-desc" rows="4" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Features Section Title</label>
-                                <input type="text" id="site-feat-title" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Features Section Description</label>
-                                <textarea id="site-feat-desc" rows="3" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required></textarea>
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition mt-2">Save Setup Details</button>
-                        </form>
-                    </div>
-                </div>
-                <!-- Frame Preview Panel (Right) -->
-                <div class="flex-1 bg-slate-100 h-full relative">
-                    <iframe id="homepage-iframe" src="/index.html" class="w-full h-full border-none"></iframe>
-                </div>
-            </div>
-
             <!-- Blogs View Content -->
             <div id="blogs-view-content" class="flex-1 overflow-y-auto p-6 lg:p-8 hidden">
                 <div class="flex justify-between items-center mb-6">
@@ -399,7 +362,8 @@
                 <div class="mb-6 flex justify-between items-center">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Manage Plans & Subscriptions</h2>
-                        <p class="text-xs text-slate-500 mt-1">Review active monthly premium cloud subscriptions and generate self-hosted key configurations.</p>
+                        <p class="text-xs text-slate-500 mt-1">Review active monthly premium cloud subscriptions and
+                            generate self-hosted key configurations.</p>
                     </div>
                 </div>
 
@@ -413,7 +377,8 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                                     <th class="px-6 py-4 font-medium">User / Email</th>
                                     <th class="px-6 py-4 font-medium">Status</th>
                                     <th class="px-6 py-4 font-medium">Expiration Date</th>
@@ -441,7 +406,8 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
                                     <th class="px-6 py-4 font-medium">Licensee</th>
                                     <th class="px-6 py-4 font-medium">Expiration Date</th>
                                     <th class="px-6 py-4 font-medium">License Key (JWT)</th>
@@ -467,84 +433,215 @@
                             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <!-- Free Plan Config -->
                                 <div class="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-4">
-                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i class="fa-solid fa-seedling text-emerald-500 mr-1"></i> Free Plan</h4>
+                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i
+                                            class="fa-solid fa-seedling text-emerald-500 mr-1"></i> Free Plan</h4>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
-                                        <input type="text" id="free-title" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
+                                        <input type="text" id="free-title"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Amount (₹)</label>
-                                        <input type="number" id="free-amount" class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2 text-sm outline-none text-slate-500 cursor-not-allowed" value="0" readonly>
+                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Amount
+                                            (₹)</label>
+                                        <input type="number" id="free-amount"
+                                            class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2 text-sm outline-none text-slate-500 cursor-not-allowed"
+                                            value="0" readonly>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Period</label>
-                                        <input type="text" id="free-period" class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2 text-sm outline-none text-slate-500 cursor-not-allowed" value="forever" readonly>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Period</label>
+                                        <input type="text" id="free-period"
+                                            class="w-full border border-slate-200 bg-slate-100 rounded-lg p-2 text-sm outline-none text-slate-500 cursor-not-allowed"
+                                            value="forever" readonly>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features (one per line)</label>
-                                        <textarea id="free-features" rows="6" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required></textarea>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features
+                                            (one per line)</label>
+                                        <textarea id="free-features" rows="6"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required></textarea>
                                     </div>
                                 </div>
 
                                 <!-- Premium Plan Config -->
                                 <div class="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-4">
-                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i class="fa-solid fa-cloud text-indigo-500 mr-1"></i> Premium Plan</h4>
+                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i
+                                            class="fa-solid fa-cloud text-indigo-500 mr-1"></i> Premium Plan</h4>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
-                                        <input type="text" id="premium-title" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
+                                        <input type="text" id="premium-title"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required>
                                     </div>
+                                    <!-- Monthly Pricing -->
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Discount Price (₹)</label>
-                                            <input type="number" id="premium-amount" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Monthly Discount (₹)</label>
+                                            <input type="number" id="premium-amount"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                                required>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Original Price (₹)</label>
-                                            <input type="number" id="premium-original" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Monthly Original (₹)</label>
+                                            <input type="number" id="premium-original"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
                                         </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Period</label>
-                                        <input type="text" id="premium-period" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                    <!-- Yearly Pricing -->
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Yearly Discount (₹)</label>
+                                            <input type="number" id="premium-yearly-amount"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                                required>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Yearly Original (₹)</label>
+                                            <input type="number" id="premium-yearly-original"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
+                                        </div>
                                     </div>
+                                    <input type="hidden" id="premium-period">
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features (one per line)</label>
-                                        <textarea id="premium-features" rows="6" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required></textarea>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features
+                                            (one per line)</label>
+                                        <textarea id="premium-features" rows="6"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required></textarea>
                                     </div>
                                 </div>
 
                                 <!-- Self-Hosted Plan Config -->
                                 <div class="bg-slate-50 p-5 rounded-xl border border-slate-200/60 space-y-4">
-                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i class="fa-solid fa-server text-indigo-700 mr-1"></i> Self-Hosted Plan</h4>
+                                    <h4 class="font-bold text-slate-800 border-b border-slate-200 pb-2"><i
+                                            class="fa-solid fa-server text-indigo-700 mr-1"></i> Self-Hosted Plan</h4>
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
-                                        <input type="text" id="self-hosted-title" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
+                                        <input type="text" id="self-hosted-title"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required>
                                     </div>
                                     <div class="grid grid-cols-2 gap-2">
+                                        <!-- Monthly Pricing -->
                                         <div>
-                                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Discount Price (₹)</label>
-                                            <input type="number" id="self-hosted-amount" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Monthly Discount (₹)</label>
+                                            <input type="number" id="self-hosted-amount"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                                required>
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Original Price (₹)</label>
-                                            <input type="number" id="self-hosted-original" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Monthly Original (₹)</label>
+                                            <input type="number" id="self-hosted-original"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
                                         </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Period</label>
-                                        <input type="text" id="self-hosted-period" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required>
+                                    <!-- Yearly Pricing -->
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Yearly Discount (₹)</label>
+                                            <input type="number" id="self-hosted-yearly-amount"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                                required>
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-xs font-semibold text-slate-500 uppercase mb-1">Yearly Original (₹)</label>
+                                            <input type="number" id="self-hosted-yearly-original"
+                                                class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
+                                        </div>
                                     </div>
+                                    <input type="hidden" id="self-hosted-period">
                                     <div>
-                                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features (one per line)</label>
-                                        <textarea id="self-hosted-features" rows="6" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent" required></textarea>
+                                        <label
+                                            class="block text-xs font-semibold text-slate-500 uppercase mb-1">Features
+                                            (one per line)</label>
+                                        <textarea id="self-hosted-features" rows="6"
+                                            class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                            required></textarea>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="flex justify-end pt-2 border-t border-slate-100">
-                                <button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow hover:bg-indigo-700 transition">Save Pricing & Plan Offerings</button>
+                                <button type="submit"
+                                    class="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow hover:bg-indigo-700 transition">Save
+                                    Pricing & Plan Offerings</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Changelog View Content -->
+            <div id="changelog-view-content" class="flex-1 overflow-y-auto p-6 lg:p-8 hidden">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Manage Changelog</h2>
+                        <p class="text-xs text-slate-500 mt-1">Add and manage release history log entries dynamically in both text and JSON formats.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Form to add new changelog entry -->
+                    <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
+                        <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center">
+                            <i class="fa-solid fa-plus-circle text-indigo-500 mr-2"></i> Add New Entry
+                        </h3>
+                        <form id="add-changelog-form" onsubmit="handleAddChangelog(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Version</label>
+                                <input type="text" id="changelog-version" placeholder="e.g. v2.4.0"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                    required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Release Date</label>
+                                <input type="text" id="changelog-date" placeholder="e.g. July 2026"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                    required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Input Format</label>
+                                <select id="changelog-format" onchange="toggleChangelogPlaceholder()"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent">
+                                    <option value="text">Plain Text (one item per line)</option>
+                                    <option value="json">JSON Array of Strings</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Changes</label>
+                                <textarea id="changelog-changes" rows="8"
+                                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                                    required></textarea>
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg shadow hover:bg-indigo-700 transition duration-200">
+                                Add Changelog Entry
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- List of current changelogs -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col">
+                        <h3 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center">
+                            <i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> Release History List
+                        </h3>
+                        <div id="changelog-list-container" class="space-y-4 overflow-y-auto flex-1 max-h-[600px]">
+                            <!-- Dynamic content populated via JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -554,41 +651,57 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Server Diagnostic Logs</h2>
-                        <p class="text-xs text-slate-500 mt-1">Live tracking of activities, credentials warnings, alarms, and critical errors.</p>
+                        <p class="text-xs text-slate-500 mt-1">Live tracking of activities, credentials warnings,
+                            alarms, and critical errors.</p>
                     </div>
                     <div class="flex items-center gap-3 w-full md:w-auto">
                         <div class="relative w-full md:w-64">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs"></i>
                             </span>
-                            <input type="text" id="log-search" oninput="filterLogs()" placeholder="Search log messages..."
+                            <input type="text" id="log-search" oninput="filterLogs()"
+                                placeholder="Search log messages..."
                                 class="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition">
                         </div>
-                        <button onclick="loadAdminLogs()" class="text-slate-500 hover:text-indigo-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition duration-200 flex items-center gap-1 text-sm font-semibold" title="Refresh Logs">
+                        <button onclick="loadAdminLogs()"
+                            class="text-slate-500 hover:text-indigo-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition duration-200 flex items-center gap-1 text-sm font-semibold"
+                            title="Refresh Logs">
                             <i class="fa-solid fa-rotate-right"></i> Refresh
                         </button>
-                        <button onclick="clearAdminLogs()" class="text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg shadow-sm transition duration-200 flex items-center gap-1 text-sm font-semibold">
+                        <button onclick="clearAdminLogs()"
+                            class="text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg shadow-sm transition duration-200 flex items-center gap-1 text-sm font-semibold">
                             <i class="fa-solid fa-trash-can"></i> Clear
                         </button>
                     </div>
                 </div>
 
                 <!-- Filters & Count Header -->
-                <div class="flex flex-wrap items-center gap-2 mb-4 bg-slate-100/60 p-1.5 rounded-xl border border-slate-200/50 w-fit">
-                    <button onclick="setLogLevelFilter('all')" id="btn-filter-all" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-sm transition flex items-center gap-2">
-                        All <span id="count-all" class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
+                <div
+                    class="flex flex-wrap items-center gap-2 mb-4 bg-slate-100/60 p-1.5 rounded-xl border border-slate-200/50 w-fit">
+                    <button onclick="setLogLevelFilter('all')" id="btn-filter-all"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-sm transition flex items-center gap-2">
+                        All <span id="count-all"
+                            class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
                     </button>
-                    <button onclick="setLogLevelFilter('alarm')" id="btn-filter-alarm" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
-                        Alarm <span id="count-alarm" class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
+                    <button onclick="setLogLevelFilter('alarm')" id="btn-filter-alarm"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
+                        Alarm <span id="count-alarm"
+                            class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
                     </button>
-                    <button onclick="setLogLevelFilter('critical')" id="btn-filter-critical" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
-                        Critical <span id="count-critical" class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px]">0</span>
+                    <button onclick="setLogLevelFilter('critical')" id="btn-filter-critical"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
+                        Critical <span id="count-critical"
+                            class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px]">0</span>
                     </button>
-                    <button onclick="setLogLevelFilter('warning')" id="btn-filter-warning" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
-                        Warning <span id="count-warning" class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
+                    <button onclick="setLogLevelFilter('warning')" id="btn-filter-warning"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
+                        Warning <span id="count-warning"
+                            class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
                     </button>
-                    <button onclick="setLogLevelFilter('info')" id="btn-filter-info" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
-                        Info <span id="count-info" class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
+                    <button onclick="setLogLevelFilter('info')" id="btn-filter-info"
+                        class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white/80 transition flex items-center gap-2">
+                        Info <span id="count-info"
+                            class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded text-[10px]">0</span>
                     </button>
                 </div>
 
@@ -597,14 +710,16 @@
                     <div class="overflow-x-auto flex-1 scrollbar-thin">
                         <table class="w-full text-left border-collapse min-w-[700px]">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 sticky top-0 z-10">
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 sticky top-0 z-10">
                                     <th class="px-6 py-4 font-semibold w-52">Timestamp</th>
                                     <th class="px-6 py-4 font-semibold w-32">Level</th>
                                     <th class="px-6 py-4 font-semibold">Message</th>
                                     <th class="px-6 py-4 font-semibold text-right">Meta Details</th>
                                 </tr>
                             </thead>
-                            <tbody id="logs-table-body" class="divide-y divide-slate-100 font-mono text-xs text-slate-700">
+                            <tbody id="logs-table-body"
+                                class="divide-y divide-slate-100 font-mono text-xs text-slate-700">
                                 <!-- Dynamic logs row content -->
                             </tbody>
                         </table>
@@ -766,20 +881,22 @@
                     <input type="number" id="licenseDuration" value="365" required
                         class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none">
                 </div>
-                
+
                 <div id="generatedKeyContainer" class="hidden">
                     <label class="block text-sm font-semibold text-indigo-700 mb-1">Generated License Key (JWT)</label>
                     <textarea id="generatedLicenseOutput" readonly rows="4"
                         class="w-full border border-indigo-200 bg-indigo-50/50 p-2 font-mono text-xs rounded-lg select-all outline-none"
                         style="word-break: break-all;"></textarea>
-                    <p class="text-xs text-slate-500 mt-1">Provide this key to the licensee for their self-hosted instance.</p>
+                    <p class="text-xs text-slate-500 mt-1">Provide this key to the licensee for their self-hosted
+                        instance.</p>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeLicenseModal()"
                         class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-semibold transition text-slate-700">Cancel</button>
                     <button type="submit" id="genLicenseSubmitBtn"
-                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition">Generate Key</button>
+                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition">Generate
+                        Key</button>
                 </div>
             </form>
         </div>
@@ -790,7 +907,8 @@
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-100 mx-4">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-credit-card text-indigo-500 mr-2"></i>
+                <h3 class="text-lg font-bold text-slate-800"><i
+                        class="fa-solid fa-credit-card text-indigo-500 mr-2"></i>
                     Edit User Plan</h3>
                 <button onclick="closeEditPlanModal()"
                     class="text-slate-400 hover:text-slate-600 text-2xl font-bold focus:outline-none">&times;</button>
@@ -829,7 +947,8 @@
                     <button type="button" onclick="closeEditPlanModal()"
                         class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-semibold transition text-slate-700 font-medium font-semibold">Cancel</button>
                     <button type="submit"
-                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition font-medium font-semibold">Save Plan</button>
+                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition font-medium font-semibold">Save
+                        Plan</button>
                 </div>
             </form>
         </div>
@@ -861,7 +980,8 @@
                     <button type="button" onclick="closeEditLicenseModal()"
                         class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-semibold transition text-slate-700 font-medium">Cancel</button>
                     <button type="submit"
-                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition font-medium">Save Expiry</button>
+                        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition font-medium">Save
+                        Expiry</button>
                 </div>
             </form>
         </div>
@@ -872,42 +992,50 @@
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-100 mx-4">
             <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-shield-halved text-indigo-500 mr-2"></i> Two-Factor Auth (2FA)</h3>
-                <button onclick="closeMfaModal()" class="close-modal text-slate-400 hover:text-slate-600 text-2xl font-bold focus:outline-none">&times;</button>
+                <h3 class="text-lg font-bold text-slate-800"><i
+                        class="fa-solid fa-shield-halved text-indigo-500 mr-2"></i> Two-Factor Auth (2FA)</h3>
+                <button onclick="closeMfaModal()"
+                    class="close-modal text-slate-400 hover:text-slate-600 text-2xl font-bold focus:outline-none">&times;</button>
             </div>
-            
+
             <!-- Setup View -->
             <div id="mfa-setup-view" class="space-y-4 hidden">
-                <p class="text-sm text-slate-600">Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.) or enter the secret key manually.</p>
+                <p class="text-sm text-slate-600">Scan the QR code with your authenticator app (Google Authenticator,
+                    Authy, etc.) or enter the secret key manually.</p>
                 <div class="flex justify-center p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <div id="mfa-qrcode" class="p-2 bg-white border border-slate-200 rounded-lg"></div>
                 </div>
-                <div class="bg-slate-50 p-3 rounded-lg border border-slate-150 text-xs font-mono text-center select-all cursor-pointer" onclick="navigator.clipboard.writeText(this.innerText); alert('Key copied!')">
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-150 text-xs font-mono text-center select-all cursor-pointer"
+                    onclick="navigator.clipboard.writeText(this.innerText); alert('Key copied!')">
                     <span id="mfa-secret-text" class="text-slate-700 font-semibold">Generating...</span>
                 </div>
                 <p class="text-xs text-center text-slate-400">Click secret key text to copy</p>
                 <form id="mfa-verify-form" onsubmit="confirmMfaSetup(event)" class="space-y-3">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Enter Verification Code</label>
-                        <input type="text" id="mfa-setup-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required
+                        <input type="text" id="mfa-setup-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+                            required
                             class="w-full border border-slate-300 rounded-lg p-2 text-center text-lg tracking-widest focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none">
                     </div>
                     <button type="submit"
-                        class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition">Enable Two-Factor Auth</button>
+                        class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition">Enable
+                        Two-Factor Auth</button>
                 </form>
             </div>
 
             <!-- Active View -->
             <div id="mfa-active-view" class="space-y-4 hidden text-center">
-                <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-inner">
+                <div
+                    class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-inner">
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
                 <h4 class="text-lg font-bold text-slate-800">2FA is Enabled</h4>
                 <p class="text-sm text-slate-500">Your master account is protected with two-factor authentication.</p>
-                
+
                 <div class="border-t border-slate-100 pt-4 mt-6">
                     <button onclick="showDisableMfaForm()"
-                        class="w-full bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-semibold py-2 rounded-lg transition">Disable Two-Factor Auth</button>
+                        class="w-full bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-semibold py-2 rounded-lg transition">Disable
+                        Two-Factor Auth</button>
                 </div>
             </div>
 
@@ -922,7 +1050,8 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Authenticator Code</label>
-                        <input type="text" id="mfa-disable-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required
+                        <input type="text" id="mfa-disable-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+                            required
                             class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none">
                     </div>
                     <div class="flex gap-3 pt-2">

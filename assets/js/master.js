@@ -462,14 +462,16 @@ function switchMainView(viewType, event) {
     const blogs = document.getElementById('blogs-view-content');
     const plans = document.getElementById('plans-view-content');
     const billingAudit = document.getElementById('billing-audit-view-content');
+    const changelog = document.getElementById('changelog-view-content');
     const logs = document.getElementById('logs-view-content');
     const title = document.getElementById('header-title');
 
-    overview.classList.add('hidden');
-    homepage.classList.add('hidden');
+    if (overview) overview.classList.add('hidden');
+    if (homepage) homepage.classList.add('hidden');
     if (blogs) blogs.classList.add('hidden');
     if (plans) plans.classList.add('hidden');
     if (billingAudit) billingAudit.classList.add('hidden');
+    if (changelog) changelog.classList.add('hidden');
     if (logs) logs.classList.add('hidden');
 
     const navOverview = document.getElementById('nav-overview');
@@ -477,6 +479,7 @@ function switchMainView(viewType, event) {
     const navBlogs = document.getElementById('nav-blogs');
     const navPlans = document.getElementById('nav-plans');
     const navBillingAudit = document.getElementById('nav-billing-audit');
+    const navChangelog = document.getElementById('nav-changelog');
     const navLogs = document.getElementById('nav-logs');
 
     const inactiveClass = "flex items-center space-x-3 text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-3 rounded-lg transition";
@@ -487,14 +490,15 @@ function switchMainView(viewType, event) {
     if (navBlogs) navBlogs.className = inactiveClass;
     if (navPlans) navPlans.className = inactiveClass;
     if (navBillingAudit) navBillingAudit.className = inactiveClass;
+    if (navChangelog) navChangelog.className = inactiveClass;
     if (navLogs) navLogs.className = inactiveClass;
 
     if (viewType === 'overview') {
-        overview.classList.remove('hidden');
+        if (overview) overview.classList.remove('hidden');
         title.textContent = 'System Dashboard';
         if (navOverview) navOverview.className = activeClass;
     } else if (viewType === 'homepage') {
-        homepage.classList.remove('hidden');
+        if (homepage) homepage.classList.remove('hidden');
         title.textContent = 'Home Page';
         if (navHomepage) navHomepage.className = activeClass;
         const iframe = document.getElementById('homepage-iframe');
@@ -515,6 +519,11 @@ function switchMainView(viewType, event) {
         title.textContent = 'Billing Audit Report';
         if (navBillingAudit) navBillingAudit.className = activeClass;
         loadBillingAuditReport();
+    } else if (viewType === 'changelog') {
+        if (changelog) changelog.classList.remove('hidden');
+        title.textContent = 'Manage Changelog';
+        if (navChangelog) navChangelog.className = activeClass;
+        loadChangelogConfigForm();
     } else if (viewType === 'logs') {
         if (logs) logs.classList.remove('hidden');
         title.textContent = 'Server Logs';
@@ -1368,11 +1377,16 @@ async function loadSiteSettingsForm() {
         const res = await masterApiCall('/api/site-settings');
         if (res.ok) {
             const settings = await res.json();
-            document.getElementById('site-badge').value = settings.heroBadge || '';
-            document.getElementById('site-title').value = settings.heroTitle || '';
-            document.getElementById('site-desc').value = settings.heroDesc || '';
-            document.getElementById('site-feat-title').value = settings.featuresTitle || '';
-            document.getElementById('site-feat-desc').value = settings.featuresDesc || '';
+            const badge = document.getElementById('site-badge');
+            const title = document.getElementById('site-title');
+            const desc = document.getElementById('site-desc');
+            const featTitle = document.getElementById('site-feat-title');
+            const featDesc = document.getElementById('site-feat-desc');
+            if (badge) badge.value = settings.heroBadge || '';
+            if (title) title.value = settings.heroTitle || '';
+            if (desc) desc.value = settings.heroDesc || '';
+            if (featTitle) featTitle.value = settings.featuresTitle || '';
+            if (featDesc) featDesc.value = settings.featuresDesc || '';
         }
     } catch (e) {
         console.error("Failed to load website setup details:", e);
@@ -1381,11 +1395,11 @@ async function loadSiteSettingsForm() {
 
 async function updateSiteSettings(e) {
     e.preventDefault();
-    const heroBadge = document.getElementById('site-badge').value;
-    const heroTitle = document.getElementById('site-title').value;
-    const heroDesc = document.getElementById('site-desc').value;
-    const featuresTitle = document.getElementById('site-feat-title').value;
-    const featuresDesc = document.getElementById('site-feat-desc').value;
+    const heroBadge = document.getElementById('site-badge')?.value || '';
+    const heroTitle = document.getElementById('site-title')?.value || '';
+    const heroDesc = document.getElementById('site-desc')?.value || '';
+    const featuresTitle = document.getElementById('site-feat-title')?.value || '';
+    const featuresDesc = document.getElementById('site-feat-desc')?.value || '';
 
     const payload = { heroBadge, heroTitle, heroDesc, featuresTitle, featuresDesc };
 
@@ -1422,17 +1436,34 @@ async function loadPricingConfigForm() {
             
             // Premium plan
             document.getElementById('premium-title').value = config.premium.title || '';
-            document.getElementById('premium-amount').value = config.premium.amount || 0;
-            document.getElementById('premium-original').value = config.premium.originalAmount || '';
-            document.getElementById('premium-period').value = config.premium.period || 'month';
             document.getElementById('premium-features').value = (config.premium.features || []).join('\n');
+            document.getElementById('premium-period').value = config.premium.period || 'month';
             
+            const premMonthly = config.premium.monthly || {};
+            const premYearly = config.premium.yearly || {};
+            document.getElementById('premium-amount').value = premMonthly.amount !== undefined ? premMonthly.amount : (config.premium.amount || 0);
+            document.getElementById('premium-original').value = premMonthly.originalAmount !== undefined ? premMonthly.originalAmount : (config.premium.originalAmount || '');
+            document.getElementById('premium-yearly-amount').value = premYearly.amount !== undefined ? premYearly.amount : (config.premium.amount ? config.premium.amount * 10 : 500);
+            document.getElementById('premium-yearly-original').value = premYearly.originalAmount !== undefined ? premYearly.originalAmount : (config.premium.originalAmount ? config.premium.originalAmount * 10 : '');
+
             // Self-Hosted plan
             document.getElementById('self-hosted-title').value = config.selfHosted.title || '';
-            document.getElementById('self-hosted-amount').value = config.selfHosted.amount || 0;
-            document.getElementById('self-hosted-original').value = config.selfHosted.originalAmount || '';
-            document.getElementById('self-hosted-period').value = config.selfHosted.period || 'year';
             document.getElementById('self-hosted-features').value = (config.selfHosted.features || []).join('\n');
+            document.getElementById('self-hosted-period').value = config.selfHosted.period || 'year';
+
+            const shMonthly = config.selfHosted.monthly || {};
+            const shYearly = config.selfHosted.yearly || {};
+            document.getElementById('self-hosted-yearly-amount').value = shYearly.amount !== undefined ? shYearly.amount : (config.selfHosted.amount || 1499);
+            document.getElementById('self-hosted-yearly-original').value = shYearly.originalAmount !== undefined ? shYearly.originalAmount : (config.selfHosted.originalAmount || '');
+            
+            let shMonthlyAmountDefault = 199;
+            let shMonthlyOriginalDefault = 399;
+            if (config.selfHosted.amount && config.selfHosted.amount !== 1499) {
+                shMonthlyAmountDefault = Math.round(config.selfHosted.amount / 10);
+                shMonthlyOriginalDefault = config.selfHosted.originalAmount ? Math.round(config.selfHosted.originalAmount / 10) : '';
+            }
+            document.getElementById('self-hosted-amount').value = shMonthly.amount !== undefined ? shMonthly.amount : shMonthlyAmountDefault;
+            document.getElementById('self-hosted-original').value = shMonthly.originalAmount !== undefined ? shMonthly.originalAmount : shMonthlyOriginalDefault;
         }
     } catch (e) {
         console.error("Failed to load plans pricing details:", e);
@@ -1442,6 +1473,16 @@ async function loadPricingConfigForm() {
 async function updatePlansPricing(e) {
     e.preventDefault();
     
+    const premiumMonthlyAmount = parseInt(document.getElementById('premium-amount').value, 10) || 0;
+    const premiumMonthlyOriginal = parseInt(document.getElementById('premium-original').value, 10) || null;
+    const premiumYearlyAmount = parseInt(document.getElementById('premium-yearly-amount').value, 10) || 0;
+    const premiumYearlyOriginal = parseInt(document.getElementById('premium-yearly-original').value, 10) || null;
+
+    const selfHostedMonthlyAmount = parseInt(document.getElementById('self-hosted-amount').value, 10) || 0;
+    const selfHostedMonthlyOriginal = parseInt(document.getElementById('self-hosted-original').value, 10) || null;
+    const selfHostedYearlyAmount = parseInt(document.getElementById('self-hosted-yearly-amount').value, 10) || 0;
+    const selfHostedYearlyOriginal = parseInt(document.getElementById('self-hosted-yearly-original').value, 10) || null;
+
     const payload = {
         free: {
             title: document.getElementById('free-title').value,
@@ -1453,19 +1494,23 @@ async function updatePlansPricing(e) {
         },
         premium: {
             title: document.getElementById('premium-title').value,
-            amount: parseInt(document.getElementById('premium-amount').value, 10) || 0,
-            originalAmount: parseInt(document.getElementById('premium-original').value, 10) || null,
+            amount: premiumMonthlyAmount,
+            originalAmount: premiumMonthlyOriginal,
             currency: "₹",
-            period: document.getElementById('premium-period').value,
-            features: document.getElementById('premium-features').value.split('\n').map(x => x.trim()).filter(x => x.length > 0)
+            period: "month",
+            features: document.getElementById('premium-features').value.split('\n').map(x => x.trim()).filter(x => x.length > 0),
+            monthly: { amount: premiumMonthlyAmount, originalAmount: premiumMonthlyOriginal },
+            yearly: { amount: premiumYearlyAmount, originalAmount: premiumYearlyOriginal }
         },
         selfHosted: {
             title: document.getElementById('self-hosted-title').value,
-            amount: parseInt(document.getElementById('self-hosted-amount').value, 10) || 0,
-            originalAmount: parseInt(document.getElementById('self-hosted-original').value, 10) || null,
+            amount: selfHostedYearlyAmount,
+            originalAmount: selfHostedYearlyOriginal,
             currency: "₹",
-            period: document.getElementById('self-hosted-period').value,
-            features: document.getElementById('self-hosted-features').value.split('\n').map(x => x.trim()).filter(x => x.length > 0)
+            period: "year",
+            features: document.getElementById('self-hosted-features').value.split('\n').map(x => x.trim()).filter(x => x.length > 0),
+            monthly: { amount: selfHostedMonthlyAmount, originalAmount: selfHostedMonthlyOriginal },
+            yearly: { amount: selfHostedYearlyAmount, originalAmount: selfHostedYearlyOriginal }
         }
     };
 
@@ -1758,3 +1803,123 @@ function renderBillingCharts(activeSubsCount, activeLicsCount, premiumPrice, lic
         }
     });
 }
+
+// ── Changelog Management System ──
+const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+async function loadChangelogConfigForm() {
+    try {
+        const res = await masterApiCall('/api/changelog');
+        if (res.ok) {
+            const entries = await res.json();
+            const container = document.getElementById('changelog-list-container');
+            container.innerHTML = '';
+
+            if (!entries || entries.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-sm py-8 text-center bg-slate-50 rounded-xl border border-slate-100">No release logs recorded yet.</p>';
+                return;
+            }
+
+            entries.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50/50 p-5 rounded-xl border border-slate-200/60 flex flex-col md:flex-row justify-between gap-4";
+                
+                let changesList = '<ul class="list-disc pl-5 text-sm text-slate-600 space-y-1 mt-2">';
+                entry.changes.forEach(c => {
+                    changesList += `<li>${escapeHtml(c)}</li>`;
+                });
+                changesList += '</ul>';
+
+                card.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-indigo-50 text-indigo-700 font-bold px-2.5 py-0.5 rounded text-xs">${escapeHtml(entry.version)}</span>
+                            <span class="text-xs text-slate-400 font-medium">${escapeHtml(entry.date)}</span>
+                        </div>
+                        ${changesList}
+                    </div>
+                    <div class="flex items-start">
+                        <button onclick="handleDeleteChangelog('${escapeHtml(entry.version)}')" 
+                            class="text-xs text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 px-3 py-1.5 rounded-lg transition font-semibold">
+                            <i class="fa-solid fa-trash mr-1"></i> Delete
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load changelogs:", e);
+    }
+}
+
+function toggleChangelogPlaceholder() {
+    const format = document.getElementById('changelog-format').value;
+    const textarea = document.getElementById('changelog-changes');
+    if (!textarea) return;
+    if (format === 'json') {
+        textarea.placeholder = '[\n  "Feature 1...",\n  "Feature 2...",\n  "Bugfix 1..."\n]';
+    } else {
+        textarea.placeholder = 'Added Monthly & Yearly billing switch\nRedesigned footer layout\nAdded advanced analytics dashboard';
+    }
+}
+
+async function handleAddChangelog(e) {
+    e.preventDefault();
+    const version = document.getElementById('changelog-version').value.trim();
+    const date = document.getElementById('changelog-date').value.trim();
+    const format = document.getElementById('changelog-format').value;
+    const changes = document.getElementById('changelog-changes').value.trim();
+
+    if (!version || !date || !changes) {
+        alert("Please fill in all fields.");
+        return;
+    }
+
+    try {
+        const res = await masterApiCall('/api/master/changelog', {
+            method: 'POST',
+            body: JSON.stringify({ version, date, format, changes })
+        });
+
+        if (res.ok) {
+            alert("Changelog entry added/updated successfully!");
+            document.getElementById('add-changelog-form').reset();
+            toggleChangelogPlaceholder();
+            loadChangelogConfigForm();
+        } else {
+            const data = await res.json();
+            alert("Error: " + (data.error || "Failed to add changelog entry."));
+        }
+    } catch (err) {
+        alert("Failed to save changelog: " + err.message);
+    }
+}
+
+async function handleDeleteChangelog(version) {
+    if (!confirm(`Are you sure you want to delete the changelog entry for version ${version}?`)) {
+        return;
+    }
+
+    try {
+        const res = await masterApiCall(`/api/master/changelog/${encodeURIComponent(version)}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            alert("Changelog entry deleted successfully!");
+            loadChangelogConfigForm();
+        } else {
+            const data = await res.json();
+            alert("Error: " + (data.error || "Failed to delete changelog entry."));
+        }
+    } catch (err) {
+        alert("Failed to delete: " + err.message);
+    }
+}
+
+// Initial placeholder setup on master view load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(toggleChangelogPlaceholder, 500);
+});
+

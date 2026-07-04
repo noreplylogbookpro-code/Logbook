@@ -1,6 +1,11 @@
-// contact.js — Enhanced with scroll-reveal animations
-
 // Set current year in footer
+window.setSubject = function(subjectText) {
+  const subjectInput = document.querySelector('input[name="subject"]');
+  if (subjectInput) {
+    subjectInput.value = subjectText;
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   const footerYear = document.getElementById('footerYear');
   if (footerYear) footerYear.innerText = `© ${new Date().getFullYear()}`;
@@ -94,7 +99,7 @@ const contactForm = document.getElementById('contactForm');
 const statusDiv = document.getElementById('formStatus');
 
 if (contactForm) {
-  contactForm.addEventListener('submit', async function (e) {
+  contactForm.addEventListener('submit', function (e) {
     e.preventDefault();
     // gather form data
     const name = contactForm.querySelector('input[name="name"]').value.trim();
@@ -110,35 +115,26 @@ if (contactForm) {
       statusDiv.innerHTML = '<span style="color:#cc4b3e;"><i class="fas fa-envelope"></i> Enter a valid email address.</span>';
       return;
     }
-    if (message.length < 150) {
-      statusDiv.innerHTML = '<span style="color:#cc4b3e;"><i class="fas fa-envelope"></i> Message is to short! It must be at least 150 characters long.</span>';
+    if (message.length < 10) {
+      statusDiv.innerHTML = '<span style="color:#cc4b3e;"><i class="fas fa-envelope"></i> Message is too short! It must be at least 10 characters long.</span>';
       return;
     }
-
 
     // Show loading state
     const submitBtn = contactForm.querySelector('button[type="submit"]');
     const originalBtnHTML = submitBtn.innerHTML;
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
     statusDiv.innerHTML = '';
 
     try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, subject, message })
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        statusDiv.innerHTML = `<span style="color:#2b7e3a;"><i class="fas fa-check-circle"></i> ${data.message || 'Thank you! Our team will get back to you soon.'}</span>`;
-        contactForm.reset();
-      } else {
-        statusDiv.innerHTML = `<span style="color:#cc4b3e;"><i class="fas fa-times-circle"></i> ${data.error || 'Something went wrong. Please try again.'}</span>`;
-      }
+      const mailtoLink = `mailto:support@logbookplus.co.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("Hello Support Team,\n\nName: " + name + "\nEmail: " + email + "\n\nMessage:\n" + message)}`;
+      window.location.href = mailtoLink;
+      
+      statusDiv.innerHTML = `<span style="color:#2b7e3a;"><i class="fas fa-check-circle"></i> Opening your email client to send message...</span>`;
+      contactForm.reset();
     } catch (err) {
-      statusDiv.innerHTML = '<span style="color:#cc4b3e;"><i class="fas fa-times-circle"></i> Network error. Please check your connection and try again.</span>';
+      statusDiv.innerHTML = `<span style="color:#cc4b3e;"><i class="fas fa-times-circle"></i> Failed to open mail client automatically. Please email support@logbookplus.co.in directly.</span>`;
     } finally {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalBtnHTML;

@@ -48,6 +48,14 @@ body {
     letter-spacing: -0.5px;
 }
 
+.brand-logo img {
+    height: 36px;
+    width: auto;
+    vertical-align: middle;
+    margin-right: 8px;
+    border-radius: 6px;
+}
+
 /* Pricing Section */
 .pricing-wrapper {
     flex: 1;
@@ -99,6 +107,71 @@ body {
     margin: 0 auto;
 }
 
+/* Billing Toggle Switch */
+.billing-toggle-container {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 40px auto;
+}
+
+.billing-toggle-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    padding: 6px;
+    border-radius: 40px;
+    display: inline-flex;
+    position: relative;
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+    align-items: center;
+}
+
+.billing-toggle-btn {
+    border: none;
+    background: transparent;
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 30px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+    outline: none;
+}
+
+.billing-toggle-btn:not(.active):hover {
+    color: var(--secondary);
+}
+
+.billing-toggle-btn.active {
+    color: #ffffff;
+    background: var(--primary);
+    box-shadow: 0 4px 12px rgba(28, 110, 242, 0.2);
+}
+
+.billing-toggle-btn .save-badge {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+}
+
+.billing-toggle-btn.active .save-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    box-shadow: none;
+}
+
 /* Pricing Grid */
 .pricing-grid {
     display: grid;
@@ -126,9 +199,9 @@ body {
 
 .pricing-card.premium {
     border: 2px solid var(--primary);
+    background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
 }
 
-/* "Most Popular" badge – stays at top‑right */
 .card-badge {
     position: absolute;
     top: 20px;
@@ -137,23 +210,21 @@ body {
     color: white;
     font-size: 0.75rem;
     font-weight: 700;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 40px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* ----- FIXED DISCOUNT BADGE POSITIONING ----- */
-/* .price becomes the anchor for the absolute badge */
+/* Price + Badge Layout */
 .pricing-card .price {
-    position: relative;
-    /* anchor */
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px 12px;
     margin-bottom: 30px;
-    padding-right: 90px;
-    /* reserve space for the badge */
+    min-height: 70px;
 }
 
 .price-content {
@@ -163,10 +234,7 @@ body {
     gap: 4px 6px;
 }
 
-/* The discount badge – absolutely positioned on the right, vertically centered */
 .pricing-card .discount-badge {
-    position: absolute;
-    transform: translateY(-50%);
     display: inline-block;
     background: linear-gradient(135deg, #10b981, #059669);
     color: white;
@@ -178,17 +246,15 @@ body {
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
     animation: badge-pulse 2s ease-in-out infinite;
     white-space: nowrap;
-    z-index: 2;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
-.pricing-card .discount-badge.premium-discount-badge {
-    top: 13%;
-    right: 19%;
-}
-
-.pricing-card .discount-badge.self-hosted-discount-badge {
-    top: 25%;
-    right: 0%;
+@media (max-width: 600px) {
+    .pricing-card .discount-badge {
+        margin-left: 0;
+        align-self: flex-start;
+    }
 }
 
 @keyframes badge-pulse {
@@ -203,7 +269,6 @@ body {
     }
 }
 
-/* Original price (strikethrough) */
 .original-amount {
     text-decoration: line-through;
     opacity: 0.6;
@@ -211,6 +276,15 @@ body {
     font-weight: normal;
     color: var(--text-muted);
     margin-right: 6px;
+}
+
+.effective-monthly {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    width: 100%;
+    margin-top: 4px;
 }
 
 /* Card Icon */
@@ -232,6 +306,11 @@ body {
     color: var(--secondary);
 }
 
+.pricing-card.free .card-icon {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--text-muted);
+}
+
 .pricing-card h2 {
     font-size: 1.5rem;
     font-weight: 700;
@@ -246,7 +325,6 @@ body {
     min-height: 48px;
 }
 
-/* Price typography – shared for all cards */
 .price .currency {
     font-size: 1.8rem;
     font-weight: 700;
@@ -269,6 +347,15 @@ body {
     margin-left: 8px;
 }
 
+.pricing-card.free .price .amount {
+    font-size: 2.8rem;
+}
+
+.pricing-card.free .price .period {
+    font-size: 1rem;
+    margin-left: 4px;
+}
+
 /* Features */
 .features {
     list-style: none;
@@ -288,6 +375,11 @@ body {
 .features li i {
     color: #10b981;
     font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.features li i.fa-times-circle {
+    color: #ea4335 !important;
 }
 
 /* Buttons */
@@ -352,7 +444,7 @@ body {
     font-size: 1.1rem;
 }
 
-/* ===== MODERN DARK FOOTER ===== */
+/* Dark Footer */
 .modern-dark-footer {
     background-color: #111111;
     color: #a0a0a0;
@@ -463,7 +555,7 @@ body {
     color: #888888;
 }
 
-/* ===== RESPONSIVE ===== */
+/* Responsive */
 @media (max-width: 900px) {
     .footer-grid-container {
         grid-template-columns: 1fr 1fr;
@@ -483,17 +575,14 @@ body {
         padding: 20px;
     }
 
-    /* For small screens, switch badge to static flow to avoid overlap */
     .pricing-card .price {
-        padding-right: 0;
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
 
     .pricing-card .discount-badge {
-        position: static;
-        transform: none;
+        margin-left: 0;
         align-self: flex-start;
     }
 
@@ -508,10 +597,12 @@ body {
 }
 
 @media (max-width: 600px) {
-
-    /* Additional small‑screen tweaks if needed */
     .pricing-card .discount-badge {
         font-size: 0.7rem;
         padding: 4px 12px;
     }
+}
+
+.effective-monthly {
+    flex-basis: 100%;
 }

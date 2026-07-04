@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Changelog | Logbook Plus</title>
+    <!-- Google Fonts + modern system stack -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/terms.css">
+</head>
+
+<body>
+
+    <!-- Minimal brand header -->
+    <div class="brand-header">
+        <a href="/" class="brand-logo">
+            <img src="/assets/images/app_logo.png" alt="Logbook Plus"
+                style="height: 36px; width: auto; vertical-align: middle; margin-right: 8px; border-radius: 6px;">Logbook Plus
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="terms-wrapper">
+        <div class="terms-card">
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+
+            <h1>Changelog</h1>
+            <div class="last-updated">
+                <i class="fas fa-calendar-alt"></i> Latest Release: Loading...
+            </div>
+
+            <div id="changelog-container">
+                <p style="color: #6f8ea3; text-align: center; padding: 2rem;">Loading release history logs...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        
+        const defaultEntries = [
+            {
+                version: "v2.0.9",
+                date: "December 2025",
+                changes: [
+                    "Added cloud backup support (WebDAV)",
+                    "Added self-hosted server backup sync",
+                    "Added Two-Factor Authentication (2FA)",
+                    "Added security questions for recovery",
+                    "Integrated Google Play Billing Client 7",
+                    "Added profile picture upload and editing",
+                    "Added FAQ search functionality",
+                    "Added Hindi, Marathi, and Urdu language support",
+                    "UI polish and bug fixes"
+                ]
+            },
+            {
+                version: "v2.0.5",
+                date: "October 2025",
+                changes: [
+                    "UI polish and bug fixes",
+                    "Added photo preview in add entry screen",
+                    "Added support for android 16",
+                    "Added support for static theme"
+                ]
+            },
+            {
+                version: "v1.1.1",
+                date: "August 2025",
+                changes: [
+                    "UI polish",
+                    "Added changelog screen",
+                    "Added share app link feature",
+                    "Fix language change bug",
+                    "Fix bug in photo saving"
+                ]
+            },
+            {
+                version: "v1.1.0",
+                date: "June 2025",
+                changes: [
+                    "Added encrypted backup support",
+                    "Improved app performance",
+                    "Added donation screen",
+                    "Added easter egg feature",
+                    "Added dark mode support",
+                    "Added language support",
+                    "Added encrypted backup & restore",
+                    "Bug fixes and UI improvements"
+                ]
+            },
+            {
+                version: "v1.0.0",
+                date: "April 2025",
+                changes: [
+                    "Initial public beta release"
+                ]
+            }
+        ];
+
+        function renderEntries(entries) {
+            const container = document.getElementById('changelog-container');
+            container.innerHTML = '';
+            
+            if (!entries || entries.length === 0) {
+                container.innerHTML = '<p style="color: #6f8ea3; text-align: center; padding: 2rem;">No release logs recorded.</p>';
+                return;
+            }
+
+            // Update the "Last Updated" calendar date at the top with the latest entry date
+            const lastUpdatedText = document.querySelector('.last-updated');
+            if (lastUpdatedText && entries[0]) {
+                lastUpdatedText.innerHTML = `<i class="fas fa-calendar-alt"></i> Latest Release: ${escapeHtml(entries[0].date)}`;
+            }
+
+            entries.forEach(entry => {
+                const header = document.createElement('h2');
+                header.style.marginTop = "2rem";
+                header.innerHTML = `${escapeHtml(entry.version)} <span style="font-size: 0.95rem; color: #5c7f94; font-weight: 500; margin-left: 8px;">— ${escapeHtml(entry.date)}</span>`;
+                
+                const list = document.createElement('ul');
+                entry.changes.forEach(c => {
+                    const li = document.createElement('li');
+                    li.textContent = c;
+                    list.appendChild(li);
+                });
+                
+                container.appendChild(header);
+                container.appendChild(list);
+            });
+        }
+
+        async function fetchChangelog() {
+            try {
+                if (window.location.protocol === 'file:') {
+                    renderEntries(defaultEntries);
+                    return;
+                }
+
+                const res = await fetch('/api/changelog');
+                if (!res.ok) throw new Error("Server error");
+                const entries = await res.json();
+                renderEntries(entries);
+            } catch (e) {
+                console.warn("Changelog fetch failed, falling back to offline defaults:", e);
+                renderEntries(defaultEntries);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', fetchChangelog);
+    </script>
+
+    <!-- Centralized Footer -->
+    <div id="shared-footer"></div>
+    <script src="/assets/js/footer.js" defer></script>
+</body>
+
+</html>

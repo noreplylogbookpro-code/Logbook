@@ -18,60 +18,70 @@ document.addEventListener("DOMContentLoaded", function () {
             <!-- Column 1: Brand & Socials -->
             <div class="footer-col brand-col">
                 <a href="/" class="footer-brand-logo">
-                    <img src="/assets/images/app_logo.png" alt="Logbook Plus"> Logbook Plus
+                    <img src="/assets/images/app_logo.png" alt="Logbook Plus">Logbook Plus
                 </a>
-                <p class="company-info">Company Name: LOGBOOK PLUS TECHNOLOGY LTD.</p>
-                <p class="company-info">Company Address: 319, Janseva CHS, Khindipada, Mulund Goregaon Link Road, Mulund-West, Mumbai, Maharashtra-400082</p>
-                <p class="company-info">Contact Us: noreply.logbookpro@gmail.com</p>
+                <p class="company-info">Secure, local-first backup management for modern teams and individuals.</p>
+                <p class="company-info">Contact Us: support@logbookplus.co.in</p>
                 <div class="footer-social-download">
                     <div class="download-app">
-                        <h4>Download app</h4>
+                        <h4>Download</h4>
                         <div class="app-icons">
-                            <a href=https://play.google.com/store/apps/details?id=com.logbookplus target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                            <i class="fab fa-apple"></i>
+                            <a href="https://play.google.com/store/apps/details?id=com.logbookplus" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; margin-bottom: 0;">
                                 <i class="fab fa-google-play"></i>
                             </a>
                         </div>
                     </div>
                     <div class="follow-us">
-                        <h4>Follow Us</h4>
+                        <h4>Follow</h4>
                         <div class="social-icons">
-                            <i class="fa-brands fa-x-twitter"></i>
-                            <i class="fab fa-telegram-plane"></i>
+                            <i class="fab fa-twitter"></i>
+                            <i class="fab fa-github"></i>
                             <i class="fab fa-linkedin-in"></i>
-                            <i class="fab fa-youtube"></i>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Column 2: Products -->
+            <!-- Column 2: Product -->
             <div class="footer-col">
-                <h4>Products</h4>
-                <a href="/app/">App</a>
+                <h4>Product</h4>
+                <a href="/">Features</a>
                 <a href="/pricing/">Pricing</a>
+                <a href="/security/">Security</a>
+                <a href="/changelog/">Changelog</a>
             </div>
 
-            <!-- Column 3: Resources -->
-            <div class="footer-col">
-                <h4>Resources</h4>
-                <a href="/contact/">Help Center</a>
-                <a href="/contact/">FAQ</a>
-                <a href="/blog/">Blog</a>
-            </div>
-
-            <!-- Column 4: Company -->
+            <!-- Column 3: Company -->
             <div class="footer-col">
                 <h4>Company</h4>
-                <a href="/about/">About Us</a>
-                <a href="/privacy/">Privacy Policy</a>
+                <a href="/about/">About</a>
+                <a href="/blog/">Blog</a>
+                <a href="/careers/">Careers</a>
+                <a href="/contact/">Contact</a>
+            </div>
+
+            <!-- Column 4: Support -->
+            <div class="footer-col">
+                <h4>Support</h4>
+                <a href="/help-center/">Help Center</a>
+                <a href="/documentation/">Documentation</a>
+                <a href="/community/">Community</a>
+                <a href="/status/">Status</a>
+            </div>
+
+            <!-- Column 5: Legal -->
+            <div class="footer-col">
+                <h4>Legal</h4>
                 <a href="/terms/">Terms &amp; Conditions</a>
+                <a href="/privacy/">Privacy Policy</a>
                 <a href="/refund/">Refund Policy</a>
                 <a href="/cloud-backup-policy/">Cloud Backup Policy</a>
                 <a href="/paid-terms/">Paid User Terms</a>
             </div>
         </div>
         <div class="footer-bottom-bar">
-            &copy; ${new Date().getFullYear()} Logbook Plus Technology LTD. All rights reserved.
+            &copy; ${new Date().getFullYear()} Logbook Plus. All rights reserved.
         </div>
     </div>
     `;

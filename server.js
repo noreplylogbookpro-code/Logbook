@@ -13,7 +13,7 @@ const { google } = require('googleapis');
 
 
 // Custom encapsulated modules
-const db = require('./config/db');
+const { db, logsDb } = require('./config/db');
 const { JWT_SECRET, isAuthenticated, isMasterAuth } = require('./middleware/auth');
 
 const app = express();
@@ -51,7 +51,7 @@ function logServerEvent(level, message, metadata = {}) {
     console.log(`[${level.toUpperCase()}] [${formattedTime}] ${message}`);
 
     // Non-blocking database insertion
-    db.insert({
+    logsDb.insert({
         type: 'server_log',
         level: level.toLowerCase(),
         message,
@@ -60,15 +60,15 @@ function logServerEvent(level, message, metadata = {}) {
     }).then(async () => {
         try {
             // Keep sliding window of 500 logs
-            const count = await db.count({ type: 'server_log' });
+            const count = await logsDb.count({ type: 'server_log' });
             if (count > 500) {
-                const logs = await db.find({ type: 'server_log' });
+                const logs = await logsDb.find({ type: 'server_log' });
                 logs.sort((a, b) => a.timestamp - b.timestamp);
                 const toRemove = logs.slice(0, logs.length - 500);
                 for (const l of toRemove) {
-                    await db.remove({ _id: l._id }, {});
+                    await logsDb.remove({ _id: l._id }, {});
                 }
-                db.compactDatafile();
+                logsDb.compactDatafile();
             }
         } catch (err) {
             console.error("Error pruning server logs:", err);
@@ -175,6 +175,94 @@ app.use('/api', (req, res, next) => {
     res.setHeader('Expires', '0');
     next();
 });
+
+// --- File Encryption Configuration & Helpers ---
+const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-master-fallback-key-2026';
+const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
+
+async function encryptFile(filePath) {
+    const tempPath = filePath + '.tmp';
+    const readStream = fs.createReadStream(filePath);
+    const writeStream = fs.createWriteStream(tempPath);
+
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', fileEncryptionKeyBuffer, iv);
+
+    // Write signature: 'LOGBOOK_CRYPT\0' (14 bytes)
+    writeStream.write(Buffer.from('LOGBOOK_CRYPT\0', 'utf8'));
+    // Write IV (16 bytes)
+    writeStream.write(iv);
+
+    await new Promise((resolve, reject) => {
+        readStream
+            .pipe(cipher)
+            .pipe(writeStream)
+            .on('finish', resolve)
+            .on('error', reject);
+    });
+
+    await fs.move(tempPath, filePath, { overwrite: true });
+}
+
+async function isServerEncrypted(filePath) {
+    try {
+        const fd = await fs.open(filePath, 'r');
+        const buffer = Buffer.alloc(14);
+        await fs.read(fd, buffer, 0, 14, 0);
+        await fs.close(fd);
+        return buffer.toString('utf8') === 'LOGBOOK_CRYPT\0';
+    } catch (e) {
+        return false;
+    }
+}
+
+async function sendOrDecryptFile(filePath, filename, res) {
+    if (await isServerEncrypted(filePath)) {
+        try {
+            const fd = await fs.open(filePath, 'r');
+            const headerBuffer = Buffer.alloc(14);
+            const ivBuffer = Buffer.alloc(16);
+            await fs.read(fd, headerBuffer, 0, 14, 0);
+            await fs.read(fd, ivBuffer, 0, 16, 14);
+            await fs.close(fd);
+
+            const readStream = fs.createReadStream(filePath, { start: 30 });
+            const decipher = crypto.createDecipheriv('aes-256-cbc', fileEncryptionKeyBuffer, ivBuffer);
+
+            const ext = path.extname(filename).toLowerCase();
+            let contentType = 'application/octet-stream';
+            if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+            else if (ext === '.png') contentType = 'image/png';
+            else if (ext === '.webp') contentType = 'image/webp';
+
+            res.setHeader('Content-Type', contentType);
+            if (filename.endsWith('.zip') || filename.endsWith('.enc')) {
+                res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            }
+
+            readStream
+                .on('error', (err) => {
+                    logServerEvent('error', `Read stream error for file '${filename}': ${err.message}`);
+                    if (!res.headersSent) res.status(500).json({ error: "Read stream error" });
+                })
+                .pipe(decipher)
+                .on('error', (err) => {
+                    logServerEvent('error', `Decryption error for file '${filename}': ${err.message}`);
+                    if (!res.headersSent) res.status(500).json({ error: "Decryption error" });
+                })
+                .pipe(res);
+        } catch (err) {
+            logServerEvent('error', `Failed to decrypt stream for file '${filename}': ${err.message}`);
+            if (!res.headersSent) res.status(500).json({ error: "Failed to serve encrypted file." });
+        }
+    } else {
+        if (filename.endsWith('.zip') || filename.endsWith('.enc')) {
+            res.download(filePath, filename);
+        } else {
+            res.sendFile(filePath);
+        }
+    }
+}
 
 // --- Storage Setup & Engine ---
 const ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
@@ -815,7 +903,7 @@ app.post('/api/master/cleanup', isMasterAuth, async (req, res) => {
 
 app.get('/api/master/logs', isMasterAuth, async (req, res) => {
     try {
-        const logs = await db.find({ type: 'server_log' });
+        const logs = await logsDb.find({ type: 'server_log' });
         // Sort by timestamp descending
         logs.sort((a, b) => b.timestamp - a.timestamp);
         res.json(logs);
@@ -826,8 +914,8 @@ app.get('/api/master/logs', isMasterAuth, async (req, res) => {
 
 app.post('/api/master/logs/clear', isMasterAuth, async (req, res) => {
     try {
-        await db.remove({ type: 'server_log' }, { multi: true });
-        db.compactDatafile();
+        await logsDb.remove({ type: 'server_log' }, { multi: true });
+        logsDb.compactDatafile();
         logServerEvent('warning', `Master cleared all server logs`);
         res.json({ success: true, message: "Logs cleared successfully." });
     } catch (e) {
@@ -1113,9 +1201,19 @@ app.post('/api/forgot/reset', forgotLimiter, async (req, res) => {
 });
 
 // --- Remote Vault / File Operations (All Token Secured) ---
-app.post('/api/backup', isAuthenticated, isSubscribed, checkQuota, upload.single('file'), (req, res) => {
-    logServerEvent('info', `Backup uploaded successfully by user ID '${req.userId}'`, { filename: req.file?.filename, size: req.file?.size });
-    res.json({ message: "Backup processing complete" });
+app.post('/api/backup', isAuthenticated, isSubscribed, checkQuota, upload.single('file'), async (req, res, next) => {
+    try {
+        if (req.file) {
+            await encryptFile(req.file.path);
+            logServerEvent('info', `Backup uploaded and encrypted successfully by user ID '${req.userId}'`, { filename: req.file.filename, size: req.file.size });
+        } else {
+            logServerEvent('warning', `Backup upload request received without file for user ID '${req.userId}'`);
+        }
+        res.json({ message: "Backup processing complete" });
+    } catch (err) {
+        logServerEvent('error', `Failed to encrypt uploaded backup for user ID '${req.userId}': ${err.message}`);
+        next(err);
+    }
 });
 
 app.get('/api/info', isAuthenticated, isSubscribed, async (req, res) => {
@@ -1155,7 +1253,7 @@ app.get('/api/restore/:filename', isAuthenticated, isSubscribed, async (req, res
     const filePath = path.join(__dirname, 'uploads', req.userId, filename);
     if (await fs.pathExists(filePath)) {
         logServerEvent('info', `Backup restored/downloaded by user ID '${req.userId}': ${filename}`);
-        return res.download(filePath, filename);
+        return sendOrDecryptFile(filePath, filename, res);
     }
     res.status(404).json({ error: "Backup target path missing allocation mapping." });
 });
@@ -1188,9 +1286,13 @@ app.get('/api/profile', isAuthenticated, async (req, res) => {
 
 app.post('/api/profile/avatar', isAuthenticated, uploadAvatar.single('avatar'), async (req, res) => {
     try {
+        if (req.file) {
+            await encryptFile(req.file.path);
+        }
         logServerEvent('info', `User ID '${req.userId}' uploaded a custom profile picture`);
         res.json({ success: true, message: "Profile picture uploaded successfully" });
     } catch (e) {
+        logServerEvent('error', `Failed to encrypt custom profile picture upload for user ID '${req.userId}': ${e.message}`);
         res.status(500).json({ error: "Failed to upload avatar: " + e.message });
     }
 });
@@ -1198,7 +1300,7 @@ app.post('/api/profile/avatar', isAuthenticated, uploadAvatar.single('avatar'), 
 app.get('/api/profile/avatar', isAuthenticated, async (req, res) => {
     const avatarPath = path.join(__dirname, 'uploads', req.userId, 'avatar.jpg');
     if (await fs.pathExists(avatarPath)) {
-        return res.sendFile(avatarPath);
+        return sendOrDecryptFile(avatarPath, 'avatar.jpg', res);
     }
     res.status(404).json({ error: "No custom profile picture found" });
 });
@@ -1207,7 +1309,7 @@ app.get('/api/profile/avatar/:userId', async (req, res) => {
     const userId = path.basename(req.params.userId);
     const avatarPath = path.join(__dirname, 'uploads', userId, 'avatar.jpg');
     if (await fs.pathExists(avatarPath)) {
-        return res.sendFile(avatarPath);
+        return sendOrDecryptFile(avatarPath, 'avatar.jpg', res);
     }
     res.status(404).json({ error: "No custom profile picture found" });
 });
@@ -1387,10 +1489,10 @@ app.get('/api/master/pricing', isMasterAuth, async (req, res) => {
                         "2 entries per day",
                         "2 photos per entry",
                         "2 exports per month (Excel & Word)",
-                        "No tags / categories",
-                        "No PDF export",
                         "Local backup only",
-                        "Encrypted local backups"
+                        "Encrypted local backups",
+                        "No tags / categories",
+                        "No PDF export"
                     ]
                 },
                 premium: {
@@ -1399,6 +1501,8 @@ app.get('/api/master/pricing', isMasterAuth, async (req, res) => {
                     currency: "₹",
                     period: "month",
                     title: "Cloud Premium Backup",
+                    monthly: { amount: 50, originalAmount: 100 },
+                    yearly: { amount: 500, originalAmount: 1000 },
                     features: [
                         "Everything in Free",
                         "Unlimited daily entries",
@@ -1417,6 +1521,8 @@ app.get('/api/master/pricing', isMasterAuth, async (req, res) => {
                     currency: "₹",
                     period: "year",
                     title: "Self-Hosted License",
+                    monthly: { amount: 199, originalAmount: 399 },
+                    yearly: { amount: 1499, originalAmount: 2999 },
                     features: [
                         "Everything in Premium",
                         "Run on private server / Pi",
@@ -1449,6 +1555,171 @@ app.post('/api/master/pricing', isMasterAuth, async (req, res) => {
         res.json({ success: true, message: "Pricing and offering configurations updated successfully!" });
     } catch (e) {
         res.status(500).json({ error: "Failed to update pricing configuration." });
+    }
+});
+
+// ── Changelog API Management ──
+app.get('/api/changelog', async (req, res) => {
+    try {
+        const config = await db.findOne({ _id: 'changelog_config' });
+        if (config && config.entries) {
+            return res.json(config.entries);
+        }
+        res.json([
+            {
+                version: "v2.0.9",
+                date: "December 2025",
+                changes: [
+                    "Added cloud backup support (WebDAV)",
+                    "Added self-hosted server backup sync",
+                    "Added Two-Factor Authentication (2FA)",
+                    "Added security questions for recovery",
+                    "Integrated Google Play Billing Client 7",
+                    "Added profile picture upload and editing",
+                    "Added FAQ search functionality",
+                    "Added Hindi, Marathi, and Urdu language support",
+                    "UI polish and bug fixes"
+                ]
+            },
+            {
+                version: "v2.0.5",
+                date: "October 2025",
+                changes: [
+                    "UI polish and bug fixes",
+                    "Added photo preview in add entry screen",
+                    "Added support for android 16",
+                    "Added support for static theme"
+                ]
+            },
+            {
+                version: "v1.1.1",
+                date: "August 2025",
+                changes: [
+                    "UI polish",
+                    "Added changelog screen",
+                    "Added share app link feature",
+                    "Fix language change bug",
+                    "Fix bug in photo saving"
+                ]
+            },
+            {
+                version: "v1.1.0",
+                date: "June 2025",
+                changes: [
+                    "Added encrypted backup support",
+                    "Improved app performance",
+                    "Added donation screen",
+                    "Added easter egg feature",
+                    "Added dark mode support",
+                    "Added language support",
+                    "Added encrypted backup & restore",
+                    "Bug fixes and UI improvements"
+                ]
+            },
+            {
+                version: "v1.0.0",
+                date: "April 2025",
+                changes: [
+                    "Initial public beta release"
+                ]
+            }
+        ]);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch changelogs" });
+    }
+});
+
+app.post('/api/master/changelog', isMasterAuth, async (req, res) => {
+    try {
+        const { version, date, format, changes } = req.body;
+        if (!version || !date || !changes) {
+            return res.status(400).json({ error: "Missing required fields: version, date, and changes are required." });
+        }
+
+        let changesArray = [];
+        if (format === 'json') {
+            try {
+                changesArray = JSON.parse(changes);
+                if (!Array.isArray(changesArray)) {
+                    return res.status(400).json({ error: "Changes must be a valid JSON array of strings." });
+                }
+            } catch (err) {
+                return res.status(400).json({ error: "Invalid JSON format: " + err.message });
+            }
+        } else {
+            changesArray = changes.split('\n').map(x => x.trim()).filter(x => x.length > 0);
+        }
+
+        let config = await db.findOne({ _id: 'changelog_config' });
+        if (!config) {
+            config = {
+                _id: 'changelog_config',
+                entries: [
+                    {
+                        version: "v2.4.0",
+                        date: "July 2026",
+                        changes: [
+                            "Added Monthly & Yearly billing switch inside the pricing section for better plan selection flexibility.",
+                            "Redesigned footer layout with full link navigation and centralized script loader.",
+                            "Added advanced analytics visualization directly inside the premium dashboard."
+                        ]
+                    },
+                    {
+                        version: "v2.3.1",
+                        date: "May 2026",
+                        changes: [
+                            "Optimized memory consumption during local database encryption processing.",
+                            "Resolved minor image compression bugs for photo attachment uploads."
+                        ]
+                    },
+                    {
+                        version: "v2.2.0",
+                        date: "March 2026",
+                        changes: [
+                            "Introduced encrypted local backup capabilities utilizing AES-256 standards.",
+                            "Added tag customization and search-filter categories.",
+                            "Implemented offline license verification for closed private environments."
+                        ]
+                    }
+                ]
+            };
+        }
+
+        const newEntry = { version, date, changes: changesArray };
+        config.entries = config.entries.filter(e => e.version !== version);
+        config.entries.unshift(newEntry);
+
+        await db.update(
+            { _id: 'changelog_config' },
+            { $set: { entries: config.entries } },
+            { upsert: true }
+        );
+        db.compactDatafile();
+        logServerEvent('info', `Master added/updated changelog version: ${version}`);
+        res.json({ success: true, message: "Changelog entry added successfully!" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to update changelog config." });
+    }
+});
+
+app.delete('/api/master/changelog/:version', isMasterAuth, async (req, res) => {
+    try {
+        const { version } = req.params;
+        let config = await db.findOne({ _id: 'changelog_config' });
+        if (config && config.entries) {
+            config.entries = config.entries.filter(e => e.version !== version);
+            await db.update(
+                { _id: 'changelog_config' },
+                { $set: { entries: config.entries } },
+                { upsert: true }
+            );
+            db.compactDatafile();
+            logServerEvent('info', `Master deleted changelog version: ${version}`);
+            return res.json({ success: true, message: "Changelog entry deleted successfully." });
+        }
+        res.status(404).json({ error: "Changelog entries not found." });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to delete changelog entry." });
     }
 });
 
@@ -1517,6 +1788,12 @@ app.get('/api/pricing', async (req, res) => {
             throw new Error("HTML Regex parsing failed, falling back to hardcoded JSON.");
         }
 
+        premiumData.monthly = { amount: 50, originalAmount: 100 };
+        premiumData.yearly = { amount: 500, originalAmount: 1000 };
+
+        selfHostedData.monthly = { amount: 199, originalAmount: 399 };
+        selfHostedData.yearly = { amount: 1499, originalAmount: 2999 };
+
         res.json({
             free: freeData,
             premium: premiumData,
@@ -1555,6 +1832,8 @@ app.get('/api/pricing', async (req, res) => {
                 currency: "₹",
                 period: "month",
                 title: "Cloud Premium Backup",
+                monthly: { amount: 50, originalAmount: 100 },
+                yearly: { amount: 500, originalAmount: 1000 },
                 features: [
                     "Everything in Free",
                     "Unlimited daily entries",
@@ -1573,6 +1852,8 @@ app.get('/api/pricing', async (req, res) => {
                 currency: "₹",
                 period: "year",
                 title: "Self-Hosted License",
+                monthly: { amount: 199, originalAmount: 399 },
+                yearly: { amount: 1499, originalAmount: 2999 },
                 features: [
                     "Everything in Premium",
                     "Run on private server / Pi",
@@ -1894,5 +2175,5 @@ app.delete('/api/master/licenses/:id', isMasterAuth, async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    logServerEvent('info', `Server started successfully and listening on port ${PORT}`);
+    logServerEvent('info', `Server started successfully and running at http://localhost:${PORT}`);
 });
