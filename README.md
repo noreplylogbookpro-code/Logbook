@@ -11,6 +11,7 @@ Logbook Plus is a local-first, zero-vendor-lock expense intelligence system. It 
 - **Self-Hostable Node.js Server**: Easily deployable Express backend powered by NeDB database.
 - **Admin Dashboard**: Built-in master admin area for system configuration and user management.
 - **Google Play Purchase Verification**: Includes APIs to verify Android billing/subscriptions using Google Play developer service accounts.
+- **Dynamic Pricing API & Toggle**: Features a dynamic pricing configuration parser endpoint (`/api/pricing`) integrated with a Monthly/Yearly plan selector on the frontend landing/billing page.
 
 ---
 
