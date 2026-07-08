@@ -1,7 +1,10 @@
 {
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "dev:client": "vite",
+    "build:client": "vite build && node scripts/post-build.js",
+    "preview:client": "vite preview"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -13,6 +16,17 @@
     "googleapis": "^173.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
-    "nedb-promises": "^6.2.3"
+    "nedb-promises": "^6.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "framer-motion": "*",
+    "lucide-react": "*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.47",
+    "tailwindcss": "3.4.13",
+    "vite": "^5.4.8"
   }
 }

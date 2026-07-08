@@ -149,7 +149,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
     const host = req.headers.host || '';
     if (host.startsWith('master.')) {
-        if (!req.url.startsWith('/api/') && !req.url.startsWith('/assets/') && !req.url.startsWith('/master/')) {
+        if (!req.url.startsWith('/api/') && !req.url.startsWith('/assets/') && !req.url.startsWith('/master/') && !req.url.startsWith('/dist-assets/')) {
             req.url = '/master' + req.url;
         }
     }
@@ -161,19 +161,193 @@ app.use((req, res, next) => {
     const host = req.headers.host || '';
     const url = req.url.toLowerCase();
     if ((url === '/master' || url.startsWith('/master/')) && !host.startsWith('master.')) {
-        return res.status(404).send('Not Found');
+        return res.status(404).send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="30;url=/" />
+    <title>404 - Access Restricted</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020617;
+            --card-bg: rgba(15, 23, 42, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f1f5f9;
+            --text-muted: #94a3b8;
+            --blue: #3b82f6;
+            --purple: #a855f7;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .glow-blue {
+            background: var(--blue);
+            top: -10%;
+            left: -10%;
+        }
+        .glow-purple {
+            background: var(--purple);
+            bottom: -10%;
+            right: -10%;
+        }
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 480px;
+            width: 100%;
+            padding: 2.5rem;
+            text-align: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .error-code {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            letter-spacing: -0.05em;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+        p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            color: #ffffff;
+            background: linear-gradient(to right, var(--blue), var(--purple));
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.3);
+            text-align: center;
+        }
+        .btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px 0 rgba(168, 85, 247, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="glow glow-blue"></div>
+    <div class="glow glow-purple"></div>
+    <div class="container">
+        <div class="error-code">404</div>
+        <h1>Restricted Access</h1>
+        <p>Unauthorized Access Path. Direct administration console access is blocked. Please route through an authorized supervisor or team member to access master resourcese.</p>
+        <a href="/" class="btn" id="redirect-btn">Return to Homepage (30)</a>
+    </div>
+    <script>
+        let seconds = 30;
+        const btn = document.getElementById('redirect-btn');
+        const interval = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                window.location.href = '/';
+            } else {
+                btn.textContent = \`Return to Homepage (\${seconds})\`;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
+        `);
     }
     next();
 });
 
+// Serve static assets first
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// SPA Wildcard Route Fallback for all React paths (e.g., /about, /pricing, /app/dashboard)
+app.get('*any', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.includes('.')) {
+        return next();
+    }
+    // master.* subdomain requests are rewritten to /master/* by the middleware above.
+    // Serve public/master/index.html so the React bundle loads correctly.
+    if (req.path.startsWith('/master')) {
+        return res.sendFile(path.join(__dirname, 'public', 'master', 'index.html'));
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     next();
+});
+
+// --- Health Check Endpoint ---
+app.get('/api/health', async (req, res) => {
+    let dbOk = false;
+    try {
+        await db.findOne({ _id: 'health_check_probe' });
+        dbOk = true;
+    } catch (e) {
+        dbOk = false;
+    }
+    const isProduction = process.env.NODE_ENV === 'production';
+    const playApiReady = androidPublisher !== null;
+    res.json({
+        status: 'ok',
+        version: process.env.npm_package_version || '1.0.0',
+        environment: isProduction ? 'production' : 'development',
+        uptime: Math.floor(process.uptime()),
+        db: dbOk ? 'connected' : 'error',
+        googlePlayApi: playApiReady ? 'connected' : 'unavailable',
+        signupsEnabled: serverConfig.signupsEnabled,
+        timestamp: new Date().toISOString()
+    });
 });
 
 // --- File Encryption Configuration & Helpers ---
@@ -369,8 +543,12 @@ async function verifyPlaySubscription(purchaseToken, productId, packageName) {
         return { valid: true, expiryTimeMillis: Date.now() + 30 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
     }
     if (!androidPublisher) {
-        // Fallback: accept the purchase without verification (dev/self-hosted mode)
-        logServerEvent('warning', `Google Play API not available — accepting purchase token for ${productId} without verification (fallback mode)`);
+        if (process.env.NODE_ENV === 'production') {
+            logServerEvent('critical', `Google Play API not configured — rejecting purchase token for ${productId} in production mode. Set SERVICE_ACCOUNT_KEY_PATH in .env.`);
+            return { valid: false, error: 'Google Play API not configured on this server. Contact support.' };
+        }
+        // Dev/self-hosted fallback: accept without verification
+        logServerEvent('warning', `Google Play API not available — accepting purchase token for ${productId} without verification (dev/self-hosted fallback mode)`);
         return { valid: true, expiryTimeMillis: Date.now() + 30 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
     }
     try {
@@ -401,7 +579,12 @@ async function verifyPlayProduct(purchaseToken, productId, packageName) {
         return { valid: true, expiryTimeMillis: Date.now() + 365 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
     }
     if (!androidPublisher) {
-        logServerEvent('warning', `Google Play API not available — accepting product purchase for ${productId} without verification (fallback mode)`);
+        if (process.env.NODE_ENV === 'production') {
+            logServerEvent('critical', `Google Play API not configured — rejecting product purchase for ${productId} in production mode. Set SERVICE_ACCOUNT_KEY_PATH in .env.`);
+            return { valid: false, error: 'Google Play API not configured on this server. Contact support.' };
+        }
+        // Dev/self-hosted fallback: accept without verification
+        logServerEvent('warning', `Google Play API not available — accepting product purchase for ${productId} without verification (dev/self-hosted fallback mode)`);
         return { valid: true, expiryTimeMillis: Date.now() + 365 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
     }
     try {
@@ -592,7 +775,7 @@ function verifyTOTPWithReplay(code, base32Secret, lastUsedCounter) {
         return { valid: false, counter: null };
     }
     // Reject if this counter was already used (replay attack)
-    if (lastUsedCounter !== null && lastUsedCounter !== undefined && matchedCounter <= lastUsedCounter) {
+    if (lastUsedCounter !== null && lastUsedCounter !== undefined && matchedCounter < lastUsedCounter) {
         return { valid: false, counter: null };
     }
     return { valid: true, counter: matchedCounter };
@@ -808,6 +991,20 @@ app.post('/api/master/users/:id/disable-2fa', isMasterAuth, async (req, res) => 
     } catch (e) {
         logServerEvent('critical', `Master failed to disable 2FA for user ID: ${req.params.id}`);
         res.status(500).json({ error: "Failed to disable user 2FA." });
+    }
+});
+
+app.post('/api/master/reboot', isMasterAuth, async (req, res) => {
+    try {
+        logServerEvent('critical', `Master admin requested server reboot from IP: ${req.ip}`);
+        res.json({ success: true, message: "Server reboot command received. Rebooting server..." });
+        setTimeout(() => {
+            logServerEvent('info', 'Process exiting now for reboot.');
+            process.exit(0);
+        }, 1500);
+    } catch (e) {
+        logServerEvent('critical', `Failed to execute server reboot: ${e.message}`);
+        res.status(500).json({ error: "Failed to reboot server." });
     }
 });
 
@@ -1069,6 +1266,24 @@ app.post('/api/check-store', handleCheckStore);
 app.get('/api/check-package', handleCheckStore);
 app.post('/api/check-package', handleCheckStore);
 
+app.post('/api/signup/check-availability', async (req, res) => {
+    const { username, name } = req.body;
+    const result = { usernameAvailable: true, nameAvailable: true };
+    try {
+        if (username) {
+            const userExists = await db.findOne({ username });
+            if (userExists) result.usernameAvailable = false;
+        }
+        if (name) {
+            const nameExists = await db.findOne({ name });
+            if (nameExists) result.nameAvailable = false;
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: "Availability check failed" });
+    }
+});
+
 app.post('/api/signup', signupLimiter, async (req, res) => {
 
     if (!serverConfig.signupsEnabled) {
@@ -1102,7 +1317,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
 
 app.post('/api/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
-    const user = await db.findOne({ username });
+    const user = await db.findOne({ $or: [{ username }, { name: username }] });
 
     if (user && await bcrypt.compare(password, user.password)) {
         if (user.twoFactorEnabled) {
@@ -1173,7 +1388,7 @@ app.post('/api/logout', (req, res) => {
 
 // --- Forgot/Recovery Operations ---
 app.post('/api/forgot/question', forgotLimiter, async (req, res) => {
-    const user = await db.findOne({ username: req.body.username });
+    const user = await db.findOne({ $or: [{ username: req.body.username }, { name: req.body.username }] });
     if (!user || !user.securityQuestion) {
         return res.json({ question: null, message: "Verification matching targets deployed safely." });
     }
@@ -1184,7 +1399,7 @@ app.post('/api/forgot/reset', forgotLimiter, async (req, res) => {
     const { username, securityAnswer, newPassword } = req.body;
     if (!username || !securityAnswer || !newPassword || newPassword.length < 8) return res.status(400).json({ error: "Invalid input structure sizes." });
 
-    const user = await db.findOne({ username });
+    const user = await db.findOne({ $or: [{ username }, { name: username }] });
     if (!user || !user.securityAnswer) return res.status(400).json({ error: "Profile missing verification keys." });
 
     const answerMatch = await bcrypt.compare(securityAnswer.trim().toLowerCase(), user.securityAnswer);

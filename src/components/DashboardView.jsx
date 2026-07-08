@@ -1,0 +1,965 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Shield, Server, Cloud, FolderOpen, Calendar, Trash2, 
+  Download, Upload, AlertTriangle, User, Key, ShieldAlert, 
+  CreditCard, LogOut, CheckCircle, RefreshCw, X, ChevronDown, Check, Activity
+} from 'lucide-react';
+
+const SECURITY_QUESTIONS = [
+  "What was the name of your first pet?",
+  "What is your mother's maiden name?",
+  "What city were you born in?",
+  "What was the name of your elementary school?",
+  "What is your oldest sibling's middle name?",
+  "What was the make of your first car?",
+  "What is the name of the street you grew up on?",
+];
+
+const AVATARS = [
+  { icon: "fas fa-user-astronaut", color: "#6c5ce7" },
+  { icon: "fas fa-cat", color: "#e17055" },
+  { icon: "fas fa-dog", color: "#6ab04c" },
+  { icon: "fas fa-robot", color: "#0984e3" },
+  { icon: "fas fa-user-ninja", color: "#2d3436" },
+  { icon: "fas fa-feather-alt", color: "#a29bfe" },
+  { icon: "fas fa-crown", color: "#fdcb6e" },
+  { icon: "fas fa-cloud-sun", color: "#00b894" },
+  { icon: "fas fa-music", color: "#e84393" }
+];
+
+export default function DashboardView({ onNavigate }) {
+  // Stats states
+  const [profile, setProfile] = useState({ name: 'User', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
+  const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 240 });
+  const [stats, setStats] = useState({ totalBackups: 0, storageUsedMB: 0 });
+  const [backups, setBackups] = useState([]);
+  const [activities, setActivities] = useState(['Dashboard initialized']);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  // Modals state
+  const [activeModal, setActiveModal] = useState(null); // 'profile' | 'password' | 'securityQ' | 'mfa' | 'billing' | null
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Forms inputs
+  const [editName, setEditName] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+
+  const [currPassword, setCurrPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  const [secQuestion, setSecQuestion] = useState(SECURITY_QUESTIONS[0]);
+  const [secAnswer, setSecAnswer] = useState('');
+
+  // 2FA Setup
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaQrUrl, setMfaQrUrl] = useState('');
+  const [mfaSetupCode, setMfaSetupCode] = useState('');
+  const [mfaDisablePwd, setMfaDisablePwd] = useState('');
+  const [mfaDisableCode, setMfaDisableCode] = useState('');
+
+  const fileInputRef = useRef(null);
+  const avatarInputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  // Error/Success statuses
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
+
+  useEffect(() => {
+    loadDashboard();
+
+    // Close menu when clicking outside
+    const handleOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [profile.userId]);
+
+  const addActivity = (msg) => {
+    setActivities(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 15)]);
+  };
+
+  const renderAvatar = (sizeClass = "w-8 h-8") => {
+    const defaultAvatar = AVATARS[profile.profilePicIndex % AVATARS.length] || AVATARS[0];
+    
+    if (profile.userId && !avatarFailed) {
+      return (
+        <img 
+          src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
+          alt=""
+          className={`${sizeClass} rounded-full object-cover border border-white/10`}
+          onError={() => setAvatarFailed(true)}
+        />
+      );
+    }
+    
+    return (
+      <div 
+        className={`${sizeClass} rounded-full flex items-center justify-center bg-zinc-900 border border-white/10`}
+        style={{ color: defaultAvatar.color }}
+      >
+        <i className={`${defaultAvatar.icon} text-sm`} />
+      </div>
+    );
+  };
+
+  const getHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
+  const handleLogout = () => {
+    fetch('/api/logout', { method: 'POST', headers: getHeaders() }).catch(() => {});
+    localStorage.removeItem('authToken');
+    onNavigate('/app/');
+  };
+
+  const loadDashboard = async () => {
+    const headers = getHeaders();
+    try {
+      // 1. Load Profile
+      const profRes = await fetch('/api/profile', { headers });
+      if (!profRes.ok) {
+        // Auth failed, go back to login
+        localStorage.removeItem('authToken');
+        onNavigate('/app/');
+        return;
+      }
+      const profData = await profRes.json();
+      setProfile(profData);
+      setEditName(profData.name || '');
+
+      // 2. Load License info
+      const licRes = await fetch('/api/licenses/check', { headers });
+      if (licRes.ok) {
+        const licData = await licRes.json();
+        setLicense(licData);
+      }
+
+      // 3. Load Storage Stats
+      const infoRes = await fetch('/api/info', { headers });
+      if (infoRes.ok) {
+        const infoData = await infoRes.json();
+        setStats({
+          totalBackups: infoData.totalBackups || 0,
+          storageUsedMB: parseFloat(infoData.storageUsedMB) || 0
+        });
+      }
+
+      // 4. Load Backups List
+      const backupsRes = await fetch('/api/backups', { headers });
+      if (backupsRes.ok) {
+        const backupsData = await backupsRes.json();
+        setBackups(backupsData);
+      }
+    } catch {
+      addActivity('Failed to sync network stats.');
+    }
+  };
+
+  // Upload backup
+  const handleUploadBackup = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    addActivity(`Uploading backup: ${file.name}...`);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('policy', 'backup');
+
+    try {
+      const res = await fetch('/api/backup', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addActivity(`Uploaded backup successfully: ${file.name}`);
+        loadDashboard();
+      } else {
+        addActivity(`Upload failed: ${data.error || 'Quota exceeded'}`, true);
+        alert(data.error || 'Upload failed. Quota limits exceeded.');
+      }
+    } catch {
+      addActivity('Upload network error.', true);
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Restore/Download Backup
+  const handleDownloadBackup = async (filename) => {
+    addActivity(`Downloading archive: ${filename}`);
+    try {
+      const res = await fetch(`/api/restore/${encodeURIComponent(filename)}`, {
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        addActivity(`Failed to fetch file: ${filename}`, true);
+      }
+    } catch {
+      addActivity('Download failed.', true);
+    }
+  };
+
+  // Delete Backup
+  const handleDeleteBackup = async (filename) => {
+    if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+    addActivity(`Deleting backup: ${filename}`);
+    try {
+      const res = await fetch(`/api/backup/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addActivity(`Deleted backup: ${filename}`);
+        loadDashboard();
+      } else {
+        addActivity(`Delete failed for: ${filename}`, true);
+      }
+    } catch {
+      addActivity('Network error during delete.', true);
+    }
+  };
+
+  // Purge all backups
+  const handlePurgeAll = async () => {
+    if (!confirm('Are you sure you want to purge all backups? This action cannot be undone.')) return;
+    addActivity('Purging all backup archives...');
+    let failed = 0;
+    try {
+      for (const b of backups) {
+        const res = await fetch(`/api/backup/${encodeURIComponent(b.name)}`, {
+          method: 'DELETE',
+          headers: getHeaders()
+        });
+        if (!res.ok) failed++;
+      }
+      if (failed === 0) {
+        addActivity('Purged all backups from the server.');
+      } else {
+        addActivity(`Purged vault with ${failed} deletion error(s).`, true);
+      }
+      loadDashboard();
+    } catch {
+      addActivity('Failed to complete vault purge.', true);
+    }
+  };
+
+  // Profile Edit
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setActionSuccess('');
+    setLoading(true);
+
+    try {
+      // 1. Update Name
+      const nameRes = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ name: editName })
+      });
+
+      if (nameRes.ok) {
+        setActionSuccess('Profile updated successfully.');
+        addActivity('Profile information modified.');
+        loadDashboard();
+        setTimeout(() => setActiveModal(null), 1500);
+      } else {
+        setActionError('Failed to modify profile name.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Change Password
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setActionSuccess('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ currentPassword: currPassword, newPassword })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setActionSuccess('Password changed successfully.');
+        addActivity('Password keys modified.');
+        setCurrPassword('');
+        setNewPassword('');
+        setTimeout(() => setActiveModal(null), 1500);
+      } else {
+        setActionError(data.error || 'Failed to update password.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Security Question
+  const handleSaveSecurityQuestion = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setActionSuccess('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/profile/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ securityQuestion: secQuestion, securityAnswer: secAnswer })
+      });
+
+      if (res.ok) {
+        setActionSuccess('Security recovery question configured.');
+        addActivity('Recovery questions updated.');
+        setSecAnswer('');
+        setTimeout(() => setActiveModal(null), 1500);
+      } else {
+        setActionError('Failed to configure questions.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2FA Setup Initiate
+  const initiateMfaSetup = async () => {
+    setLoading(true);
+    setActionError('');
+    try {
+      const res = await fetch('/api/profile/2fa/setup', {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMfaSecret(data.secret);
+        setMfaQrUrl(data.qrCodeUrl);
+      } else {
+        setActionError('Failed to initiate 2FA setup.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2FA Setup Verify
+  const handleMfaVerifyEnable = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setActionSuccess('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/profile/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ code: mfaSetupCode })
+      });
+
+      if (res.ok) {
+        setActionSuccess('Two-Factor Authentication is now enabled!');
+        addActivity('2FA Authenticator activated.');
+        loadDashboard();
+        setMfaSetupCode('');
+        setMfaSecret('');
+        setMfaQrUrl('');
+        setTimeout(() => setActiveModal(null), 1500);
+      } else {
+        setActionError('Verification code invalid.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2FA Disable
+  const handleMfaDisable = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setActionSuccess('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/profile/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ password: mfaDisablePwd, code: mfaDisableCode })
+      });
+
+      if (res.ok) {
+        setActionSuccess('Two-Factor Authentication is disabled.');
+        addActivity('2FA Authenticator deactivated.');
+        loadDashboard();
+        setMfaDisablePwd('');
+        setMfaDisableCode('');
+        setTimeout(() => setActiveModal(null), 1500);
+      } else {
+        setActionError('Password or 2FA verification code invalid.');
+      }
+    } catch {
+      setActionError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cancel mock subscription
+  const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel your Premium cloud backups subscription?')) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/subscription/cancel-mock', {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        alert('Mock subscription cancelled successfully.');
+        addActivity('Subscription cancellation requested.');
+        loadDashboard();
+        setActiveModal(null);
+      } else {
+        alert('Failed to cancel mock subscription.');
+      }
+    } catch {
+      alert('Network error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const limitQuota = license.storageLimitMB || 240;
+  const isCloseToLimit = stats.storageUsedMB > limitQuota * 0.85;
+
+  return (
+    <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-8 md:px-20 space-y-8 relative">
+      {/* Welcome Banner */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
+        <div className="text-left">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            Welcome, <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">{profile.name}</span>
+          </h1>
+          <p className="text-xs text-zinc-500 mt-1">Console Session: {profile.email} • Plan: {license.licenseType}</p>
+        </div>
+
+        {(() => {
+          const portalTarget = document.getElementById('global-account-manager-portal');
+          if (!portalTarget) return null;
+          return createPortal(
+            <div className="relative" ref={menuRef}>
+              <button 
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-950/60 border border-white/5 text-sm text-white hover:border-white/10 hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
+              >
+                {renderAvatar("w-7 h-7")}
+                <span>Account Manager</span>
+                <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-2 w-56 rounded-xl bg-zinc-950 border border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
+                  >
+                    {[
+                      { label: 'Edit Profile', icon: User, action: () => { setActiveModal('profile'); setMenuOpen(false); } },
+                      { label: 'Change Password', icon: Key, action: () => { setActiveModal('password'); setMenuOpen(false); } },
+                      { label: 'Security Question', icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
+                      { label: '2FA Authenticator', icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
+                      { label: 'Billing Settings', icon: CreditCard, action: () => { setActiveModal('billing'); setMenuOpen(false); } },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={item.action}
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <item.icon className="w-4 h-4 text-zinc-500" />
+                        {item.label}
+                      </button>
+                    ))}
+                    <div className="h-[1px] bg-white/5 my-1" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout Session
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>,
+            portalTarget
+          );
+        })()}
+      </div>
+
+      {/* Warning banner */}
+      {isCloseToLimit && (
+        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center gap-3 text-left">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-bounce" />
+          <p>
+            Warning: Vault quota usage is high ({stats.storageUsedMB.toFixed(1)} / {limitQuota} MB). Older log sync files may be automatically rotated.
+          </p>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { title: 'Total Backups', value: `${stats.totalBackups} / ${license.maxBackups || 3}`, desc: 'Active cloud backup archives' },
+          { title: 'Storage Used', value: `${stats.storageUsedMB.toFixed(2)} / ${limitQuota} MB`, desc: 'Allocated storage space' },
+          { 
+            title: 'Last Backup', 
+            value: backups.length > 0 ? new Date(backups[0].time).toLocaleDateString() : '—', 
+            desc: backups.length > 0 ? new Date(backups[0].time).toLocaleTimeString() : 'No files synchronized'
+          },
+          { 
+            title: 'Vault Security', 
+            value: profile.twoFactorEnabled ? '2FA Secured' : 'Credentials Only', 
+            desc: profile.twoFactorEnabled ? 'High security verification' : '2FA is disabled' 
+          }
+        ].map((card, idx) => (
+          <div key={idx} className="p-5 rounded-2xl bg-zinc-950/40 border border-white/5 text-left space-y-1.5 relative overflow-hidden">
+            <span className="text-xs text-zinc-400 font-mono font-bold uppercase">{card.title}</span>
+            <h4 className="text-2xl font-black text-white">{card.value}</h4>
+            <p className="text-xs text-zinc-500 font-medium">{card.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Vault Manager Panel */}
+      <div className="card-unified space-y-6 relative overflow-hidden bg-zinc-950/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 to-transparent pointer-events-none" />
+        
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-accent-blue border border-blue-500/10">
+              <FolderOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white tracking-tight">Encrypted Storage Vault</h2>
+              <p className="text-xs text-zinc-500">AES-256 cloud synchronized backup targets</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="btn-primary-unified"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload Backup
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleUploadBackup} 
+              className="hidden" 
+              accept=".zip,.db,.sqlite,.bin"
+            />
+            <button
+              onClick={handlePurgeAll}
+              disabled={backups.length === 0}
+              className="btn-danger-unified"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Purge Vault
+            </button>
+          </div>
+        </div>
+
+        {/* Backups List */}
+        {backups.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+            <FolderOpen className="w-12 h-12 text-zinc-700" />
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-400 font-semibold">No synchronized backup vault found.</p>
+              <p className="text-[10px] text-zinc-600">Export backup files from the mobile app and upload them above.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {backups.map((b) => (
+              <div key={b.name} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900/80 border border-white/5 flex items-center justify-center text-zinc-400">
+                    <Server className="w-4 h-4 text-accent-blue" />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-white break-all max-w-sm">{b.name}</h5>
+                    <span className="text-xs text-zinc-400 font-mono mt-0.5 block">
+                      Size: {b.size} • Synced: {new Date(b.time).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => handleDownloadBackup(b.name)}
+                    className="flex-grow sm:flex-grow-0 btn-secondary-unified"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBackup(b.name)}
+                    className="flex-grow sm:flex-grow-0 btn-danger-unified"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Activity Logs & Self-Host Panel */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        {/* Activity logs */}
+        <div className="md:col-span-6 card-unified bg-zinc-950/40">
+          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
+            <Activity className="w-3.5 h-3.5" />
+            Console activity log
+          </span>
+          <div className="h-48 overflow-y-auto font-mono text-xs text-zinc-300 space-y-1.5 pr-2 custom-scrollbar">
+            {activities.map((act, index) => (
+              <div key={index} className="flex items-start gap-2 border-b border-white/2 pb-1.5 last:border-0 last:pb-0">
+                <span className="text-zinc-600 flex-shrink-0">•</span>
+                <p className="break-all">{act}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Self-Host instructions card */}
+        <div className="md:col-span-6 card-unified bg-zinc-950/40">
+          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
+            <Server className="w-3.5 h-3.5 text-accent-cyan" />
+            Self-Hosted Sync Relays
+          </span>
+          <p className="text-sm text-zinc-300 leading-relaxed mb-4">
+            By running a private Logbook Plus WebDAV endpoint target on your own network storage, backups syncd from your device will bypass our servers entirely.
+          </p>
+          <button 
+            onClick={() => onNavigate('/documentation/')}
+            className="w-full btn-secondary-unified"
+          >
+            Review Setup Instructions
+          </button>
+        </div>
+      </div>
+
+      {/* MODALS RENDER */}
+      <AnimatePresence>
+        {activeModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-zinc-950"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/2 to-transparent pointer-events-none" />
+
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  {activeModal === 'profile' && 'Edit Profile'}
+                  {activeModal === 'password' && 'Change Password'}
+                  {activeModal === 'securityQ' && 'Configure Security Recovery'}
+                  {activeModal === 'mfa' && '2FA Authenticator Settings'}
+                  {activeModal === 'billing' && 'Billing & Quota Settings'}
+                </h3>
+                <button 
+                  onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {actionError && (
+                <div className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold text-center">
+                  {actionError}
+                </div>
+              )}
+
+              {actionSuccess && (
+                <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-semibold text-center">
+                  {actionSuccess}
+                </div>
+              )}
+
+              {/* PROFILE MODAL CONTENT */}
+              {activeModal === 'profile' && (
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Display Name</label>
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Your Name" 
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="w-full btn-primary-unified"
+                  >
+                    {loading ? 'Saving Changes...' : 'Save Settings'}
+                  </button>
+                </form>
+              )}
+
+              {/* PASSWORD CHANGE */}
+              {activeModal === 'password' && (
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Current Password</label>
+                    <input 
+                      type="password" 
+                      value={currPassword}
+                      onChange={(e) => setCurrPassword(e.target.value)}
+                      placeholder="••••••••" 
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">New Password</label>
+                    <input 
+                      type="password" 
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••" 
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="w-full btn-primary-unified"
+                  >
+                    {loading ? 'Changing keys...' : 'Update Password'}
+                  </button>
+                </form>
+              )}
+
+              {/* SECURITY QUESTIONS */}
+              {activeModal === 'securityQ' && (
+                <form onSubmit={handleSaveSecurityQuestion} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Security Question</label>
+                    <select 
+                      value={secQuestion}
+                      onChange={(e) => setSecQuestion(e.target.value)}
+                      className="select-unified"
+                    >
+                      {SECURITY_QUESTIONS.map(q => (
+                        <option key={q} value={q} className="bg-zinc-950 text-white">{q}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Secret Answer</label>
+                    <input 
+                      type="text" 
+                      value={secAnswer}
+                      onChange={(e) => setSecAnswer(e.target.value)}
+                      placeholder="Your secret answer" 
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="w-full btn-primary-unified"
+                  >
+                    {loading ? 'Saving recovery option...' : 'Save Recovery Option'}
+                  </button>
+                </form>
+              )}
+
+              {/* 2FA AUTHENTICATOR SETUP */}
+              {activeModal === 'mfa' && (
+                <div className="space-y-4">
+                  {!profile.twoFactorEnabled ? (
+                    // Enable flow
+                    <div className="space-y-4">
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Secure account entry with 2FA tokens. Scan QR code using Google Authenticator or Aegis.
+                      </p>
+
+                      {mfaQrUrl && (
+                        <div className="flex flex-col items-center p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                          <img 
+                            src={mfaQrUrl} 
+                            alt="Scan 2FA QR" 
+                            className="w-36 h-36 rounded-lg border border-white/10"
+                          />
+                          <p className="text-[9px] font-mono text-zinc-500 select-all">{mfaSecret}</p>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleMfaVerifyEnable} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1 text-center">
+                            Enter 6-Digit Authenticator Code
+                          </label>
+                          <input 
+                            type="text" 
+                            value={mfaSetupCode}
+                            onChange={(e) => setMfaSetupCode(e.target.value)}
+                            pattern="[0-9]{6}"
+                            maxLength="6"
+                            placeholder="000000" 
+                            className="input-unified text-sm font-bold text-center tracking-[0.2em]"
+                            required
+                          />
+                        </div>
+
+                        <button 
+                          type="submit"
+                          disabled={loading}
+                          className="w-full btn-primary-unified"
+                        >
+                          Enable Authenticator
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    // Disable flow
+                    <form onSubmit={handleMfaDisable} className="space-y-4">
+                      <p className="text-xs text-red-400 leading-relaxed">
+                        Warning: Deactivating Two-Factor authentication reduces storage vault security.
+                      </p>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Confirm password</label>
+                        <input 
+                          type="password" 
+                          value={mfaDisablePwd}
+                          onChange={(e) => setMfaDisablePwd(e.target.value)}
+                          placeholder="Your account password" 
+                          className="input-unified"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Authenticator Code</label>
+                        <input 
+                          type="text" 
+                          value={mfaDisableCode}
+                          onChange={(e) => setMfaDisableCode(e.target.value)}
+                          pattern="[0-9]{6}"
+                          maxLength="6"
+                          placeholder="000000" 
+                          className="input-unified text-center tracking-[0.2em]"
+                          required
+                        />
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full btn-danger-unified"
+                      >
+                        Deactivate 2FA
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* BILLING AND QUOTA MODAL */}
+              {activeModal === 'billing' && (
+                <div className="space-y-4 text-xs text-zinc-400 leading-relaxed">
+                  <div className="p-4 rounded-xl border border-white/5 bg-zinc-950/60 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-white">Active Plan</span>
+                      <span className="px-2 py-0.5 bg-blue-500/10 text-accent-blue rounded-full border border-blue-500/20 font-bold uppercase text-[9px]">{license.licenseType}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                      <span>Max Backups Allowed</span>
+                      <span className="font-mono text-white font-bold">{license.maxBackups} Vault Slots</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                      <span>Total Quota Limit</span>
+                      <span className="font-mono text-white font-bold">{limitQuota} MB</span>
+                    </div>
+                  </div>
+
+                  {license.licenseType !== 'Free Tier' && (
+                    <button
+                      onClick={handleCancelSubscription}
+                      className="w-full btn-danger-unified"
+                    >
+                      Cancel Cloud Subscription
+                    </button>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
