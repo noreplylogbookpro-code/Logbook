@@ -4,7 +4,7 @@ import {
   Shield, Server, Cloud, FolderOpen, Calendar, Trash2,
   User, Key, ShieldAlert, CreditCard, LogOut, ChevronDown,
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
-  BookOpen, Clock, RefreshCw, AlertTriangle
+  BookOpen, Clock, RefreshCw, AlertTriangle, Menu
 } from 'lucide-react';
 
 export default function MasterView({ onNavigate }) {
@@ -20,6 +20,7 @@ export default function MasterView({ onNavigate }) {
 
   // Active view tab state
   const [activeTab, setActiveTab] = useState('Overview'); // 'Overview' | 'Users' | 'Licenses' | 'Blogs' | 'Logs' | 'Settings'
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Dashboard Data states
   const [stats, setStats] = useState({ totalUsers: 0, totalStorageMB: 0, uptimeSeconds: 0, masterUser: 'admin' });
@@ -876,9 +877,111 @@ export default function MasterView({ onNavigate }) {
 
   // --- MAIN MASTER DASHBOARD VIEW ---
   return (
-    <div className="py-12 md:py-20 max-w-auto mx-auto px-20 relative flex flex-col md:flex-row gap-8">
-      {/* SIDEBAR NAVIGATION */}
-      <aside className="w-full md:w-64 flex-shrink-0 space-y-6">
+    <div className="py-6 md:py-12 lg:py-20 max-w-7xl mx-auto px-4 md:px-8 lg:px-12 relative flex flex-col md:flex-row gap-6 md:gap-8">
+      {/* MOBILE HEADER */}
+      <div className="flex md:hidden items-center justify-between p-4 bg-zinc-950 border border-white/5 rounded-2xl w-full">
+        <div className="flex items-center gap-3">
+          <Shield className="w-6 h-6 text-accent-purple" />
+          <div className="text-left">
+            <h3 className="font-bold text-white text-md">Master Control</h3>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Admin • {activeTab}</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* MOBILE DRAWER */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-black z-40"
+            />
+            {/* Drawer Content */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-72 bg-zinc-950 border-r border-white/10 p-6 z-50 flex flex-col justify-between shadow-[10px_0_40px_rgba(0,0,0,0.5)]"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-6 h-6 text-accent-purple" />
+                    <div className="text-left">
+                      <h3 className="font-bold text-white text-lg">Master Control</h3>
+                      <p className="text-[13px] text-zinc-500 uppercase tracking-widest">Administrator</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <nav className="space-y-1.5 flex flex-col">
+                  {[
+                    { name: 'Overview', icon: Server },
+                    { name: 'Users', icon: Users },
+                    { name: 'Licenses', icon: Key },
+                    { name: 'Blogs', icon: BookOpen },
+                    { name: 'Logs', icon: Terminal },
+                    { name: 'Settings', icon: Settings },
+                  ].map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.name;
+                    return (
+                      <button
+                        key={tab.name}
+                        onClick={() => {
+                          setActiveTab(tab.name);
+                          setSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
+                          ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-white'
+                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                          }`}
+                      >
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-500'}`} />
+                        {tab.name}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              <div className="border-t border-white/5 pt-4">
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/5 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* SIDEBAR NAVIGATION - DESKTOP */}
+      <aside className="hidden md:block w-64 flex-shrink-0 space-y-6">
         <div className="card-unified bg-zinc-950 p-4 space-y-4 border border-white/5">
           <div className="flex items-center gap-3 border-b border-white/5 pb-4">
             <Shield className="w-6 h-6 text-accent-purple" />
@@ -1118,7 +1221,7 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4"
+              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
                 <h3 className="text-md font-bold text-white uppercase tracking-wider">User Account Management</h3>
@@ -1207,7 +1310,7 @@ export default function MasterView({ onNavigate }) {
               className="space-y-6"
             >
               {/* Generate form */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4">
+              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Generate Self-Hosted JWT Key</h3>
 
                 <form onSubmit={handleGenerateLicense} className="flex flex-col sm:flex-row gap-4 items-end">
@@ -1267,7 +1370,7 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Licenses List */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4">
+              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Issued Self-Hosted License Keys</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
@@ -1324,7 +1427,7 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4"
+              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4"
             >
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Manage Blog Posts</h3>
@@ -1387,7 +1490,7 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4 text-left"
+              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4 text-left"
             >
               <div className="flex justify-between items-center border-b border-white/5 pb-2">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -1426,7 +1529,7 @@ export default function MasterView({ onNavigate }) {
               className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left"
             >
               {/* Server Config card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4">
+              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Server Core Configuration</h3>
 
                 <form onSubmit={handleUpdateConfigSubmit} className="space-y-4">
@@ -1468,7 +1571,7 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Master 2FA status card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4">
+              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Master Admin 2FA</h3>
 
                 {masterProfile.twoFactorEnabled ? (
@@ -1513,7 +1616,7 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Server System Control card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-6 space-y-4 col-span-1 md:col-span-2">
+              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4 col-span-1 md:col-span-2">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Server Maintenance & System Control</h3>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-red-500/5 border border-red-500/20">

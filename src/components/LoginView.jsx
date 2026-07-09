@@ -265,7 +265,7 @@ export default function LoginView({ onNavigate }) {
             <Shield className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Logbook Plus Console</h2>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">Logbook Plus Console</h2>
             <p className="text-sm text-zinc-500 mt-1">Access your encrypted database vaults</p>
           </div>
         </div>
@@ -409,7 +409,7 @@ export default function LoginView({ onNavigate }) {
                 className="select-unified"
               >
                 {SECURITY_QUESTIONS.map(q => (
-                  <option key={q} value={q} className="bg-zinc-950 text-white">{q}</option>
+                  <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">{q}</option>
                 ))}
               </select>
             </div>
@@ -477,12 +477,12 @@ export default function LoginView({ onNavigate }) {
               </form>
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="p-4 rounded-xl border border-white/5 bg-zinc-950/60 space-y-2">
+                <div className="p-4 rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-950/60 space-y-2">
                   <span className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-1.5">
                     <HelpCircle className="w-3.5 h-3.5 text-accent-blue" />
                     Security Question Challenge
                   </span>
-                  <p className="text-xs text-white leading-relaxed">{forgotQuestion}</p>
+                  <p className="text-xs text-zinc-700 dark:text-white leading-relaxed">{forgotQuestion}</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -521,7 +521,7 @@ export default function LoginView({ onNavigate }) {
 
             <button
               onClick={() => { setMode('login'); setForgotQuestion(''); }}
-              className="w-full text-center text-xs text-zinc-400 hover:text-white transition-colors"
+              className="w-full text-center text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
             >
               Back to Login
             </button>
@@ -560,7 +560,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="button"
               onClick={() => setMode('login')}
-              className="w-full text-center text-sm text-zinc-400 hover:text-white transition-colors"
+              className="w-full text-center text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
             >
               Cancel
             </button>

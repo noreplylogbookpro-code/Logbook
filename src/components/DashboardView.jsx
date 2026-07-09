@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Shield, Server, Cloud, FolderOpen, Calendar, Trash2, 
-  Download, Upload, AlertTriangle, User, Key, ShieldAlert, 
-  CreditCard, LogOut, CheckCircle, RefreshCw, X, ChevronDown, Check, Activity
+  Shield, Server, FolderOpen, Trash2, Download, AlertTriangle, 
+  User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity
 } from 'lucide-react';
 
 const SECURITY_QUESTIONS = [
@@ -45,7 +44,9 @@ export default function DashboardView({ onNavigate }) {
 
   // Forms inputs
   const [editName, setEditName] = useState('');
-  const [avatarFile, setAvatarFile] = useState(null);
+  const [selectedAvatarIndex, setSelectedAvatarIndex] = useState(0);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
+  const avatarInputRef = useRef(null);
 
   const [currPassword, setCurrPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -60,8 +61,6 @@ export default function DashboardView({ onNavigate }) {
   const [mfaDisablePwd, setMfaDisablePwd] = useState('');
   const [mfaDisableCode, setMfaDisableCode] = useState('');
 
-  const fileInputRef = useRef(null);
-  const avatarInputRef = useRef(null);
   const menuRef = useRef(null);
 
   // Error/Success statuses
@@ -143,7 +142,23 @@ export default function DashboardView({ onNavigate }) {
       const licRes = await fetch('/api/licenses/check', { headers });
       if (licRes.ok) {
         const licData = await licRes.json();
-        setLicense(licData);
+        if (licData.hasLicense) {
+          setLicense({
+            licenseType: 'Premium License',
+            maxBackups: 3,
+            storageLimitMB: 240,
+            licenseKey: licData.licenseKey,
+            expiresAt: licData.expiresAt,
+            hasLicense: true
+          });
+        } else {
+          setLicense({
+            licenseType: 'Free Tier',
+            maxBackups: 3,
+            storageLimitMB: 240,
+            hasLicense: false
+          });
+        }
       }
 
       // 3. Load Storage Stats
@@ -167,38 +182,7 @@ export default function DashboardView({ onNavigate }) {
     }
   };
 
-  // Upload backup
-  const handleUploadBackup = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
 
-    setLoading(true);
-    addActivity(`Uploading backup: ${file.name}...`);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('policy', 'backup');
-
-    try {
-      const res = await fetch('/api/backup', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok) {
-        addActivity(`Uploaded backup successfully: ${file.name}`);
-        loadDashboard();
-      } else {
-        addActivity(`Upload failed: ${data.error || 'Quota exceeded'}`, true);
-        alert(data.error || 'Upload failed. Quota limits exceeded.');
-      }
-    } catch {
-      addActivity('Upload network error.', true);
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
 
   // Restore/Download Backup
   const handleDownloadBackup = async (filename) => {
@@ -276,21 +260,58 @@ export default function DashboardView({ onNavigate }) {
     setLoading(true);
 
     try {
-      // 1. Update Name
+      // 1. Update Name & Preset Avatar Index
       const nameRes = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ name: editName })
+        body: JSON.stringify({ 
+          name: editName,
+          email: profile.email,
+          profilePicIndex: selectedAvatarIndex
+        })
       });
 
-      if (nameRes.ok) {
-        setActionSuccess('Profile updated successfully.');
-        addActivity('Profile information modified.');
-        loadDashboard();
-        setTimeout(() => setActiveModal(null), 1500);
-      } else {
-        setActionError('Failed to modify profile name.');
+      if (!nameRes.ok) {
+        setActionError('Failed to modify profile details.');
+        setLoading(false);
+        return;
       }
+
+      // If preset selected (meaning avatarFailed was set to true manually), delete custom avatar file
+      if (avatarFailed) {
+        await fetch('/api/profile/avatar', {
+          method: 'DELETE',
+          headers: getHeaders()
+        });
+      }
+
+      // 2. Upload custom file if chosen
+      if (selectedAvatarFile) {
+        const formData = new FormData();
+        formData.append('avatar', selectedAvatarFile);
+
+        const avatarRes = await fetch('/api/profile/avatar', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: formData
+        });
+
+        if (!avatarRes.ok) {
+          const errData = await avatarRes.json();
+          setActionError(errData.error || 'Failed to upload custom profile picture.');
+          setLoading(false);
+          return;
+        }
+        setAvatarFailed(false);
+      }
+
+      setActionSuccess('Profile updated successfully.');
+      addActivity('Profile information modified.');
+      loadDashboard();
+      setTimeout(() => {
+        setActiveModal(null);
+        setSelectedAvatarFile(null);
+      }, 1500);
     } catch {
       setActionError('Network error');
     } finally {
@@ -370,7 +391,7 @@ export default function DashboardView({ onNavigate }) {
       const data = await res.json();
       if (res.ok) {
         setMfaSecret(data.secret);
-        setMfaQrUrl(data.qrCodeUrl);
+        setMfaQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.otpauthUrl)}`);
       } else {
         setActionError('Failed to initiate 2FA setup.');
       }
@@ -474,9 +495,9 @@ export default function DashboardView({ onNavigate }) {
   return (
     <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-8 md:px-20 space-y-8 relative">
       {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
         <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
             Welcome, <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">{profile.name}</span>
           </h1>
           <p className="text-xs text-zinc-500 mt-1">Console Session: {profile.email} • Plan: {license.licenseType}</p>
@@ -489,7 +510,7 @@ export default function DashboardView({ onNavigate }) {
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-950/60 border border-white/5 text-sm text-white hover:border-white/10 hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
+                className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/5 text-sm text-zinc-800 dark:text-white hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
               >
                 {renderAvatar("w-7 h-7")}
                 <span>Account Manager</span>
@@ -502,10 +523,16 @@ export default function DashboardView({ onNavigate }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-56 rounded-xl bg-zinc-950 border border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
+                    className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
                   >
                     {[
-                      { label: 'Edit Profile', icon: User, action: () => { setActiveModal('profile'); setMenuOpen(false); } },
+                      { label: 'Edit Profile', icon: User, action: () => { 
+                        setEditName(profile.name || '');
+                        setSelectedAvatarIndex(profile.profilePicIndex || 0);
+                        setSelectedAvatarFile(null);
+                        setActiveModal('profile'); 
+                        setMenuOpen(false); 
+                      } },
                       { label: 'Change Password', icon: Key, action: () => { setActiveModal('password'); setMenuOpen(false); } },
                       { label: 'Security Question', icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
                       { label: '2FA Authenticator', icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
@@ -514,16 +541,16 @@ export default function DashboardView({ onNavigate }) {
                       <button
                         key={item.label}
                         onClick={item.action}
-                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                       >
                         <item.icon className="w-4 h-4 text-zinc-500" />
                         {item.label}
                       </button>
                     ))}
-                    <div className="h-[1px] bg-white/5 my-1" />
+                    <div className="h-[1px] bg-zinc-200 dark:bg-white/5 my-1" />
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-505 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout Session
@@ -563,45 +590,30 @@ export default function DashboardView({ onNavigate }) {
             desc: profile.twoFactorEnabled ? 'High security verification' : '2FA is disabled' 
           }
         ].map((card, idx) => (
-          <div key={idx} className="p-5 rounded-2xl bg-zinc-950/40 border border-white/5 text-left space-y-1.5 relative overflow-hidden">
-            <span className="text-xs text-zinc-400 font-mono font-bold uppercase">{card.title}</span>
-            <h4 className="text-2xl font-black text-white">{card.value}</h4>
+          <div key={idx} className="p-5 rounded-2xl bg-white dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-left space-y-1.5 relative overflow-hidden shadow-sm dark:shadow-none">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono font-bold uppercase">{card.title}</span>
+            <h4 className="text-2xl font-black text-zinc-900 dark:text-white">{card.value}</h4>
             <p className="text-xs text-zinc-500 font-medium">{card.desc}</p>
           </div>
         ))}
       </div>
 
       {/* Vault Manager Panel */}
-      <div className="card-unified space-y-6 relative overflow-hidden bg-zinc-950/20">
+      <div className="card-unified space-y-6 relative overflow-hidden dark:bg-zinc-950/20">
         <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 to-transparent pointer-events-none" />
         
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-accent-blue border border-blue-500/10">
               <FolderOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Encrypted Storage Vault</h2>
+              <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">Encrypted Storage Vault</h2>
               <p className="text-xs text-zinc-500">AES-256 cloud synchronized backup targets</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              className="btn-primary-unified"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Upload Backup
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleUploadBackup} 
-              className="hidden" 
-              accept=".zip,.db,.sqlite,.bin"
-            />
             <button
               onClick={handlePurgeAll}
               disabled={backups.length === 0}
@@ -619,20 +631,20 @@ export default function DashboardView({ onNavigate }) {
             <FolderOpen className="w-12 h-12 text-zinc-700" />
             <div className="space-y-1">
               <p className="text-xs text-zinc-400 font-semibold">No synchronized backup vault found.</p>
-              <p className="text-[10px] text-zinc-600">Export backup files from the mobile app and upload them above.</p>
+              <p className="text-[10px] text-zinc-600">Export backup files from the mobile app to sync them.</p>
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-zinc-200 dark:divide-white/5">
             {backups.map((b) => (
               <div key={b.name} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900/80 border border-white/5 flex items-center justify-center text-zinc-400">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
                     <Server className="w-4 h-4 text-accent-blue" />
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-white break-all max-w-sm">{b.name}</h5>
-                    <span className="text-xs text-zinc-400 font-mono mt-0.5 block">
+                    <h5 className="text-sm font-bold text-zinc-800 dark:text-white break-all max-w-sm">{b.name}</h5>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5 block">
                       Size: {b.size} • Synced: {new Date(b.time).toLocaleString()}
                     </span>
                   </div>
@@ -663,15 +675,15 @@ export default function DashboardView({ onNavigate }) {
       {/* Activity Logs & Self-Host Panel */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
         {/* Activity logs */}
-        <div className="md:col-span-6 card-unified bg-zinc-950/40">
-          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
+        <div className="md:col-span-6 card-unified dark:bg-zinc-950/40">
+          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
             <Activity className="w-3.5 h-3.5" />
             Console activity log
           </span>
-          <div className="h-48 overflow-y-auto font-mono text-xs text-zinc-300 space-y-1.5 pr-2 custom-scrollbar">
+          <div className="h-48 overflow-y-auto font-mono text-xs text-zinc-700 dark:text-zinc-300 space-y-1.5 pr-2 custom-scrollbar">
             {activities.map((act, index) => (
-              <div key={index} className="flex items-start gap-2 border-b border-white/2 pb-1.5 last:border-0 last:pb-0">
-                <span className="text-zinc-600 flex-shrink-0">•</span>
+              <div key={index} className="flex items-start gap-2 border-b border-zinc-200 dark:border-white/5 pb-1.5 last:border-0 last:pb-0">
+                <span className="text-zinc-400 dark:text-zinc-600 flex-shrink-0">•</span>
                 <p className="break-all">{act}</p>
               </div>
             ))}
@@ -679,12 +691,12 @@ export default function DashboardView({ onNavigate }) {
         </div>
 
         {/* Self-Host instructions card */}
-        <div className="md:col-span-6 card-unified bg-zinc-950/40">
-          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
+        <div className="md:col-span-6 card-unified dark:bg-zinc-950/40">
+          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
             <Server className="w-3.5 h-3.5 text-accent-cyan" />
             Self-Hosted Sync Relays
           </span>
-          <p className="text-sm text-zinc-300 leading-relaxed mb-4">
+          <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
             By running a private Logbook Plus WebDAV endpoint target on your own network storage, backups syncd from your device will bypass our servers entirely.
           </p>
           <button 
@@ -704,12 +716,12 @@ export default function DashboardView({ onNavigate }) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-zinc-950"
+              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-white dark:bg-zinc-950"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/2 to-transparent pointer-events-none" />
 
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
                   {activeModal === 'profile' && 'Edit Profile'}
                   {activeModal === 'password' && 'Change Password'}
                   {activeModal === 'securityQ' && 'Configure Security Recovery'}
@@ -718,7 +730,7 @@ export default function DashboardView({ onNavigate }) {
                 </h3>
                 <button 
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -749,6 +761,116 @@ export default function DashboardView({ onNavigate }) {
                       className="input-unified"
                       required
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Profile Picture</label>
+                    
+                    {/* Current avatar preview and custom upload */}
+                    <div className="flex items-center gap-4 p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-white/5">
+                      <div className="relative">
+                        {/* Preview of what will be saved */}
+                        {selectedAvatarFile ? (
+                          <img 
+                            src={URL.createObjectURL(selectedAvatarFile)} 
+                            alt="Preview" 
+                            className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10" 
+                          />
+                        ) : (
+                          // If they haven't selected a new custom file, show current renderAvatar or the selected preset avatar if they clicked one
+                          (() => {
+                            // If they clicked a preset avatar, and we are not uploading a custom file, show preset preview
+                            const avatar = AVATARS[selectedAvatarIndex % AVATARS.length] || AVATARS[0];
+                            // Show preset avatar icon or current custom image
+                            if (profile.userId && !avatarFailed && !selectedAvatarFile) {
+                              // If they have a custom avatar on disk, show it
+                              return (
+                                <img 
+                                  src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
+                                  alt=""
+                                  className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
+                                />
+                              );
+                            }
+                            return (
+                              <div 
+                                className="w-14 h-14 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10"
+                                style={{ color: avatar.color }}
+                              >
+                                <i className={`${avatar.icon} text-lg`} />
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 text-left">
+                        <span className="text-[10px] text-zinc-500 font-semibold">Custom Image Upload</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 cursor-pointer"
+                          >
+                            Choose File
+                          </button>
+                          {/* If they have a custom avatar uploaded (not failed) or selected a file, show remove button to revert to presets */}
+                          {((profile.userId && !avatarFailed) || selectedAvatarFile) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedAvatarFile(null);
+                                setAvatarFailed(true); // Force fall back to preset
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs font-semibold text-red-500 dark:text-red-400 cursor-pointer border border-red-500/10"
+                            >
+                              Reset to Preset
+                            </button>
+                          )}
+                        </div>
+                        <input 
+                          type="file" 
+                          ref={avatarInputRef}
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              setSelectedAvatarFile(e.target.files[0]);
+                              setAvatarFailed(false); // Preview the custom image
+                            }
+                          }}
+                          className="hidden" 
+                          accept="image/jpeg,image/png,image/gif"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Grid of presets */}
+                    <div className="space-y-1.5 text-left">
+                      <span className="text-[9px] font-bold text-zinc-500 uppercase pl-1">Or choose a preset theme</span>
+                      <div className="grid grid-cols-5 gap-2.5 p-3.5 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-200 dark:border-white/5">
+                        {AVATARS.map((av, index) => {
+                          const isSelected = selectedAvatarIndex === index;
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAvatarIndex(index);
+                                setSelectedAvatarFile(null); // Clear selected custom file so it uses the preset
+                                setAvatarFailed(true); // Force preset view
+                              }}
+                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${
+                                isSelected 
+                                  ? 'border-accent-blue bg-accent-blue/10 scale-110 shadow-sm' 
+                                  : 'border-zinc-200 dark:border-white/5 bg-white dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                              }`}
+                              style={{ color: av.color }}
+                            >
+                              <i className={`${av.icon} text-sm`} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   <button 
@@ -809,7 +931,7 @@ export default function DashboardView({ onNavigate }) {
                       className="select-unified"
                     >
                       {SECURITY_QUESTIONS.map(q => (
-                        <option key={q} value={q} className="bg-zinc-950 text-white">{q}</option>
+                        <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">{q}</option>
                       ))}
                     </select>
                   </div>
@@ -842,18 +964,18 @@ export default function DashboardView({ onNavigate }) {
                   {!profile.twoFactorEnabled ? (
                     // Enable flow
                     <div className="space-y-4">
-                      <p className="text-xs text-zinc-400 leading-relaxed">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                         Secure account entry with 2FA tokens. Scan QR code using Google Authenticator or Aegis.
                       </p>
 
                       {mfaQrUrl && (
-                        <div className="flex flex-col items-center p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                        <div className="flex flex-col items-center p-4 rounded-xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 space-y-3">
                           <img 
                             src={mfaQrUrl} 
                             alt="Scan 2FA QR" 
-                            className="w-36 h-36 rounded-lg border border-white/10"
+                            className="w-36 h-36 rounded-lg border border-zinc-200 dark:border-white/10"
                           />
-                          <p className="text-[9px] font-mono text-zinc-500 select-all">{mfaSecret}</p>
+                          <p className="text-[9px] font-mono text-zinc-500 dark:text-zinc-400 select-all">{mfaSecret}</p>
                         </div>
                       )}
 
@@ -930,19 +1052,19 @@ export default function DashboardView({ onNavigate }) {
 
               {/* BILLING AND QUOTA MODAL */}
               {activeModal === 'billing' && (
-                <div className="space-y-4 text-xs text-zinc-400 leading-relaxed">
-                  <div className="p-4 rounded-xl border border-white/5 bg-zinc-950/60 space-y-3">
+                <div className="space-y-4 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  <div className="p-4 rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-950/60 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-white">Active Plan</span>
+                      <span className="font-semibold text-zinc-800 dark:text-white">Active Plan</span>
                       <span className="px-2 py-0.5 bg-blue-500/10 text-accent-blue rounded-full border border-blue-500/20 font-bold uppercase text-[9px]">{license.licenseType}</span>
                     </div>
-                    <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                    <div className="flex justify-between items-center border-t border-zinc-200 dark:border-white/5 pt-3">
                       <span>Max Backups Allowed</span>
-                      <span className="font-mono text-white font-bold">{license.maxBackups} Vault Slots</span>
+                      <span className="font-mono text-zinc-800 dark:text-white font-bold">{license.maxBackups} Vault Slots</span>
                     </div>
-                    <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                    <div className="flex justify-between items-center border-t border-zinc-200 dark:border-white/5 pt-3">
                       <span>Total Quota Limit</span>
-                      <span className="font-mono text-white font-bold">{limitQuota} MB</span>
+                      <span className="font-mono text-zinc-800 dark:text-white font-bold">{limitQuota} MB</span>
                     </div>
                   </div>
 

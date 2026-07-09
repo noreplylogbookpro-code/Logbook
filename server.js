@@ -354,6 +354,42 @@ app.get('/api/health', async (req, res) => {
 const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-master-fallback-key-2026';
 const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
 
+// --- Database Text Encryption & Decryption Helpers ---
+const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-db-fallback-key-2026';
+const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
+
+function encryptText(text) {
+    if (!text) return text;
+    try {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', dbEncryptionKeyBuffer, iv);
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return iv.toString('hex') + ':' + encrypted;
+    } catch (e) {
+        logServerEvent('error', `Text encryption failure: ${e.message}`);
+        return text;
+    }
+}
+
+function decryptText(encryptedText) {
+    if (!encryptedText) return encryptedText;
+    try {
+        const parts = encryptedText.split(':');
+        if (parts.length !== 2) {
+            return encryptedText; // Not encrypted
+        }
+        const iv = Buffer.from(parts[0], 'hex');
+        const encrypted = parts[1];
+        const decipher = crypto.createDecipheriv('aes-256-cbc', dbEncryptionKeyBuffer, iv);
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        return encryptedText; // Decryption failed, fallback to plain text for backwards compatibility
+    }
+}
+
 async function encryptFile(filePath) {
     const tempPath = filePath + '.tmp';
     const readStream = fs.createReadStream(filePath);
@@ -838,9 +874,11 @@ app.post('/api/master/login/verify', loginLimiter, async (req, res) => {
         if (!masterProfile || !masterProfile.twoFactorEnabled || !masterProfile.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not enabled on master account" });
         }
-        const mfaResult = verifyTOTPWithReplay(code, masterProfile.twoFactorSecret, masterProfile.lastUsedTOTPCounter || null);
+        const decryptedCounter = decryptText(masterProfile.lastUsedTOTPCounter);
+        const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
+        const mfaResult = verifyTOTPWithReplay(code, decryptText(masterProfile.twoFactorSecret), lastUsedTOTPCounter);
         if (mfaResult.valid) {
-            await db.update({ _id: 'master_profile' }, { $set: { lastUsedTOTPCounter: mfaResult.counter } }, { upsert: true });
+            await db.update({ _id: 'master_profile' }, { $set: { lastUsedTOTPCounter: encryptText(String(mfaResult.counter)) } }, { upsert: true });
             logServerEvent('info', `Master admin logged in via 2FA successfully from IP: ${req.ip}`);
             const token = jwt.sign({ isMaster: true }, JWT_SECRET, { expiresIn: '1h' });
             res.json({ success: true, token });
@@ -856,7 +894,7 @@ app.post('/api/master/login/verify', loginLimiter, async (req, res) => {
 app.post('/api/master/2fa/setup', isMasterAuth, async (req, res) => {
     try {
         const secret = generateBase32Secret();
-        await db.update({ _id: 'master_profile' }, { $set: { tempTwoFactorSecret: secret } }, { upsert: true });
+        await db.update({ _id: 'master_profile' }, { $set: { tempTwoFactorSecret: encryptText(secret) } }, { upsert: true });
         db.compactDatafile();
         const label = encodeURIComponent('LogbookPlus:MasterAdmin');
         const issuer = encodeURIComponent('LogbookPlus');
@@ -875,10 +913,10 @@ app.post('/api/master/2fa/verify', isMasterAuth, async (req, res) => {
         if (!profile || !profile.tempTwoFactorSecret) {
             return res.status(400).json({ error: "2FA setup is not initialized" });
         }
-        const matchedCounter = verifyTOTP(code, profile.tempTwoFactorSecret);
+        const matchedCounter = verifyTOTP(code, decryptText(profile.tempTwoFactorSecret));
         if (matchedCounter !== null) {
             await db.update({ _id: 'master_profile' }, {
-                $set: { twoFactorEnabled: true, twoFactorSecret: profile.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter }
+                $set: { twoFactorEnabled: true, twoFactorSecret: profile.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: encryptText(String(matchedCounter)) }
             }, { upsert: true });
             db.compactDatafile();
             logServerEvent('info', 'Master admin successfully enabled 2FA');
@@ -903,7 +941,9 @@ app.post('/api/master/2fa/disable', isMasterAuth, async (req, res) => {
         if (!masterProfile || !masterProfile.twoFactorEnabled || !masterProfile.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not active" });
         }
-        const disableResult = verifyTOTPWithReplay(code, masterProfile.twoFactorSecret, masterProfile.lastUsedTOTPCounter || null);
+        const decryptedCounter = decryptText(masterProfile.lastUsedTOTPCounter);
+        const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
+        const disableResult = verifyTOTPWithReplay(code, decryptText(masterProfile.twoFactorSecret), lastUsedTOTPCounter);
         if (disableResult.valid) {
             await db.update({ _id: 'master_profile' }, {
                 $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
@@ -1356,9 +1396,11 @@ app.post('/api/login/verify', loginLimiter, async (req, res) => {
         if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not enabled on this account" });
         }
-        const loginMfaResult = verifyTOTPWithReplay(code, user.twoFactorSecret, user.lastUsedTOTPCounter || null);
+        const decryptedCounter = decryptText(user.lastUsedTOTPCounter);
+        const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
+        const loginMfaResult = verifyTOTPWithReplay(code, decryptText(user.twoFactorSecret), lastUsedTOTPCounter);
         if (loginMfaResult.valid) {
-            await db.update({ _id: user._id }, { $set: { lastUsedTOTPCounter: loginMfaResult.counter } });
+            await db.update({ _id: user._id }, { $set: { lastUsedTOTPCounter: encryptText(String(loginMfaResult.counter)) } });
             logServerEvent('info', `User logged in via 2FA: '${user.username}'`, { ip: req.ip });
             const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
             res.json({
@@ -1520,6 +1562,20 @@ app.get('/api/profile/avatar', isAuthenticated, async (req, res) => {
     res.status(404).json({ error: "No custom profile picture found" });
 });
 
+app.delete('/api/profile/avatar', isAuthenticated, async (req, res) => {
+    try {
+        const avatarPath = path.join(__dirname, 'uploads', req.userId, 'avatar.jpg');
+        if (await fs.pathExists(avatarPath)) {
+            await fs.remove(avatarPath);
+            logServerEvent('info', `User ID '${req.userId}' deleted their custom profile picture`);
+        }
+        res.json({ success: true, message: "Profile picture deleted successfully" });
+    } catch (e) {
+        logServerEvent('error', `Failed to delete custom profile picture for user ID '${req.userId}': ${e.message}`);
+        res.status(500).json({ error: "Failed to delete avatar" });
+    }
+});
+
 app.get('/api/profile/avatar/:userId', async (req, res) => {
     const userId = path.basename(req.params.userId);
     const avatarPath = path.join(__dirname, 'uploads', userId, 'avatar.jpg');
@@ -1579,7 +1635,7 @@ app.post('/api/profile/2fa/setup', isAuthenticated, async (req, res) => {
         const user = await db.findOne({ _id: req.userId });
         if (!user) return res.status(404).json({ error: "User not found" });
         const secret = generateBase32Secret();
-        await db.update({ _id: req.userId }, { $set: { tempTwoFactorSecret: secret } });
+        await db.update({ _id: req.userId }, { $set: { tempTwoFactorSecret: encryptText(secret) } });
         db.compactDatafile();
         const label = encodeURIComponent(`LogbookPlus:${user.username}`);
         const issuer = encodeURIComponent('LogbookPlus');
@@ -1599,10 +1655,10 @@ app.post('/api/profile/2fa/verify', isAuthenticated, async (req, res) => {
         if (!user || !user.tempTwoFactorSecret) {
             return res.status(400).json({ error: "2FA setup is not initialized" });
         }
-        const matchedCounter = verifyTOTP(code, user.tempTwoFactorSecret);
+        const matchedCounter = verifyTOTP(code, decryptText(user.tempTwoFactorSecret));
         if (matchedCounter !== null) {
             await db.update({ _id: req.userId }, {
-                $set: { twoFactorEnabled: true, twoFactorSecret: user.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: matchedCounter }
+                $set: { twoFactorEnabled: true, twoFactorSecret: user.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: encryptText(String(matchedCounter)) }
             });
             db.compactDatafile();
             logServerEvent('info', `User ID '${req.userId}' successfully enabled 2FA`);
@@ -1628,7 +1684,9 @@ app.post('/api/profile/2fa/disable', isAuthenticated, async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ error: "Incorrect password" });
         }
-        const userDisableResult = verifyTOTPWithReplay(code, user.twoFactorSecret, user.lastUsedTOTPCounter || null);
+        const decryptedCounter = decryptText(user.lastUsedTOTPCounter);
+        const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
+        const userDisableResult = verifyTOTPWithReplay(code, decryptText(user.twoFactorSecret), lastUsedTOTPCounter);
         if (userDisableResult.valid) {
             await db.update({ _id: req.userId }, {
                 $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
@@ -2389,6 +2447,40 @@ app.delete('/api/master/licenses/:id', isMasterAuth, async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+async function migrateTwoFactorSecrets() {
+    try {
+        const allDocs = await db.find({});
+        let updatedCount = 0;
+        for (const doc of allDocs) {
+            let updated = false;
+            const $set = {};
+            if (doc.tempTwoFactorSecret && !doc.tempTwoFactorSecret.includes(':')) {
+                $set.tempTwoFactorSecret = encryptText(doc.tempTwoFactorSecret);
+                updated = true;
+            }
+            if (doc.twoFactorSecret && !doc.twoFactorSecret.includes(':')) {
+                $set.twoFactorSecret = encryptText(doc.twoFactorSecret);
+                updated = true;
+            }
+            if (doc.lastUsedTOTPCounter !== undefined && doc.lastUsedTOTPCounter !== null && !String(doc.lastUsedTOTPCounter).includes(':')) {
+                $set.lastUsedTOTPCounter = encryptText(String(doc.lastUsedTOTPCounter));
+                updated = true;
+            }
+            if (updated) {
+                await db.update({ _id: doc._id }, { $set });
+                updatedCount++;
+            }
+        }
+        if (updatedCount > 0) {
+            db.compactDatafile();
+            logServerEvent('warning', `2FA Secrets Migration: Encrypted ${updatedCount} plain-text 2FA secrets/counters in the database.`);
+        }
+    } catch (e) {
+        logServerEvent('error', `Failed to run 2FA secrets database migration: ${e.message}`);
+    }
+}
+
+app.listen(PORT, '0.0.0.0', async () => {
     logServerEvent('info', `Server started successfully and running at http://localhost:${PORT}`);
+    await migrateTwoFactorSecrets();
 });
