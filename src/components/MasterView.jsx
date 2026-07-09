@@ -4,10 +4,10 @@ import {
   Shield, Server, Cloud, FolderOpen, Calendar, Trash2,
   User, Key, ShieldAlert, CreditCard, LogOut, ChevronDown,
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
-  BookOpen, Clock, RefreshCw, AlertTriangle, Menu
+  BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon
 } from 'lucide-react';
 
-export default function MasterView({ onNavigate }) {
+export default function MasterView({ onNavigate, theme, toggleTheme }) {
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginUser, setLoginUser] = useState('');
@@ -770,7 +770,7 @@ export default function MasterView({ onNavigate }) {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card-unified space-y-6 relative overflow-hidden bg-zinc-950"
+          className="card-unified space-y-6 relative overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/5"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-accent-purple/5 to-transparent pointer-events-none" />
 
@@ -780,7 +780,7 @@ export default function MasterView({ onNavigate }) {
               <Shield className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Master Control Login</h2>
+              <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">Master Control Login</h2>
               <p className="text-sm text-zinc-500 mt-1">Authenticate administrative credentials</p>
             </div>
           </div>
@@ -855,7 +855,7 @@ export default function MasterView({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => setRequires2FA(false)}
-                className="w-full text-center text-sm text-zinc-400 hover:text-white transition-colors"
+                className="w-full text-center text-sm text-zinc-550 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -865,7 +865,7 @@ export default function MasterView({ onNavigate }) {
           <div className="text-center pt-2">
             <a
               href={window.location.hostname.startsWith('master.') ? window.location.protocol + '//' + window.location.host.replace('master.', '') : '/'}
-              className="text-sm text-zinc-500 hover:text-white transition-colors cursor-pointer"
+              className="text-sm text-zinc-500 hover:text-zinc-850 dark:hover:text-white transition-colors cursor-pointer"
             >
               ← Back to main site
             </a>
@@ -879,20 +879,33 @@ export default function MasterView({ onNavigate }) {
   return (
     <div className="py-6 md:py-12 lg:py-20 max-w-7xl mx-auto px-4 md:px-8 lg:px-12 relative flex flex-col md:flex-row gap-6 md:gap-8">
       {/* MOBILE HEADER */}
-      <div className="flex md:hidden items-center justify-between p-4 bg-zinc-950 border border-white/5 rounded-2xl w-full">
+      <div className="flex md:hidden items-center justify-between p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/5 rounded-2xl w-full">
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-accent-purple" />
           <div className="text-left">
-            <h3 className="font-bold text-white text-md">Master Control</h3>
+            <h3 className="font-bold text-zinc-800 dark:text-white text-md">Master Control</h3>
             <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Admin • {activeTab}</p>
           </div>
         </div>
-        <button 
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-all cursor-pointer"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-all cursor-pointer"
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5 text-amber-500" />
+            ) : (
+              <Moon className="w-5 h-5 text-indigo-500" />
+            )}
+          </button>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-all cursor-pointer"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {/* MOBILE DRAWER */}
@@ -913,20 +926,20 @@ export default function MasterView({ onNavigate }) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 bg-zinc-950 border-r border-white/10 p-6 z-50 flex flex-col justify-between shadow-[10px_0_40px_rgba(0,0,0,0.5)]"
+              className="fixed inset-y-0 left-0 w-72 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-white/10 p-6 z-50 flex flex-col justify-between shadow-[10px_0_40px_rgba(0,0,0,0.08)] dark:shadow-[10px_0_40px_rgba(0,0,0,0.5)]"
             >
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-4">
                   <div className="flex items-center gap-3">
                     <Shield className="w-6 h-6 text-accent-purple" />
                     <div className="text-left">
-                      <h3 className="font-bold text-white text-lg">Master Control</h3>
+                      <h3 className="font-bold text-zinc-800 dark:text-white text-lg">Master Control</h3>
                       <p className="text-[13px] text-zinc-500 uppercase tracking-widest">Administrator</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setSidebarOpen(false)}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -951,11 +964,11 @@ export default function MasterView({ onNavigate }) {
                           setSidebarOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
-                          ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-white'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                          ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white'
+                          : 'text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-500'}`} />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-400 dark:text-zinc-500'}`} />
                         {tab.name}
                       </button>
                     );
@@ -982,11 +995,11 @@ export default function MasterView({ onNavigate }) {
 
       {/* SIDEBAR NAVIGATION - DESKTOP */}
       <aside className="hidden md:block w-64 flex-shrink-0 space-y-6">
-        <div className="card-unified bg-zinc-950 p-4 space-y-4 border border-white/5">
-          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+        <div className="card-unified bg-white dark:bg-zinc-950 p-4 space-y-4 border border-zinc-200 dark:border-white/5">
+          <div className="flex items-center gap-3 border-b border-zinc-200 dark:border-white/5 pb-4">
             <Shield className="w-6 h-6 text-accent-purple" />
             <div className="text-left">
-              <h3 className="font-bold text-white text-lg">Master Control</h3>
+              <h3 className="font-bold text-zinc-800 dark:text-white text-lg">Master Control</h3>
               <p className="text-[13px] text-zinc-500 uppercase tracking-widest">Administrator</p>
             </div>
           </div>
@@ -1007,18 +1020,18 @@ export default function MasterView({ onNavigate }) {
                   key={tab.name}
                   onClick={() => setActiveTab(tab.name)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
-                    ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-white'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white'
+                    : 'text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
                     }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-400 dark:text-zinc-500'}`} />
                   {tab.name}
                 </button>
               );
             })}
           </nav>
 
-          <div className="border-t border-white/5 pt-4">
+          <div className="border-t border-zinc-200 dark:border-white/5 pt-4">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
@@ -1033,22 +1046,35 @@ export default function MasterView({ onNavigate }) {
       {/* MAIN CONTENT AREA */}
       <main className="flex-grow space-y-6 min-h-[500px]">
         {/* HEADER TOP BAR */}
-        <header className="flex justify-between items-center bg-zinc-950 p-4 rounded-2xl border border-white/5">
+        <header className="flex justify-between items-center bg-white dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-200 dark:border-white/5 shadow-sm">
           <div className="text-left">
-            <h2 className="text-lg font-bold text-white">{activeTab} Panel</h2>
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white">{activeTab} Panel</h2>
             <p className="text-[12px] text-zinc-500 mt-0.5">Server configuration: Online</p>
           </div>
 
-          {/* Master Profile Icon */}
-          <div className="relative" ref={dropdownRef}>
+          {/* Master Profile Icon / Theme Toggle wrapper */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-white/10 hover:bg-zinc-800 transition-colors cursor-pointer"
+              onClick={toggleTheme}
+              className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-all cursor-pointer"
+              title="Toggle theme"
             >
-              {renderMasterAvatar(masterProfile.profilePicIndex, "w-6 h-6")}
-              <span className="text-xs font-semibold text-white">{masterProfile.name}</span>
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-500" />
+              )}
             </button>
+
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                {renderMasterAvatar(masterProfile.profilePicIndex, "w-6 h-6")}
+                <span className="text-xs font-semibold text-zinc-800 dark:text-white">{masterProfile.name}</span>
+                <ChevronDown className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
+              </button>
 
             <AnimatePresence>
               {profileDropdownOpen && (
@@ -1056,22 +1082,22 @@ export default function MasterView({ onNavigate }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-2 w-52 rounded-xl bg-zinc-950 border border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-30 text-left space-y-1"
+                  className="absolute right-0 mt-2 w-52 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-30 text-left space-y-1"
                 >
-                  <div className="px-3 py-2 bg-white/2 rounded-lg mb-1">
-                    <p className="text-xs font-bold text-white truncate">{masterProfile.name}</p>
+                  <div className="px-3 py-2 bg-zinc-50 dark:bg-white/2 rounded-lg mb-1">
+                    <p className="text-xs font-bold text-zinc-800 dark:text-white truncate">{masterProfile.name}</p>
                     <p className="text-[10px] text-zinc-500 truncate mt-0.5">{masterProfile.email}</p>
                   </div>
                   <button
                     onClick={() => { setActiveModal('editProfile'); setProfileDropdownOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
                   >
                     <User className="w-4 h-4" />
                     Edit Profile
                   </button>
                   <button
                     onClick={() => { setActiveModal('changePwd'); setProfileDropdownOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
                   >
                     <Key className="w-4 h-4" />
                     Change Password
@@ -1087,7 +1113,7 @@ export default function MasterView({ onNavigate }) {
                       }
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
                   >
                     <ShieldAlert className="w-4 h-4" />
                     Master 2FA Settings
@@ -1096,7 +1122,8 @@ export default function MasterView({ onNavigate }) {
               )}
             </AnimatePresence>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* TAB CONTENTS */}
         <AnimatePresence mode="wait">
@@ -1110,31 +1137,31 @@ export default function MasterView({ onNavigate }) {
             >
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card-unified bg-zinc-950/50 p-4 border border-white/5">
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
                   <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Registered Users</span>
                   <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-white">{stats.totalUsers || 0}</span>
+                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white">{stats.totalUsers || 0}</span>
                     <Users className="w-5 h-5 text-accent-blue" />
                   </div>
                 </div>
-                <div className="card-unified bg-zinc-950/50 p-4 border border-white/5">
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
                   <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Total Disk Storage</span>
                   <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-white">{parseFloat(stats.totalStorageMB || 0).toFixed(1)} MB</span>
+                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white">{parseFloat(stats.totalStorageMB || 0).toFixed(1)} MB</span>
                     <Cloud className="w-5 h-5 text-accent-purple" />
                   </div>
                 </div>
-                <div className="card-unified bg-zinc-950/50 p-4 border border-white/5">
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
                   <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Uptime Server Clock</span>
                   <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-white font-mono">{formatUptimeDisplay(serverUptime)}</span>
+                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white font-mono">{formatUptimeDisplay(serverUptime)}</span>
                     <Clock className="w-5 h-5 text-accent-cyan animate-pulse" />
                   </div>
                 </div>
-                <div className="card-unified bg-zinc-950/50 p-4 border border-white/5">
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
                   <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Server Master User</span>
                   <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-white truncate max-w-[140px]" title={stats.masterUser}>{stats.masterUser}</span>
+                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white truncate max-w-[140px]" title={stats.masterUser}>{stats.masterUser}</span>
                     <Shield className="w-5 h-5 text-amber-500" />
                   </div>
                 </div>
@@ -1143,12 +1170,12 @@ export default function MasterView({ onNavigate }) {
               {/* Server Logs and Actions layout */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent events logs */}
-                <div className="lg:col-span-2 card-unified bg-zinc-950/50 border border-white/5 p-4 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recent Server Events</h3>
+                <div className="lg:col-span-2 card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 space-y-4">
+                  <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-2">
+                    <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Recent Server Events</h3>
                     <button
                       onClick={fetchRecentLogs}
-                      className="p-1 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      className="p-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
@@ -1156,7 +1183,7 @@ export default function MasterView({ onNavigate }) {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                       <thead>
-                        <tr className="text-zinc-500 border-b border-white/5 pb-2">
+                        <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
                           <th className="py-2">Level</th>
                           <th className="py-2">Message</th>
                           <th className="py-2 text-right">Time</th>
@@ -1164,7 +1191,7 @@ export default function MasterView({ onNavigate }) {
                       </thead>
                       <tbody>
                         {logsList.map((log, idx) => (
-                          <tr key={log._id || idx} className="border-b border-white/2 hover:bg-white/2 transition">
+                          <tr key={log._id || idx} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
                             <td className="py-2.5 font-bold uppercase">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${log.level === 'critical' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                                 log.level === 'warning' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
@@ -1173,7 +1200,7 @@ export default function MasterView({ onNavigate }) {
                                 {log.level}
                               </span>
                             </td>
-                            <td className="py-2.5 text-zinc-300 max-w-xs truncate" title={log.message}>{log.message}</td>
+                            <td className="py-2.5 text-zinc-700 dark:text-zinc-300 max-w-xs truncate" title={log.message}>{log.message}</td>
                             <td className="py-2.5 text-zinc-500 text-right font-mono">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                           </tr>
                         ))}
@@ -1183,8 +1210,8 @@ export default function MasterView({ onNavigate }) {
                 </div>
 
                 {/* System Actions */}
-                <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 space-y-4 h-fit">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">System Actions</h3>
+                <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 space-y-4 h-fit">
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">System Actions</h3>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
@@ -1193,7 +1220,7 @@ export default function MasterView({ onNavigate }) {
                         <select
                           value={cleanupDays}
                           onChange={(e) => setCleanupDays(e.target.value)}
-                          className="select-unified flex-grow py-2 text-sm bg-zinc-900"
+                          className="select-unified flex-grow py-2 text-sm bg-zinc-50 dark:bg-zinc-900"
                         >
                           <option value="7">7 Days old</option>
                           <option value="15">15 Days old</option>
@@ -1221,10 +1248,10 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4"
+              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-3">
-                <h3 className="text-md font-bold text-white uppercase tracking-wider">User Account Management</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-3">
+                <h3 className="text-md font-bold text-zinc-800 dark:text-white uppercase tracking-wider">User Account Management</h3>
                 <input
                   type="text"
                   value={userSearch}
@@ -1237,7 +1264,7 @@ export default function MasterView({ onNavigate }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead>
-                    <tr className="text-zinc-500 border-b border-white/5 pb-2">
+                    <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
                       <th className="py-2.5">User Identity</th>
                       <th className="py-2.5">User ID</th>
                       <th className="py-2.5">Billing Plan</th>
@@ -1246,14 +1273,14 @@ export default function MasterView({ onNavigate }) {
                   </thead>
                   <tbody>
                     {filteredUsers.map((user) => (
-                      <tr key={user._id} className="border-b border-white/2 hover:bg-white/2 transition">
+                      <tr key={user._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
                         <td className="py-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-white uppercase">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-800 dark:text-white uppercase">
                               {user.name ? user.name.charAt(0) : user.username.charAt(0)}
                             </div>
                             <div className="text-left">
-                              <p className="font-semibold text-white flex items-center gap-1.5">
+                              <p className="font-semibold text-zinc-800 dark:text-white flex items-center gap-1.5">
                                 {user.name || 'N/A'}
                                 {user.twoFactorEnabled && <Shield className="w-4 h-4 text-accent-purple" title="2FA Enabled" />}
                               </p>
@@ -1261,9 +1288,9 @@ export default function MasterView({ onNavigate }) {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 font-mono text-zinc-400">{user._id}</td>
+                        <td className="py-3 font-mono text-zinc-500 dark:text-zinc-400">{user._id}</td>
                         <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded text-[12px] font-semibold uppercase ${user.plan === 'premium' || user.plan === 'licensed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border border-white/5'
+                          <span className={`px-2 py-0.5 rounded text-[12px] font-semibold uppercase ${user.plan === 'premium' || user.plan === 'licensed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-white/5'
                             }`}>
                             {user.plan || 'unpaid'}
                           </span>
@@ -1310,8 +1337,8 @@ export default function MasterView({ onNavigate }) {
               className="space-y-6"
             >
               {/* Generate form */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Generate Self-Hosted JWT Key</h3>
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Generate Self-Hosted JWT Key</h3>
 
                 <form onSubmit={handleGenerateLicense} className="flex flex-col sm:flex-row gap-4 items-end">
                   <div className="space-y-1.5 flex-grow text-left">
@@ -1321,7 +1348,7 @@ export default function MasterView({ onNavigate }) {
                       value={licenseeEmail}
                       onChange={(e) => setLicenseeEmail(e.target.value)}
                       placeholder="licensee@example.com"
-                      className="input-unified py-2 text-sm"
+                      className="input-unified py-2 text-sm bg-zinc-50 dark:bg-zinc-900"
                       required
                     />
                   </div>
@@ -1330,7 +1357,7 @@ export default function MasterView({ onNavigate }) {
                     <select
                       value={licenseDuration}
                       onChange={(e) => setLicenseDuration(e.target.value)}
-                      className="select-unified py-2"
+                      className="select-unified py-2 bg-zinc-50 dark:bg-zinc-900"
                     >
                       <option value="30">30 Days</option>
                       <option value="90">90 Days</option>
@@ -1356,11 +1383,11 @@ export default function MasterView({ onNavigate }) {
                         type="text"
                         value={newlyGeneratedKey}
                         readOnly
-                        className="input-unified flex-grow font-mono text-[10px] py-1 bg-zinc-950 border-white/5"
+                        className="input-unified flex-grow font-mono text-[10px] py-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-white/5"
                       />
                       <button
                         onClick={() => copyToClipboard(newlyGeneratedKey)}
-                        className="px-3 bg-zinc-900 border border-white/10 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs"
+                        className="px-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-colors cursor-pointer text-xs"
                       >
                         {copiedKey === newlyGeneratedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
@@ -1370,12 +1397,12 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Licenses List */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Issued Self-Hosted License Keys</h3>
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Issued Self-Hosted License Keys</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead>
-                      <tr className="text-zinc-500 border-b border-white/5 pb-2">
+                      <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
                         <th className="py-2.5">Licensee</th>
                         <th className="py-2.5">Expires</th>
                         <th className="py-2.5">Key Hash</th>
@@ -1386,10 +1413,10 @@ export default function MasterView({ onNavigate }) {
                       {licenses.map((lic) => {
                         const isExpired = Date.now() > lic.expiresAt;
                         return (
-                          <tr key={lic._id} className="border-b border-white/2 hover:bg-white/2 transition">
-                            <td className="py-3 text-left font-semibold text-white">{lic.licensee}</td>
+                          <tr key={lic._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
+                            <td className="py-3 text-left font-semibold text-zinc-850 dark:text-white">{lic.licensee}</td>
                             <td className="py-3">
-                              <span className={`font-semibold ${isExpired ? 'text-red-400' : 'text-zinc-300'}`}>
+                              <span className={`font-semibold ${isExpired ? 'text-red-400' : 'text-zinc-650 dark:text-zinc-300'}`}>
                                 {new Date(lic.expiresAt).toLocaleDateString()}
                               </span>
                               {isExpired && <span className="text-[8px] uppercase tracking-wider text-red-500 border border-red-500/20 bg-red-500/5 px-1 ml-1.5 rounded">EXPIRED</span>}
@@ -1399,7 +1426,7 @@ export default function MasterView({ onNavigate }) {
                               <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => copyToClipboard(lic.licenseKey)}
-                                  className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold rounded-lg border border-white/5 transition-all cursor-pointer flex items-center gap-1"
+                                  className="px-2.5 py-1.5 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold rounded-lg border border-zinc-200 dark:border-white/5 transition-all cursor-pointer flex items-center gap-1"
                                 >
                                   {copiedKey === lic.licenseKey ? 'Copied!' : 'Copy Key'}
                                 </button>
@@ -1427,10 +1454,10 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4"
+              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4"
             >
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Manage Blog Posts</h3>
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Manage Blog Posts</h3>
                 <button
                   onClick={() => openBlogEditModal(null)}
                   className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1"
@@ -1443,7 +1470,7 @@ export default function MasterView({ onNavigate }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead>
-                    <tr className="text-zinc-500 border-b border-white/5 pb-2">
+                    <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
                       <th className="py-2.5">Title / Metadata</th>
                       <th className="py-2.5">Date</th>
                       <th className="py-2.5 text-right">Actions</th>
@@ -1451,15 +1478,15 @@ export default function MasterView({ onNavigate }) {
                   </thead>
                   <tbody>
                     {blogs.map((blog) => (
-                      <tr key={blog._id} className="border-b border-white/2 hover:bg-white/2 transition">
+                      <tr key={blog._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
                         <td className="py-3 text-left">
-                          <p className="font-semibold text-white truncate text-lg max-w-md">{blog.title}</p>
+                          <p className="font-semibold text-zinc-800 dark:text-white truncate text-lg max-w-md">{blog.title}</p>
                           <div className="flex gap-2 items-center mt-1">
                             <span className="px-1.5 py-0.5 rounded text-[12px] bg-accent-blue/15 text-accent-blue border border-accent-blue/20 font-bold uppercase">{blog.category}</span>
                             <span className="font-mono text-zinc-500 text-md overflow-x-auto max-w-xs">{blog.slug}</span>
                           </div>
                         </td>
-                        <td className="py-3 text-zinc-300">{blog.date}</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-300">{blog.date}</td>
                         <td className="py-3 text-right">
                           <div className="flex justify-end gap-2">
                             <button
@@ -1490,10 +1517,10 @@ export default function MasterView({ onNavigate }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4 text-left"
+              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4 text-left"
             >
-              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-2">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Terminal className="w-4 h-4 text-accent-purple" />
                   Live Server Console Logs
                 </h3>
@@ -1502,7 +1529,7 @@ export default function MasterView({ onNavigate }) {
 
               <div
                 ref={logsConsoleRef}
-                className="h-[450px] bg-black/80 rounded-xl border border-white/10 p-4 overflow-y-auto font-mono text-[14px] leading-relaxed text-zinc-300 space-y-1"
+                className="h-[450px] bg-zinc-50 dark:bg-black/80 rounded-xl border border-zinc-200 dark:border-white/10 p-4 overflow-y-auto font-mono text-[14px] leading-relaxed text-zinc-700 dark:text-zinc-300 space-y-1"
               >
                 {logsList.map((log, idx) => (
                   <div key={log._id || idx} className="hover:bg-white/5 p-0.5 rounded transition">
@@ -1529,8 +1556,8 @@ export default function MasterView({ onNavigate }) {
               className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left"
             >
               {/* Server Config card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Server Core Configuration</h3>
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Server Core Configuration</h3>
 
                 <form onSubmit={handleUpdateConfigSubmit} className="space-y-4">
                   <div className="space-y-1.5">
@@ -1539,14 +1566,14 @@ export default function MasterView({ onNavigate }) {
                       type="number"
                       value={Math.floor(serverConfig.quotaLimit / (1024 * 1024))}
                       onChange={(e) => setServerConfig({ ...serverConfig, quotaLimit: parseInt(e.target.value) * 1024 * 1024 })}
-                      className="input-unified"
+                      className="input-unified bg-zinc-50 dark:bg-zinc-900"
                       required
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/2 border border-white/5">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-white/2 border border-zinc-200 dark:border-white/5">
                     <div className="text-left">
-                      <span className="text-md font-semibold text-white block">Enable Public Signups</span>
+                      <span className="text-md font-semibold text-zinc-800 dark:text-white block">Enable Public Signups</span>
                       <span className="text-[14px] text-zinc-500 mt-0.5">Toggle new account registrations</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -1556,7 +1583,7 @@ export default function MasterView({ onNavigate }) {
                         onChange={(e) => setServerConfig({ ...serverConfig, signupsEnabled: e.target.checked })}
                         className="sr-only peer"
                       />
-                      <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-purple peer-checked:after:bg-white"></div>
+                      <div className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-purple peer-checked:after:bg-white"></div>
                     </label>
                   </div>
 
@@ -1571,8 +1598,8 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Master 2FA status card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Master Admin 2FA</h3>
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Master Admin 2FA</h3>
 
                 {masterProfile.twoFactorEnabled ? (
                   <div className="space-y-4">
@@ -1580,7 +1607,7 @@ export default function MasterView({ onNavigate }) {
                       <Shield className="w-7 h-7 flex-shrink-0 animate-bounce" />
 
                       <div>
-                        <p className="font-bold text-[16px] pb-2">2FA Authenticator Active</p>
+                        <p className="font-bold text-[16px] pb-2 text-zinc-800 dark:text-white">2FA Authenticator Active</p>
 
                         <p className="text-[13.5px] text-zinc-500 mt-0.5">Your administrative account is protected with TOTP validation.</p>
                       </div>
@@ -1600,7 +1627,7 @@ export default function MasterView({ onNavigate }) {
                     <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center gap-3">
                       <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                       <div>
-                        <p className="font-bold">2FA is currently Disabled</p>
+                        <p className="font-bold text-zinc-800 dark:text-white">2FA is currently Disabled</p>
                         <p className="text-[10px] text-zinc-500 mt-0.5">Enable two-factor authentication to secure server control access.</p>
                       </div>
                     </div>
@@ -1616,12 +1643,12 @@ export default function MasterView({ onNavigate }) {
               </div>
 
               {/* Server System Control card */}
-              <div className="card-unified bg-zinc-950/50 border border-white/5 p-4 sm:p-6 space-y-4 col-span-1 md:col-span-2">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Server Maintenance & System Control</h3>
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4 col-span-1 md:col-span-2">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Server Maintenance & System Control</h3>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-red-500/5 border border-red-500/20">
                   <div className="text-left space-y-1">
-                    <span className="text-md font-semibold text-white flex items-center gap-2">
+                    <span className="text-md font-semibold text-zinc-800 dark:text-white flex items-center gap-2">
                       <RefreshCw className="w-5 h-5 text-red-500" />
                       Reboot Application Server
                     </span>
@@ -1651,12 +1678,12 @@ export default function MasterView({ onNavigate }) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-zinc-950 text-left"
+              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-white dark:bg-zinc-950 text-left border border-zinc-200 dark:border-white/5"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/2 to-transparent pointer-events-none" />
 
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
                   {activeModal === 'editPlan' && 'Edit User Plan'}
                   {activeModal === 'editBlog' && (selectedBlogId ? 'Edit Blog Post' : 'Create Blog Post')}
                   {activeModal === 'editProfile' && 'Edit Master Profile'}
