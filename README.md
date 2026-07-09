@@ -9,18 +9,23 @@ Logbook Plus is a local-first, zero-vendor-lock expense intelligence system. It 
 - **Local-First & Encrypted**: All your expense data is stored locally first, with end-to-end client-side encryption.
 - **Redundancy & Sync**: Back up to a private cloud server with support for multi-policy storage.
 - **Self-Hostable Node.js Server**: Easily deployable Express backend powered by NeDB database.
-- **Admin Dashboard**: Built-in master admin area for system configuration and user management.
-- **Google Play Purchase Verification**: Includes APIs to verify Android billing/subscriptions using Google Play developer service accounts.
+- **At-Rest Database Encryption (2FA)**: All user and master TOTP secrets (`twoFactorSecret`, `tempTwoFactorSecret`) and replay-prevention sequence counters (`lastUsedTOTPCounter`) are fully encrypted in the database using `AES-256-CBC` encryption. Includes a transparent startup migration routine to automatically encrypt existing plain-text values on boot.
+- **Adaptive Mobile Layouts**:
+  - The **Master Control Admin Dashboard** features a responsive sliding navigation drawer activated by a 3-line hamburger menu button on mobile/small devices, using fluid Framer Motion spring animations.
+  - User and master dashboards feature responsive fluid container paddings (`px-4 md:px-8 lg:px-12`) and card margins (`p-4 sm:p-6`) to prevent squished layouts on mobile screens.
+- **Profile Customization**: Users can select one of the 9 preset theme icon options or upload a custom image file as their profile picture. Includes an offline cleanup sequence that manages system file storage and wipes outdated profile pictures when resetting back to a preset.
+- **Double-Layered 2FA Security**: Multi-factor authentication with QR code generation and copy-paste raw secret key fallback support on both user and master accounts.
 - **Dynamic Pricing API & Toggle**: Features a dynamic pricing configuration parser endpoint (`/api/pricing`) integrated with a Monthly/Yearly plan selector on the frontend landing/billing page.
+- **Admin Control Deck**: Built-in master admin area for system configuration, user plans, licensing configuration, and database logs.
 
 ---
 
 ## 🛠️ Tech Stack
 
+- **Frontend**: React, TailwindCSS, Framer Motion, Lucide React
 - **Backend**: Node.js & Express
-- **Database**: NeDB (embedded database, stored in local `.db` files)
-- **Security & Auth**: JSON Web Tokens (JWT), BcryptJS, Express Rate Limit
-- **Integrations**: Google APIs Client Library (Google Play Billing verification)
+- **Database**: NeDB (embedded datastores `server_users.db` and `server_logs.db`, fully separated and compacted)
+- **Security & Auth**: AES-256-CBC, JWT, BcryptJS, Express Rate Limit, TOTP (Speakeasy-compatible custom verification)
 
 ---
 
@@ -57,26 +62,14 @@ SESSION_SECRET=your-random-session-secret      # Secret key for Express sessions
 JWT_SECRET=your-random-jwt-secret              # Secret key used for signing JWTs
 NODE_ENV=production                            # Node environment (development / production)
 SECURE_COOKIE=false                            # Set to true ONLY when serving over HTTPS
+DB_ENCRYPTION_KEY=your-db-encryption-key       # (Optional) AES key for encrypting 2FA secrets at rest
 
 # Android App / Google Play Billing
 GOOGLE_PLAY_PACKAGE_NAME=com.logbookplus       # Android package name
-SERVICE_ACCOUNT_KEY_PATH=google_auth/key.json  # Path to Google Play API Service Account JSON key
+SERVICE_ACCOUNT_KEY_PATH=google_auth/key.json  # Path to Google Play Service Account JSON key
 ```
 
 ---
-
-## Dependencies
-- @googleapis/androidpublisher: For Google Play Android Publisher API
-- bcryptjs: For password hashing
-- cors: For Cross-Origin Resource Sharing
-- dotenv: For environment variables
-- express: For the web framework
-- express-rate-limit: For rate limiting
-- jsonwebtoken: For JSON Web Tokens
-- nedb-promises: For the database
-- serve-favicon: For serving favicons
-- zip-local: For creating zip files
-- zlib: For compression
 
 ## 🚦 Getting Started
 
@@ -107,11 +100,7 @@ When deploying behind a reverse proxy (e.g. Nginx, Cloudflare):
 
 ## 🔒 Security
 
-- Rate limits are applied on sensitive authentication routes (`/api/login`, `/api/signup`, `/api/forgot-password`).
-- Server logs are automatically kept in a sliding window of 500 events to prevent disk space exhaustion.
-- Password hashes are stored using strong BcryptJS hashing.
-
-
-
-
-
+- **At-Rest Field Encryption**: User and admin secret keys are never stored in plain text inside `server_users.db`. They are encrypted using `AES-256-CBC` with custom IV vectors.
+- **TOTP Replay Prevention**: The speakeasy validation tracks token validation counters dynamically (stored encrypted) to block token replay attacks.
+- **Log Isolation**: System logs are stored in a dedicated database `server_logs.db`, automatically pruned to a sliding window of the last 500 events to prevent host system disk exhaustion.
+- **Rate Limiting**: Applied on all sensitive login, signup, username check, and verification routes.
