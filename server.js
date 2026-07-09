@@ -1288,7 +1288,7 @@ app.post('/api/check-username', signupLimiter, async (req, res) => {
 
 // Check if app is on the Indus App Store package name (called during onboarding page 0)
 function handleCheckStore(req, res) {
-    const packageName = req.body.packageName || req.query.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
+    const packageName = req.body?.packageName || req.query?.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
     const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
     const isIndus = (packageName === indusPkg);
     logServerEvent('info', `Store check request for package: ${packageName} (Is Indus: ${isIndus})`);
