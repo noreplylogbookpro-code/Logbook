@@ -507,17 +507,23 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           <p>Interact with other developers, request feature patches, and help review code packages.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { name: 'Discord Server', label: 'Join Chat', desc: 'Interact live with core builders.' },
-              { name: 'GitHub Repositories', label: 'Contribute', desc: 'Review open-source client sync plugins.' },
+              { name: 'Discord Server', label: 'Join Chat', desc: 'Interact live with core builders.', link: 'https://discord.gg/bKgS6ERyZ' },
+              { name: 'GitHub Repositories', label: 'Contribute', desc: 'Review open-source client sync plugins.', link: 'https://github.com/noreplylogbookpro-code/Logbook' },
             ].map((node) => (
               <div key={node.name} className="p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-accent-purple/20 transition-all" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                 <div className="space-y-1">
                   <h4 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{node.name}</h4>
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{node.desc}</p>
                 </div>
-                <button className="py-2 rounded-xl text-sm font-semibold transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <a
+                  href={node.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2 rounded-xl text-sm font-semibold transition-colors text-center block"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
                   {node.label}
-                </button>
+                </a>
               </div>
             ))}
           </div>
@@ -606,7 +612,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const ActiveIcon = DocInfo.icon;
 
   return (
-    <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-8 md:px-20 relative">
+    <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 md:px-20 relative">
 
       {/* Mobile Dropdown Nav */}
       <div className="md:hidden mb-6">

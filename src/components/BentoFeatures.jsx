@@ -40,7 +40,7 @@ export default function BentoFeatures() {
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto z-10 relative px-2 sm:px-6 md:px-10">
+      <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto z-10 relative px-2 sm:px-6 md:px-10">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
           <motion.div

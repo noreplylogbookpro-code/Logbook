@@ -877,7 +877,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   // --- MAIN MASTER DASHBOARD VIEW ---
   return (
-    <div className="py-6 md:py-12 lg:py-20 max-w-7xl mx-auto px-4 md:px-8 lg:px-12 relative flex flex-col md:flex-row gap-6 md:gap-8">
+    <div className="py-6 md:py-12 lg:py-20 w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 md:px-8 lg:px-12 relative flex flex-col md:flex-row gap-6 md:gap-8">
       {/* MOBILE HEADER */}
       <div className="flex md:hidden items-center justify-between p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/5 rounded-2xl w-full">
         <div className="flex items-center gap-3">
@@ -1200,7 +1200,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                                 {log.level}
                               </span>
                             </td>
-                            <td className="py-2.5 text-zinc-700 dark:text-zinc-300 max-w-xs truncate" title={log.message}>{log.message}</td>
+                            <td className="py-2.5 text-zinc-700 dark:text-zinc-300 max-w-lg truncate" title={log.message}>{log.message}</td>
                             <td className="py-2.5 text-zinc-500 text-right font-mono">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
                           </tr>
                         ))}

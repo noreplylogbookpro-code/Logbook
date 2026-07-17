@@ -77,7 +77,7 @@ export default function PricingView({ onNavigate }) {
   ];
 
   return (
-    <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-8 md:px-20 relative">
+    <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 md:px-20 relative">
 
       {/* Header */}
       <div className="text-center space-y-4 mb-16">

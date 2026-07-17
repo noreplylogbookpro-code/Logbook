@@ -493,7 +493,7 @@ export default function DashboardView({ onNavigate }) {
   const isCloseToLimit = stats.storageUsedMB > limitQuota * 0.85;
 
   return (
-    <div className="py-12 md:py-20 max-w-7xl mx-auto px-4 sm:px-8 md:px-20 space-y-8 relative">
+    <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 md:px-20 space-y-8 relative">
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
         <div className="text-left">

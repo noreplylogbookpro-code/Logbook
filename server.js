@@ -739,6 +739,26 @@ app.post('/api/contact', async (req, res) => {
     }
 });
 
+// --- Newsletter Subscription ---
+app.post('/api/subscribe', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email address is required.' });
+
+    const csvPath = path.join(__dirname, 'subscribers.csv');
+    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const row = [escape(new Date().toISOString()), escape(email)].join(',') + '\n';
+
+    try {
+        if (!await fs.pathExists(csvPath)) await fs.writeFile(csvPath, 'Timestamp,Email\n');
+        await fs.appendFile(csvPath, row);
+        logServerEvent('info', `Newsletter subscription received from ${email}`);
+        res.json({ success: true, message: 'Subscribed successfully!' });
+    } catch (e) {
+        logServerEvent('critical', `Failed to save newsletter subscription from ${email}`);
+        res.status(500).json({ error: 'Failed to process subscription.' });
+    }
+});
+
 // --- Master Management & Authentication ---
 // --- Two-Factor Authentication (TOTP / 2FA) Utilities ---
 function base32Decode(base32Str) {
@@ -1289,16 +1309,15 @@ app.post('/api/check-username', signupLimiter, async (req, res) => {
 // Check if app is on the Indus App Store package name (called during onboarding page 0)
 function handleCheckStore(req, res) {
     const packageName = req.body?.packageName || req.query?.packageName || req.headers['x-package-name'] || req.headers['x-requested-with'];
-    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
-    const isIndus = (packageName === indusPkg);
-    logServerEvent('info', `Store check request for package: ${packageName} (Is Indus: ${isIndus})`);
+    const googlePkg = process.env.GOOGLE_PLAY_PACKAGE_NAME;
+    const isGoogle = (packageName === googlePkg);
+    logServerEvent('info', `Store check request for package: ${packageName} (Is Google: ${isGoogle})`);
     res.json({
-        success: isIndus,
-        valid: isIndus,
-        isIndusStore: isIndus,
-        isIndus: isIndus,
-        isIndusPackage: isIndus,
-        packageNameMatch: isIndus
+        success: isGoogle,
+        valid: isGoogle,
+        isGoogleStore: isGoogle,
+        isGooglePackage: isGoogle,
+        packageNameMatch: isGoogle
     });
 }
 app.get('/api/check-store', handleCheckStore);
@@ -1367,7 +1386,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         }
         logServerEvent('info', `User logged in: '${username}'`, { ip: req.ip });
         // Sign and issue production standard clean JWT token payload
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '3650d' });
         return res.json({
             success: true,
             token,
@@ -1402,7 +1421,7 @@ app.post('/api/login/verify', loginLimiter, async (req, res) => {
         if (loginMfaResult.valid) {
             await db.update({ _id: user._id }, { $set: { lastUsedTOTPCounter: encryptText(String(loginMfaResult.counter)) } });
             logServerEvent('info', `User logged in via 2FA: '${user.username}'`, { ip: req.ip });
-            const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '3650d' });
             res.json({
                 success: true,
                 token,
