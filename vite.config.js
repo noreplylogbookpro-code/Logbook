@@ -28,6 +28,9 @@ export default defineConfig({
   plugins: [react(), copyMasterHtml()],
   server: {
     port: 3000,
+    watch: {
+      ignored: ['**/server_logs.db*', '**/server_users.db*', '**/*.db*']
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

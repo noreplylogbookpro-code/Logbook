@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Zap, BarChart3, WifiOff, Lock, ServerCrash, Key, ArrowUpRight } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 export default function BentoFeatures() {
+  const { t } = useLanguage();
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   // Stagger variants for the Bento cards
@@ -50,7 +52,7 @@ export default function BentoFeatures() {
             transition={{ duration: 0.5 }}
             className="text-xs font-semibold text-accent-purple tracking-widest uppercase"
           >
-            Engineering Pillars
+            {t('engineeringPillars')}
           </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 15 }}
@@ -59,7 +61,7 @@ export default function BentoFeatures() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-3xl md:text-5xl font-extrabold tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}
           >
-            Intelligent Logging, Redefined.
+            {t('bentoHeading')}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -68,7 +70,7 @@ export default function BentoFeatures() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-base md:text-lg" style={{ color: 'var(--text-muted)' }}
           >
-            A high-performance workspace designed specifically for developers who demand complete local privacy, low-latency interactions, and bank-grade encryption.
+            {t('bentoSubheading')}
           </motion.p>
         </div>
 
@@ -95,13 +97,13 @@ export default function BentoFeatures() {
               </div>
               <div className="space-y-2">
                 <h3 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  100% Client-Side Privacy
+                  {t('bentoPrivacyTitle')}
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider font-semibold font-mono">
-                    Offline First
+                    {t('bentoOfflineFirst')}
                   </span>
                 </h3>
                 <p className="text-base md:text-lg max-w-xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  No telemetry. No background trackers. Logbook Plus saves data directly into a local database inside your browser or native workspace. Even if our cloud server is down, your software operates exactly the same.
+                  {t('bentoPrivacyDesc')}
                 </p>
               </div>
             </div>
@@ -110,12 +112,12 @@ export default function BentoFeatures() {
             <div className="mt-8 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
               <div className="flex items-center gap-3 p-2 bg-emerald-950/20 border border-emerald-500/20 rounded-xl w-full md:w-auto">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-green-500">SQLite Cache (Local)</span>
+                <span className="text-green-500">{t('bentoSqliteLocal')}</span>
               </div>
               <div className="w-full md:w-20 h-0.5 border-t border-dashed" style={{ borderColor: 'var(--border)' }} />
               <div className="flex items-center gap-3 p-2 bg-red-950/20 border border-red-500/20 rounded-xl opacity-60 w-full md:w-auto">
                 <ServerCrash className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-red-500 font-sans">External Server (Offline)</span>
+                <span className="text-red-500 font-sans">{t('bentoExternalOffline')}</span>
               </div>
             </div>
           </motion.a>
@@ -134,9 +136,9 @@ export default function BentoFeatures() {
                 <Zap className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Rapid Entry Engine</h3>
+                <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('bentoRapidTitle')}</h3>
                 <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  Record transactions, logs, and categories with keyboard shortcuts. Sub-10ms UI paint speeds.
+                  {t('bentoRapidDesc')}
                 </p>
               </div>
             </div>
@@ -144,7 +146,7 @@ export default function BentoFeatures() {
             <div className="mt-4 flex gap-1.5 font-mono text-xs">
               <span className="px-2 py-1 rounded border font-mono text-xs" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>Ctrl</span>
               <span className="px-2 py-1 rounded border font-mono text-xs" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>N</span>
-              <span className="flex items-center ml-2" style={{ color: 'var(--text-muted)' }}>Quick Log Record</span>
+              <span className="flex items-center ml-2" style={{ color: 'var(--text-muted)' }}>{t('bentoQuickLog')}</span>
             </div>
           </motion.a>
 
@@ -163,11 +165,11 @@ export default function BentoFeatures() {
               </div>
               <div className="space-y-2">
                 <h3 className="text-2xl md:text-3xl font-bold flex items-center justify-between" style={{ color: 'var(--text-primary)' }}>
-                  Interactive Insights
+                  {t('bentoInsightsTitle')}
                   <ArrowUpRight className="w-5 h-5 text-zinc-400 group-hover:text-accent-purple transition-colors" />
                 </h3>
                 <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  Filter, slice, and review records in real-time. Chart calculations are computed client-side, returning immediate layouts without API fetches.
+                  {t('bentoInsightsDesc')}
                 </p>
               </div>
             </div>
@@ -212,7 +214,7 @@ export default function BentoFeatures() {
                 />
               </svg>
               <div className="absolute top-1 right-6 glass-card px-1.5 py-0.5 rounded text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                Peak: +₹1,420
+                {t('peakAmount')}
               </div>
             </div>
           </motion.a>
@@ -232,10 +234,10 @@ export default function BentoFeatures() {
               </div>
               <div className="space-y-2">
                 <h3 className="text-2xl md:text-3xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  Zero-Knowledge Security
+                  {t('bentoSecurityTitle')}
                 </h3>
                 <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  All backups are encrypted with your SHA-256 hashed private key before uploading. Our server administrators cannot read, decode, or analyze your files under any circumstance.
+                  {t('bentoSecurityDesc')}
                 </p>
               </div>
             </div>
@@ -243,12 +245,12 @@ export default function BentoFeatures() {
             {/* Cryptographic key visual */}
             <div className="mt-8 space-y-2 p-4 rounded-2xl font-mono text-xs" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
               <div className="flex items-center justify-between text-zinc-500 text-xs">
-                <span>CIPHER METHOD</span>
+                <span>{t('cipherMethod')}</span>
                 <span className="text-accent-cyan font-bold">AES-256-CBC</span>
               </div>
               <div className="flex items-center gap-2 truncate">
                 <Key className="w-3.5 h-3.5 text-accent-cyan flex-shrink-0" />
-                <span className="truncate">Key Hash: 7c5f82b138e64b8593a11b66b2a0915f013d31ff4f5e717e30d6bfcf617d6</span>
+                <span className="truncate">{t('keyHash')} 7c5f82b138e64b8593a11b66b2a0915f013d31ff4f5e717e30d6bfcf617d6</span>
               </div>
               <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--border)' }}>
                 <div className="h-full bg-accent-cyan w-full rounded-full" />

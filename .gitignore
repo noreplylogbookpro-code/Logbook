@@ -11,6 +11,8 @@ jspm_packages/
 
 # Databases & local storage
 *.db
+*.db~
+*~
 server_users.db
 server_logs.db
 users.db

@@ -15,6 +15,38 @@ const logsDb = Datastore.create({
     autoload: true
 });
 
+// Set auto-compaction interval to 5 minutes (300,000 ms)
+// NeDB will safely serialize and execute compaction in the background
+db.setAutocompactionInterval(300000);
+logsDb.setAutocompactionInterval(300000);
+
+// Log compaction events and catch errors to prevent unhandled promise rejections
+db.on('compaction.done', (err) => {
+    if (err) {
+        console.error('Compaction error on server_users.db:', err);
+    } else {
+        console.log('Compaction completed on server_users.db');
+    }
+});
+
+logsDb.on('compaction.done', (err) => {
+    if (err) {
+        console.error('Compaction error on server_logs.db:', err);
+    } else {
+        console.log('Compaction completed on server_logs.db');
+    }
+});
+
+// Override manual compactDatafile with a safe no-op callback caller.
+// Since NeDB handles compaction automatically via the interval set above,
+// manual compaction on every single write is unnecessary and causes I/O bottlenecks.
+db.compactDatafile = (callback) => {
+    if (typeof callback === 'function') process.nextTick(() => callback(null));
+};
+logsDb.compactDatafile = (callback) => {
+    if (typeof callback === 'function') process.nextTick(() => callback(null));
+};
+
 module.exports = {
     db,
     logsDb

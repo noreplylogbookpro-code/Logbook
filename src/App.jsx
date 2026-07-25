@@ -8,16 +8,41 @@ import LoginView from './components/LoginView.jsx';
 import DashboardView from './components/DashboardView.jsx';
 import MasterView from './components/MasterView.jsx';
 import DevPortalView from './components/DevPortalView.jsx';
-import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useTheme } from './useTheme.js';
+import { useLanguage, LanguageProvider } from './useLanguage.js';
 
-export default function App() {
+function AppContent() {
+  const { language, setLanguage, t, languages } = useLanguage();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const [subscribed, setSubscribed] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLanguageDropdownOpen) return;
+
+    const handleOutsideClick = (e) => {
+      const selector = document.getElementById('language-selector');
+      const dropdown = document.getElementById('language-dropdown');
+      if (
+        selector && !selector.contains(e.target) &&
+        dropdown && !dropdown.contains(e.target)
+      ) {
+        setIsLanguageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [isLanguageDropdownOpen]);
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -67,7 +92,7 @@ export default function App() {
         shouldRedirect = true;
       }
     }
-    
+
     if (localStorage.getItem('masterToken')) {
       localStorage.removeItem('masterToken');
       if (cleanPath === 'dev' || cleanPath === 'master') {
@@ -93,7 +118,7 @@ export default function App() {
         localStorage.removeItem('authToken');
         setIsLoggedIn(false);
         navigate('/app/');
-        alert('You have been logged out due to inactivity.');
+        alert(t('inactivityLogout'));
       }, INACTIVITY_TIMEOUT);
     };
 
@@ -195,6 +220,55 @@ export default function App() {
             </a>
 
             <div className="flex items-center gap-2">
+              {/* Language Selector */}
+              <div className="relative">
+                <button
+                  id="language-selector"
+                  onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                  className="p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <Globe className="w-4 h-4" />
+                </button>
+                {isLanguageDropdownOpen && (
+                  <div
+                    id="language-dropdown"
+                    className="absolute right-0 top-full mt-2 w-48 border rounded-xl shadow-lg p-1.5 z-[60] max-h-60 overflow-y-auto backdrop-blur-md"
+                    style={{
+                      background: 'var(--bg-input)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLanguage(lang.code);
+                          setIsLanguageDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-between ${
+                          language === lang.code ? 'font-bold' : ''
+                        }`}
+                        style={{
+                          background: language === lang.code ? 'var(--border)' : 'transparent',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
+                        <span>{lang.name}</span>
+                        {language === lang.code && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent-blue to-accent-purple" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Theme Toggle */}
               <button
                 id="theme-toggle"
@@ -238,15 +312,15 @@ export default function App() {
                       href="/app/dashboard/"
                       className="px-4 py-2 rounded-lg text-xs font-semibold transition-all w-full md:w-auto text-center"
                       style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                    >Dashboard</a>
+                    >{t('dashboard')}</a>
                     <button
                       onClick={() => { localStorage.removeItem('authToken'); setIsLoggedIn(false); navigate('/app/'); }}
                       className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 w-full md:w-auto"
-                    >Sign Out</button>
+                    >{t('signOut')}</button>
                   </>
                 )
               ) : (
-                <a href="/app/" className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-accent-blue to-accent-purple text-white w-full md:w-auto text-center">Launch Console</a>
+                <a href="/app/" className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-accent-blue to-accent-purple text-white w-full md:w-auto text-center">{t('launchConsole')}</a>
               )}
             </div>
           </div>
@@ -262,9 +336,9 @@ export default function App() {
               borderColor: 'var(--border)',
             }}>
               <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
-                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">Ready to take control?</h3>
+                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
                 <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-medium bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-xl hover:scale-[1.02] transition-all">
-                  {isLoggedIn ? "Go to Dashboard" : "Access your backups"}
+                  {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </a>
               </div>
@@ -307,7 +381,7 @@ export default function App() {
               </a>
 
               <p className="text-sm leading-relaxed max-w-sm" style={{ color: 'var(--text-muted)' }}>
-                Secure, local-first backup management and zero-latency expense intelligence for modern teams and individual builders.
+                {t('brandDesc')}
               </p>
 
               {/* Status Bar */}
@@ -319,23 +393,23 @@ export default function App() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span>All systems fully operational</span>
+                <span>{t('allSystemsOperational')}</span>
               </div>
 
               {/* Newsletter */}
               <div className="space-y-3 pt-2">
-                <h5 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Stay Secure</h5>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Subscribe to vulnerability reports and security patches.</p>
+                <h5 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('staySecure')}</h5>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('subscribeDesc')}</p>
                 {subscribed ? (
                   <div className="p-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center gap-2 max-w-sm animate-fade-in">
                     <ShieldCheck className="w-4 h-4 flex-shrink-0" />
-                    <span>Subscribed! Check {newsletterEmail} for updates.</span>
+                    <span>{t('subscribedMsg').replace('{email}', newsletterEmail)}</span>
                   </div>
                 ) : (
                   <form onSubmit={handleSubscribe} className="flex gap-2 max-w-sm">
                     <input
                       type="email"
-                      placeholder="Enter your email..."
+                      placeholder={t('emailPlaceholder')}
                       value={newsletterEmail}
                       onChange={(e) => setNewsletterEmail(e.target.value)}
                       className="input-unified flex-grow min-w-0 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue transition-colors"
@@ -345,7 +419,7 @@ export default function App() {
                       type="submit"
                       className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold hover:opacity-90 transition-all"
                     >
-                      Join
+                      {t('join')}
                     </button>
                   </form>
                 )}
@@ -355,39 +429,39 @@ export default function App() {
             {/* Links Grid */}
             <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-8 text-left">
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-blue pl-2.5" style={{ color: 'var(--text-primary)' }}>Product</h4>
+                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-blue pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerProduct')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/" className="hover:text-accent-blue transition-colors">Features</a></li>
-                  <li><a href="/pricing/" className="hover:text-accent-blue transition-colors">Pricing</a></li>
-                  <li><a href="/security/" className="hover:text-accent-blue transition-colors">Security Policy</a></li>
-                  <li><a href="/changelog/" className="hover:text-accent-blue transition-colors">Changelog</a></li>
+                  <li><a href="/" className="hover:text-accent-blue transition-colors">{t('features')}</a></li>
+                  <li><a href="/pricing/" className="hover:text-accent-blue transition-colors">{t('pricing')}</a></li>
+                  <li><a href="/security/" className="hover:text-accent-blue transition-colors">{t('securityPolicy')}</a></li>
+                  <li><a href="/changelog/" className="hover:text-accent-blue transition-colors">{t('changelog')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-purple pl-2.5" style={{ color: 'var(--text-primary)' }}>Company</h4>
+                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-purple pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerCompany')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/about/" className="hover:text-accent-purple transition-colors">About Us</a></li>
-                  <li><a href="/blog/" className="hover:text-accent-purple transition-colors">Tech Blog</a></li>
-                  <li><a href="/careers/" className="hover:text-accent-purple transition-colors">Careers</a></li>
-                  <li><a href="/contact/" className="hover:text-accent-purple transition-colors">Contact Sales</a></li>
+                  <li><a href="/about/" className="hover:text-accent-purple transition-colors">{t('aboutUs')}</a></li>
+                  <li><a href="/blog/" className="hover:text-accent-purple transition-colors">{t('techBlog')}</a></li>
+                  <li><a href="/careers/" className="hover:text-accent-purple transition-colors">{t('careers')}</a></li>
+                  <li><a href="/contact/" className="hover:text-accent-purple transition-colors">{t('contactSales')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-cyan pl-2.5" style={{ color: 'var(--text-primary)' }}>Support</h4>
+                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-cyan pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerSupport')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/help-center/" className="hover:text-accent-cyan transition-colors">Help Center</a></li>
-                  <li><a href="/documentation/" className="hover:text-accent-cyan transition-colors">API Docs</a></li>
-                  <li><a href="/community/" className="hover:text-accent-cyan transition-colors">Discord</a></li>
-                  <li><a href="/status/" className="hover:text-accent-cyan transition-colors">Status</a></li>
+                  <li><a href="/help-center/" className="hover:text-accent-cyan transition-colors">{t('helpCenter')}</a></li>
+                  <li><a href="/documentation/" className="hover:text-accent-cyan transition-colors">{t('apiDocs')}</a></li>
+                  <li><a href="/community/" className="hover:text-accent-cyan transition-colors">{t('discord')}</a></li>
+                  <li><a href="/status/" className="hover:text-accent-cyan transition-colors">{t('status')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-pink pl-2.5" style={{ color: 'var(--text-primary)' }}>Legal</h4>
+                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-pink pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerLegal')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/terms/" className="hover:text-accent-pink transition-colors">Terms of Use</a></li>
-                  <li><a href="/privacy/" className="hover:text-accent-pink transition-colors">Privacy Policy</a></li>
-                  <li><a href="/refund/" className="hover:text-accent-pink transition-colors">Refund Policy</a></li>
-                  <li><a href="/cloud-backup-policy/" className="hover:text-accent-pink transition-colors">Backup Policy</a></li>
+                  <li><a href="/terms/" className="hover:text-accent-pink transition-colors">{t('termsOfUse')}</a></li>
+                  <li><a href="/privacy/" className="hover:text-accent-pink transition-colors">{t('privacyPolicy')}</a></li>
+                  <li><a href="/refund/" className="hover:text-accent-pink transition-colors">{t('refundPolicy')}</a></li>
+                  <li><a href="/cloud-backup-policy/" className="hover:text-accent-pink transition-colors">{t('backupPolicy')}</a></li>
                 </ul>
               </div>
             </div>
@@ -399,14 +473,14 @@ export default function App() {
             style={{ borderColor: 'var(--border)' }}
           >
             <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span>Download app:</span>
+              <span>{t('downloadApp')}</span>
               <a href="https://play.google.com/store/apps/details?id=com.logbookplus" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 hover:text-emerald-400 hover:border-emerald-400/30 hover:scale-110"
                 style={{ border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-muted)' }}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <title>Google Play</title>
-                  <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/>
+                  <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6 l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
                 </svg>
               </a>
             </div>
@@ -422,7 +496,7 @@ export default function App() {
                 style={{ border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-muted)' }}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.094 13.094 0 0 1-1.873-.894.077.077 0 0 1-.008-.128c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.011c3.92 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .078.009c.12.099.246.195.373.289a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.156 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.156 2.418z"/>
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.094 13.094 0 0 1-1.873-.894.077.077 0 0 1-.008-.128c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.011c3.92 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .078.009c.12.099.246.195.373.289a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.156 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.156 2.418z" />
                 </svg>
               </a>
             </div>
@@ -433,16 +507,24 @@ export default function App() {
             className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center text-xs gap-4 relative z-10"
             style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
           >
-            <span>&copy; {new Date().getFullYear()} Logbook Plus. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} Logbook Plus. {t('allRightsReserved')}</span>
             <div className="flex items-center gap-4 font-mono">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                AES-256 Private Backup Protocol
+                {t('aesProtocol')}
               </span>
             </div>
           </div>
         </footer>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 }

@@ -5,6 +5,7 @@ import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle, 
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity
 } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
@@ -29,6 +30,7 @@ const AVATARS = [
 ];
 
 export default function DashboardView({ onNavigate }) {
+  const { t } = useLanguage();
   // Stats states
   const [profile, setProfile] = useState({ name: 'User', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
   const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 240 });
@@ -498,9 +500,9 @@ export default function DashboardView({ onNavigate }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
         <div className="text-left">
           <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
-            Welcome, <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">{profile.name}</span>
+            {t('welcome')} <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">{profile.name}</span>
           </h1>
-          <p className="text-xs text-zinc-500 mt-1">Console Session: {profile.email} • Plan: {license.licenseType}</p>
+          <p className="text-xs text-zinc-500 mt-1">{t('consoleSession')}: {profile.email} • {t('planLabel')}: {license.licenseType}</p>
         </div>
 
         {(() => {
@@ -513,7 +515,7 @@ export default function DashboardView({ onNavigate }) {
                 className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/5 text-sm text-zinc-800 dark:text-white hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
               >
                 {renderAvatar("w-7 h-7")}
-                <span>Account Manager</span>
+                <span>{t('accountManager')}</span>
                 <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -526,17 +528,17 @@ export default function DashboardView({ onNavigate }) {
                     className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
                   >
                     {[
-                      { label: 'Edit Profile', icon: User, action: () => { 
+                      { label: t('editProfile'), icon: User, action: () => { 
                         setEditName(profile.name || '');
                         setSelectedAvatarIndex(profile.profilePicIndex || 0);
                         setSelectedAvatarFile(null);
                         setActiveModal('profile'); 
                         setMenuOpen(false); 
                       } },
-                      { label: 'Change Password', icon: Key, action: () => { setActiveModal('password'); setMenuOpen(false); } },
-                      { label: 'Security Question', icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
-                      { label: '2FA Authenticator', icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
-                      { label: 'Billing Settings', icon: CreditCard, action: () => { setActiveModal('billing'); setMenuOpen(false); } },
+                      { label: t('changePassword'), icon: Key, action: () => { setActiveModal('password'); setMenuOpen(false); } },
+                      { label: t('securityQuestionMenu'), icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
+                      { label: t('twoFactorAuth'), icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
+                      { label: t('billingSettings'), icon: CreditCard, action: () => { setActiveModal('billing'); setMenuOpen(false); } },
                     ].map((item) => (
                       <button
                         key={item.label}
@@ -553,7 +555,7 @@ export default function DashboardView({ onNavigate }) {
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-505 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
-                      Logout Session
+                      {t('logoutSession')}
                     </button>
                   </motion.div>
                 )}
@@ -569,7 +571,7 @@ export default function DashboardView({ onNavigate }) {
         <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center gap-3 text-left">
           <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-bounce" />
           <p>
-            Warning: Vault quota usage is high ({stats.storageUsedMB.toFixed(1)} / {limitQuota} MB). Older log sync files may be automatically rotated.
+            {t('warningQuota')} ({stats.storageUsedMB.toFixed(1)} / {limitQuota} MB). {t('oldFilesRotated')}
           </p>
         </div>
       )}
@@ -577,17 +579,17 @@ export default function DashboardView({ onNavigate }) {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { title: 'Total Backups', value: `${stats.totalBackups} / ${license.maxBackups || 3}`, desc: 'Active cloud backup archives' },
-          { title: 'Storage Used', value: `${stats.storageUsedMB.toFixed(2)} / ${limitQuota} MB`, desc: 'Allocated storage space' },
+          { title: t('totalBackups'), value: `${stats.totalBackups} / ${license.maxBackups || 3}`, desc: t('activeArchives') },
+          { title: t('storageUsed'), value: `${stats.storageUsedMB.toFixed(2)} / ${limitQuota} MB`, desc: t('allocatedStorage') },
           { 
-            title: 'Last Backup', 
+            title: t('lastBackup'), 
             value: backups.length > 0 ? new Date(backups[0].time).toLocaleDateString() : '—', 
-            desc: backups.length > 0 ? new Date(backups[0].time).toLocaleTimeString() : 'No files synchronized'
+            desc: backups.length > 0 ? new Date(backups[0].time).toLocaleTimeString() : t('noFilesSynced')
           },
           { 
-            title: 'Vault Security', 
-            value: profile.twoFactorEnabled ? '2FA Secured' : 'Credentials Only', 
-            desc: profile.twoFactorEnabled ? 'High security verification' : '2FA is disabled' 
+            title: t('vaultSecurity'), 
+            value: profile.twoFactorEnabled ? t('twoFaSecured') : t('credentialsOnly'), 
+            desc: profile.twoFactorEnabled ? t('highSecVerification') : t('twoFaDisabled') 
           }
         ].map((card, idx) => (
           <div key={idx} className="p-5 rounded-2xl bg-white dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-left space-y-1.5 relative overflow-hidden shadow-sm dark:shadow-none">
@@ -608,8 +610,8 @@ export default function DashboardView({ onNavigate }) {
               <FolderOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">Encrypted Storage Vault</h2>
-              <p className="text-xs text-zinc-500">AES-256 cloud synchronized backup targets</p>
+              <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">{t('encryptedVault')}</h2>
+              <p className="text-xs text-zinc-500">{t('vaultSubtitle')}</p>
             </div>
           </div>
 
@@ -620,7 +622,7 @@ export default function DashboardView({ onNavigate }) {
               className="btn-danger-unified"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Purge Vault
+              {t('purgeVault')}
             </button>
           </div>
         </div>
@@ -630,8 +632,8 @@ export default function DashboardView({ onNavigate }) {
           <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
             <FolderOpen className="w-12 h-12 text-zinc-700" />
             <div className="space-y-1">
-              <p className="text-xs text-zinc-400 font-semibold">No synchronized backup vault found.</p>
-              <p className="text-[10px] text-zinc-600">Export backup files from the mobile app to sync them.</p>
+              <p className="text-xs text-zinc-400 font-semibold">{t('noBackups')}</p>
+              <p className="text-[10px] text-zinc-600">{t('noBackupsDesc')}</p>
             </div>
           </div>
         ) : (
@@ -645,7 +647,7 @@ export default function DashboardView({ onNavigate }) {
                   <div>
                     <h5 className="text-sm font-bold text-zinc-800 dark:text-white break-all max-w-sm">{b.name}</h5>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5 block">
-                      Size: {b.size} • Synced: {new Date(b.time).toLocaleString()}
+                      {t('size')} {b.size} • {t('synced')} {new Date(b.time).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -656,14 +658,14 @@ export default function DashboardView({ onNavigate }) {
                     className="flex-grow sm:flex-grow-0 btn-secondary-unified"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Download
+                    {t('download')}
                   </button>
                   <button
                     onClick={() => handleDeleteBackup(b.name)}
                     className="flex-grow sm:flex-grow-0 btn-danger-unified"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Delete
+                    {t('delete')}
                   </button>
                 </div>
               </div>
@@ -678,7 +680,7 @@ export default function DashboardView({ onNavigate }) {
         <div className="md:col-span-6 card-unified dark:bg-zinc-950/40">
           <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
             <Activity className="w-3.5 h-3.5" />
-            Console activity log
+            {t('consoleActivityLog')}
           </span>
           <div className="h-48 overflow-y-auto font-mono text-xs text-zinc-700 dark:text-zinc-300 space-y-1.5 pr-2 custom-scrollbar">
             {activities.map((act, index) => (
@@ -694,16 +696,16 @@ export default function DashboardView({ onNavigate }) {
         <div className="md:col-span-6 card-unified dark:bg-zinc-950/40">
           <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 pl-1 mb-3">
             <Server className="w-3.5 h-3.5 text-accent-cyan" />
-            Self-Hosted Sync Relays
+            {t('selfHostedRelays')}
           </span>
           <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
-            By running a private Logbook Plus WebDAV endpoint target on your own network storage, backups syncd from your device will bypass our servers entirely.
+            {t('selfHostedRelaysDesc')}
           </p>
           <button 
             onClick={() => onNavigate('/documentation/')}
             className="w-full btn-secondary-unified"
           >
-            Review Setup Instructions
+            {t('reviewSetupInstructions')}
           </button>
         </div>
       </div>
@@ -722,11 +724,11 @@ export default function DashboardView({ onNavigate }) {
 
               <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
-                  {activeModal === 'profile' && 'Edit Profile'}
-                  {activeModal === 'password' && 'Change Password'}
-                  {activeModal === 'securityQ' && 'Configure Security Recovery'}
-                  {activeModal === 'mfa' && '2FA Authenticator Settings'}
-                  {activeModal === 'billing' && 'Billing & Quota Settings'}
+                  {activeModal === 'profile' && t('modalEditProfile')}
+                  {activeModal === 'password' && t('modalChangePassword')}
+                  {activeModal === 'securityQ' && t('modalSecurityRecovery')}
+                  {activeModal === 'mfa' && t('modal2faSettings')}
+                  {activeModal === 'billing' && t('modalBillingSettings')}
                 </h3>
                 <button 
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
@@ -752,19 +754,19 @@ export default function DashboardView({ onNavigate }) {
               {activeModal === 'profile' && (
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Display Name</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('displayName')}</label>
                     <input 
                       type="text" 
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Your Name" 
+                      placeholder={t('yourNamePlaceholder')} 
                       className="input-unified"
                       required
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Profile Picture</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('profilePicture')}</label>
                     
                     {/* Current avatar preview and custom upload */}
                     <div className="flex items-center gap-4 p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-white/5">
@@ -805,14 +807,14 @@ export default function DashboardView({ onNavigate }) {
                       </div>
 
                       <div className="flex flex-col gap-1.5 text-left">
-                        <span className="text-[10px] text-zinc-500 font-semibold">Custom Image Upload</span>
+                        <span className="text-[10px] text-zinc-500 font-semibold">{t('customImageUpload')}</span>
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => avatarInputRef.current?.click()}
                             className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 cursor-pointer"
                           >
-                            Choose File
+                            {t('chooseFile')}
                           </button>
                           {/* If they have a custom avatar uploaded (not failed) or selected a file, show remove button to revert to presets */}
                           {((profile.userId && !avatarFailed) || selectedAvatarFile) && (
@@ -824,7 +826,7 @@ export default function DashboardView({ onNavigate }) {
                               }}
                               className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs font-semibold text-red-500 dark:text-red-400 cursor-pointer border border-red-500/10"
                             >
-                              Reset to Preset
+                              {t('resetToPreset')}
                             </button>
                           )}
                         </div>
@@ -845,7 +847,7 @@ export default function DashboardView({ onNavigate }) {
 
                     {/* Grid of presets */}
                     <div className="space-y-1.5 text-left">
-                      <span className="text-[9px] font-bold text-zinc-500 uppercase pl-1">Or choose a preset theme</span>
+                      <span className="text-[9px] font-bold text-zinc-500 uppercase pl-1">{t('orChoosePreset')}</span>
                       <div className="grid grid-cols-5 gap-2.5 p-3.5 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-200 dark:border-white/5">
                         {AVATARS.map((av, index) => {
                           const isSelected = selectedAvatarIndex === index;
@@ -878,7 +880,7 @@ export default function DashboardView({ onNavigate }) {
                     disabled={loading}
                     className="w-full btn-primary-unified"
                   >
-                    {loading ? 'Saving Changes...' : 'Save Settings'}
+                    {loading ? t('savingChanges') : t('saveSettings')}
                   </button>
                 </form>
               )}
@@ -887,7 +889,7 @@ export default function DashboardView({ onNavigate }) {
               {activeModal === 'password' && (
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Current Password</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('currentPassword')}</label>
                     <input 
                       type="password" 
                       value={currPassword}
@@ -899,7 +901,7 @@ export default function DashboardView({ onNavigate }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">New Password</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('newPassword')}</label>
                     <input 
                       type="password" 
                       value={newPassword}
@@ -915,7 +917,7 @@ export default function DashboardView({ onNavigate }) {
                     disabled={loading}
                     className="w-full btn-primary-unified"
                   >
-                    {loading ? 'Changing keys...' : 'Update Password'}
+                    {loading ? t('changingKeys') : t('updatePassword')}
                   </button>
                 </form>
               )}
@@ -924,25 +926,27 @@ export default function DashboardView({ onNavigate }) {
               {activeModal === 'securityQ' && (
                 <form onSubmit={handleSaveSecurityQuestion} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Security Question</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('securityQuestion')}</label>
                     <select 
                       value={secQuestion}
                       onChange={(e) => setSecQuestion(e.target.value)}
                       className="select-unified"
                     >
-                      {SECURITY_QUESTIONS.map(q => (
-                        <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">{q}</option>
+                      {SECURITY_QUESTIONS.map((q, idx) => (
+                        <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">
+                          {t('securityQuestion' + (idx + 1))}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Secret Answer</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('secretAnswer')}</label>
                     <input 
                       type="text" 
                       value={secAnswer}
                       onChange={(e) => setSecAnswer(e.target.value)}
-                      placeholder="Your secret answer" 
+                      placeholder={t('secretAnswerPlaceholder')} 
                       className="input-unified"
                       required
                     />
@@ -953,7 +957,7 @@ export default function DashboardView({ onNavigate }) {
                     disabled={loading}
                     className="w-full btn-primary-unified"
                   >
-                    {loading ? 'Saving recovery option...' : 'Save Recovery Option'}
+                    {loading ? t('savingRecoveryOption') : t('saveRecoveryOption')}
                   </button>
                 </form>
               )}
@@ -965,7 +969,7 @@ export default function DashboardView({ onNavigate }) {
                     // Enable flow
                     <div className="space-y-4">
                       <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                        Secure account entry with 2FA tokens. Scan QR code using Google Authenticator or Aegis.
+                        {t('mfaSetupInstructions')}
                       </p>
 
                       {mfaQrUrl && (
@@ -982,7 +986,7 @@ export default function DashboardView({ onNavigate }) {
                       <form onSubmit={handleMfaVerifyEnable} className="space-y-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1 text-center">
-                            Enter 6-Digit Authenticator Code
+                            {t('enterMfaCode')}
                           </label>
                           <input 
                             type="text" 
@@ -1001,7 +1005,7 @@ export default function DashboardView({ onNavigate }) {
                           disabled={loading}
                           className="w-full btn-primary-unified"
                         >
-                          Enable Authenticator
+                          {t('enableAuthenticator')}
                         </button>
                       </form>
                     </div>
@@ -1009,23 +1013,23 @@ export default function DashboardView({ onNavigate }) {
                     // Disable flow
                     <form onSubmit={handleMfaDisable} className="space-y-4">
                       <p className="text-xs text-red-400 leading-relaxed">
-                        Warning: Deactivating Two-Factor authentication reduces storage vault security.
+                        {t('mfaDisableWarning')}
                       </p>
                       
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Confirm password</label>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('confirmPassword')}</label>
                         <input 
                           type="password" 
                           value={mfaDisablePwd}
                           onChange={(e) => setMfaDisablePwd(e.target.value)}
-                          placeholder="Your account password" 
+                          placeholder={t('confirmPasswordPlaceholder')} 
                           className="input-unified"
                           required
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Authenticator Code</label>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('authenticatorCode')}</label>
                         <input 
                           type="text" 
                           value={mfaDisableCode}
@@ -1043,7 +1047,7 @@ export default function DashboardView({ onNavigate }) {
                         disabled={loading}
                         className="w-full btn-danger-unified"
                       >
-                        Deactivate 2FA
+                        {t('deactivateMfa')}
                       </button>
                     </form>
                   )}
@@ -1055,15 +1059,15 @@ export default function DashboardView({ onNavigate }) {
                 <div className="space-y-4 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                   <div className="p-4 rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-950/60 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-zinc-800 dark:text-white">Active Plan</span>
+                      <span className="font-semibold text-zinc-800 dark:text-white">{t('activePlan')}</span>
                       <span className="px-2 py-0.5 bg-blue-500/10 text-accent-blue rounded-full border border-blue-500/20 font-bold uppercase text-[9px]">{license.licenseType}</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-zinc-200 dark:border-white/5 pt-3">
-                      <span>Max Backups Allowed</span>
-                      <span className="font-mono text-zinc-800 dark:text-white font-bold">{license.maxBackups} Vault Slots</span>
+                      <span>{t('maxBackupsAllowed')}</span>
+                      <span className="font-mono text-zinc-800 dark:text-white font-bold">{license.maxBackups} {t('vaultSlots')}</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-zinc-200 dark:border-white/5 pt-3">
-                      <span>Total Quota Limit</span>
+                      <span>{t('totalQuotaLimit')}</span>
                       <span className="font-mono text-zinc-800 dark:text-white font-bold">{limitQuota} MB</span>
                     </div>
                   </div>
@@ -1073,7 +1077,7 @@ export default function DashboardView({ onNavigate }) {
                       onClick={handleCancelSubscription}
                       className="w-full btn-danger-unified"
                     >
-                      Cancel Cloud Subscription
+                      {t('cancelSubscription')}
                     </button>
                   )}
                 </div>

@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Shield, ArrowRight, Zap, Database, Lock, EyeOff } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 function MagneticButton({ children, className, href }) {
   const ref = useRef(null);
@@ -45,6 +46,7 @@ function MagneticButton({ children, className, href }) {
 }
 
 export default function Hero() {
+  const { t } = useLanguage();
   const fadeUpVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: (custom) => ({
@@ -81,7 +83,7 @@ export default function Hero() {
             className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-card text-xs font-semibold text-accent-blue tracking-wide uppercase border border-blue-500/20"
           >
             <Shield className="w-3.5 h-3.5" />
-            <span>Local-first · Zero vendor lock</span>
+            <span>{t('heroBadge')}</span>
           </motion.div>
 
           {/* Title */}
@@ -92,9 +94,8 @@ export default function Hero() {
             variants={fadeUpVariants}
             className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] md:leading-[1.05]" style={{ color: 'var(--text-primary)' }}
           >
-            Expense intelligence <br />
             <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-pink bg-clip-text text-transparent">
-              that stays yours.
+              {t('heroTitle')}
             </span>
           </motion.h1>
 
@@ -106,7 +107,7 @@ export default function Hero() {
             variants={fadeUpVariants}
             className="text-base sm:text-lg max-w-xl leading-relaxed" style={{ color: 'var(--text-muted)' }}
           >
-            Logbook Plus combines client‑side encryption, multi‑policy automated backups, and instant cross-device synchronization — all securely anchored on your own private cloud storage.
+            {t('heroSubtitle')}
           </motion.p>
 
           {/* CTA & Actions */}
@@ -121,7 +122,7 @@ export default function Hero() {
               href="/app/"
               className="px-8 py-4 rounded-xl font-medium text-white shadow-[0_0_20px_rgba(96,165,250,0.3)] bg-gradient-to-r from-accent-blue to-accent-purple border border-white/20 hover:shadow-[0_0_30px_rgba(192,132,252,0.5)] transition-shadow duration-300"
             >
-              Start managing expenses
+              {t('heroCta')}
               <ArrowRight className="w-4 h-4 ml-2" />
             </MagneticButton>
 
@@ -129,7 +130,7 @@ export default function Hero() {
               href="/documentation/"
               className="px-6 py-4 rounded-xl font-medium glass-card hover:bg-white/5 transition-all text-center flex items-center justify-center gap-2" style={{ color: 'var(--text-secondary)' }}
             >
-              Read Docs
+              {t('readDocs')}
             </a>
           </motion.div>
 
@@ -143,15 +144,15 @@ export default function Hero() {
           >
             <div className="flex flex-col">
               <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>100%</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Encrypted Client-side</span>
+              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statEncrypted')}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>3x</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Backup Redundancy</span>
+              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statRedundancy')}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>24/7</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>Private Cloud Sync</span>
+              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statCloudSync')}</span>
             </div>
           </motion.div>
         </div>
@@ -170,7 +171,7 @@ export default function Hero() {
               <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="text-[10px] ml-2 font-mono" style={{ color: 'var(--text-muted)' }}>logbook-dashboard v2.1</span>
+              <span className="text-[10px] ml-2 font-mono" style={{ color: 'var(--text-muted)' }}>{t('mockupTitle')}</span>
             </div>
 
             {/* Fake layout */}
@@ -178,16 +179,16 @@ export default function Hero() {
               <div className="h-6 w-24 rounded-md" style={{ background: 'var(--bg-input)' }} />
               <div className="grid grid-cols-3 gap-2">
                 <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Monthly Spend</span>
+                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('monthlySpend')}</span>
                   <span className="text-xs font-semibold text-accent-blue">₹2,481.50</span>
                 </div>
                 <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Local Cache</span>
-                  <span className="text-xs font-semibold text-accent-purple">Active</span>
+                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('localCache')}</span>
+                  <span className="text-xs font-semibold text-accent-purple">{t('active')}</span>
                 </div>
                 <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Sync Status</span>
-                  <span className="text-xs font-semibold text-emerald-400">Secure</span>
+                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('syncStatus')}</span>
+                  <span className="text-xs font-semibold text-emerald-400">{t('secure')}</span>
                 </div>
               </div>
               <div className="space-y-2">
@@ -195,15 +196,15 @@ export default function Hero() {
                   <div className="h-full bg-gradient-to-r from-accent-blue to-accent-purple w-2/3" />
                 </div>
                 <div className="flex justify-between text-[8px]" style={{ color: 'var(--text-muted)' }}>
-                  <span>Quota Utilized: 160MB</span>
-                  <span>Limit: 240MB</span>
+                  <span>{t('quotaUtilizedHero')}</span>
+                  <span>{t('quotaLimitHero')}</span>
                 </div>
               </div>
               {/* Fake logs list */}
               <div className="space-y-1.5">
                 {[
-                  { desc: 'AWS Server Infrastructure Backup', amount: '-₹120.00', cat: 'Server', time: 'Just now' },
-                  { desc: 'Vercel Pro Subscription', amount: '-₹20.00', cat: 'Hosting', time: '12m ago' }
+                  { desc: t('mockAwsBackup'), amount: '-₹120.00', cat: t('categoryServer'), time: t('justNow') },
+                  { desc: t('mockVercelSubscription'), amount: '-₹20.00', cat: t('categoryHosting'), time: t('twelveMinsAgo') }
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between p-2 rounded-lg text-[10px]" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                     <div className="flex flex-col">
@@ -228,8 +229,8 @@ export default function Hero() {
               <Lock className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Private Database</span>
-              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>Encrypted on device</span>
+              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{t('floatPrivateDb')}</span>
+              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('floatEncryptedDevice')}</span>
             </div>
           </motion.div>
 
@@ -244,15 +245,15 @@ export default function Hero() {
               <Zap className="w-4 h-4" />
             </div>
             <div className="flex flex-col font-sans">
-              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Zero-Latency Cache</span>
-              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>12ms response time</span>
+              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{t('floatZeroLatency')}</span>
+              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('twelveMsResponse')}</span>
             </div>
           </motion.div>
 
           {/* Interactive Floating Indicator */}
           <div className="absolute top-[80%] left-1/4 flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full backdrop-blur-sm pointer-events-none" style={{ color: 'var(--text-muted)', background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-            <span>Interactive sandbox preview</span>
+            <span>{t('interactiveSandbox')}</span>
           </div>
         </div>
 

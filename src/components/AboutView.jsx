@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Cloud, Server, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 export default function AboutView({ onNavigate }) {
+  const { t } = useLanguage();
   const containerVariants = {
     hidden: {},
     visible: {
@@ -35,7 +37,7 @@ export default function AboutView({ onNavigate }) {
             animate={{ opacity: 1, y: 0 }}
             className="text-sm font-semibold text-accent-blue tracking-widest uppercase"
           >
-            Our Philosophy
+            {t('ourPhilosophy')}
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 15 }}
@@ -43,7 +45,7 @@ export default function AboutView({ onNavigate }) {
             transition={{ delay: 0.1 }}
             className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}
           >
-            Sovereign finance tracking in a cloud‑first era.
+            {t('philosophyTitle')}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -51,7 +53,7 @@ export default function AboutView({ onNavigate }) {
             transition={{ delay: 0.2 }}
             className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}
           >
-            Logbook Plus was founded on a simple conviction: you shouldn't have to trade your financial privacy for modern backup convenience. We build beautiful, local-first tools that let you own your logs entirely.
+            {t('philosophySubtitle')}
           </motion.p>
         </div>
 
@@ -67,12 +69,12 @@ export default function AboutView({ onNavigate }) {
               <Shield className="w-8 h-8" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Sovereignty Shield</h3>
-              <p className="text-lg" style={{ color: 'var(--text-muted)' }}>Every byte of data is cryptographically sealed under your private key.</p>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{t('sovereigntyShield')}</h3>
+              <p className="text-lg" style={{ color: 'var(--text-muted)' }}>{t('sovereigntyDesc')}</p>
             </div>
             <div className="w-full h-10 p-2 rounded-xl border text-[13px] font-mono flex items-center gap-2" style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
               <Shield className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <span>AES-256-GCM Secure Connection</span>
+              <span>{t('aesSecureConnection')}</span>
             </div>
           </motion.div>
         </div>
@@ -86,9 +88,9 @@ export default function AboutView({ onNavigate }) {
         className="p-8 md:p-12 rounded-3xl glass-card border mb-20 text-center relative overflow-hidden" style={{ borderColor: 'var(--border)' }}
       >
         <div className="max-w-2xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Our Mission</h2>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('ourMission')}</h2>
           <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            To deliver advanced expense intelligence with zero vendor lock-in. We provide the encryption, storage isolation, and sync protocols — but the keys and servers will always belong to you.
+            {t('missionDesc')}
           </p>
         </div>
       </motion.div>
@@ -96,8 +98,8 @@ export default function AboutView({ onNavigate }) {
       {/* Core Values Section */}
       <div className="space-y-12 mb-20">
         <div className="text-center space-y-3">
-          <h2 className="text-2xl md:text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Our Core Values</h2>
-          <p className="text-lg md:text-xl" style={{ color: 'var(--text-muted)' }}>The principles that direct our design and architectural decisions.</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{t('coreValues')}</h2>
+          <p className="text-lg md:text-xl" style={{ color: 'var(--text-muted)' }}>{t('coreValuesDesc')}</p>
         </div>
 
         <motion.div
@@ -113,9 +115,9 @@ export default function AboutView({ onNavigate }) {
               <Shield className="w-5 h-5" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Absolute Privacy</h3>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{t('valuePrivacyTitle')}</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                No telemetry, no tracking scripts, and no secret analytical monitoring. What you log in Logbook Plus stays between you and your device.
+                {t('valuePrivacyDesc')}
               </p>
             </div>
           </motion.div>
@@ -126,9 +128,9 @@ export default function AboutView({ onNavigate }) {
               <Cloud className="w-5 h-5" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Cloud Security</h3>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{t('valueCloudTitle')}</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Seamless backup auto-sync. Back up your logs to our client-side encrypted cloud vaults, ensuring you maintain absolute key control.
+                {t('valueCloudDesc')}
               </p>
             </div>
           </motion.div>
@@ -139,9 +141,9 @@ export default function AboutView({ onNavigate }) {
               <Server className="w-5 h-5" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Local-First Data</h3>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{t('valueLocalTitle')}</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Never rely on a remote server to load your metrics. All records are stored locally on-device and load instantly even offline.
+                {t('valueLocalDesc')}
               </p>
             </div>
           </motion.div>
@@ -151,20 +153,20 @@ export default function AboutView({ onNavigate }) {
       {/* Philosophy creed */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center rounded-3xl p-6 sm:p-8 md:p-12" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
         <div className="space-y-4 text-left">
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Our Architectural Creed</h2>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('architecturalCreed')}</h2>
           <p className="text-md leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            We reject the modern data-harvesting business model. Most financial applications parse and sell your transactions to credit brokers. Logbook Plus uses strong client-side AES-256 encryption, meaning your logs are mathematically secure before they ever sync.
+            {t('creedDesc1')}
           </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Whether you're organizing daily receipts, managing weekly project accounts, or exporting monthly statements, you are in absolute command.
+            {t('creedDesc2')}
           </p>
         </div>
         <div className="space-y-3.5 text-left">
           {[
-            "Local database with sub-millisecond response times",
-            "Fully customizable storage policy structures (Daily, Weekly, Monthly)",
-            "Seamless token-based administrative sync monitoring",
-            "One-click full recovery using secure question verifications"
+            t('creedItem1'),
+            t('creedItem2'),
+            t('creedItem3'),
+            t('creedItem4')
           ].map((item, index) => (
             <div key={index} className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />

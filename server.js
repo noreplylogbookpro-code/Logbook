@@ -2466,6 +2466,386 @@ app.delete('/api/master/licenses/:id', isMasterAuth, async (req, res) => {
     }
 });
 
+// --- Master Server Backup: Export / Import (.bak) ---
+const zlib = require('zlib');
+
+// Directories and patterns always excluded from backup scans
+const BACKUP_EXCLUDE_DIRS = new Set(['node_modules', '.git', '.idea', '.agents']);
+const BACKUP_EXCLUDE_FILES = new Set([]);
+
+// Category definitions for grouping files in the UI
+const BACKUP_CATEGORIES = [
+    { id: 'databases', label: 'Databases', icon: 'HardDrive', patterns: [/^[^/]+\.db$/] },
+    { id: 'user_data', label: 'User Uploads', icon: 'FolderOpen', prefixes: ['uploads/'] },
+    { id: 'configuration', label: 'Configuration', icon: 'Settings', exact: ['.env'], prefixes: ['google_auth/'] },
+    { id: 'csv_exports', label: 'CSV / Exports', icon: 'FileCheck', patterns: [/^[^/]+\.csv$/] },
+    { id: 'server_code', label: 'Server Code', icon: 'Terminal', exact: ['server.js'], prefixes: ['config/', 'middleware/', 'scripts/'] },
+    { id: 'frontend_source', label: 'Frontend Source', icon: 'Cloud', prefixes: ['src/'] },
+    { id: 'static_assets', label: 'Static Assets', icon: 'FolderOpen', prefixes: ['public/', 'assets/'] },
+    { id: 'project_files', label: 'Project Files', icon: 'BookOpen', exact: ['package.json', 'package-lock.json', 'vite.config.js', 'tailwind.config.js', 'postcss.config.js', '.htaccess', '.gitignore', 'index.html', 'README.md'] },
+];
+
+/**
+ * Recursively scan a directory and return all file paths relative to rootDir.
+ */
+async function scanDirectory(dirPath, rootDir, results = []) {
+    try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (BACKUP_EXCLUDE_DIRS.has(entry.name)) continue;
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                await scanDirectory(fullPath, rootDir, results);
+            } else if (entry.isFile()) {
+                const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+                if (BACKUP_EXCLUDE_FILES.has(relativePath)) continue;
+                try {
+                    const stat = await fs.stat(fullPath);
+                    results.push({
+                        path: relativePath,
+                        size: stat.size,
+                        modified: stat.mtime.toISOString()
+                    });
+                } catch (e) { /* skip inaccessible files */ }
+            }
+        }
+    } catch (e) { /* skip inaccessible directories */ }
+    return results;
+}
+
+/**
+ * Categorize a file into one of the backup categories.
+ */
+function categorizeFile(filePath) {
+    for (const cat of BACKUP_CATEGORIES) {
+        // Check exact matches
+        if (cat.exact && cat.exact.includes(filePath)) return cat.id;
+        // Check prefix matches
+        if (cat.prefixes && cat.prefixes.some(p => filePath.startsWith(p))) return cat.id;
+        // Check pattern matches
+        if (cat.patterns && cat.patterns.some(r => r.test(filePath))) return cat.id;
+    }
+    return null; // Uncategorized files are excluded
+}
+
+/**
+ * GET /api/master/backup/files
+ * Scan the server directory and return a categorized file tree.
+ */
+app.get('/api/master/backup/files', isMasterAuth, async (req, res) => {
+    try {
+        const rootDir = __dirname;
+        const allFiles = await scanDirectory(rootDir, rootDir);
+
+        // Group files by category
+        const categoryMap = {};
+        for (const cat of BACKUP_CATEGORIES) {
+            categoryMap[cat.id] = { id: cat.id, label: cat.label, icon: cat.icon, files: [] };
+        }
+
+        let totalSize = 0;
+        for (const file of allFiles) {
+            const catId = categorizeFile(file.path);
+            if (catId && categoryMap[catId]) {
+                categoryMap[catId].files.push(file);
+                totalSize += file.size;
+            }
+        }
+
+        // Filter out empty categories
+        const categories = Object.values(categoryMap).filter(c => c.files.length > 0);
+
+        res.json({ categories, totalSize });
+    } catch (e) {
+        logServerEvent('critical', `Backup file scan failed: ${e.message}`);
+        res.status(500).json({ error: 'Failed to scan server files' });
+    }
+});
+
+/**
+ * POST /api/master/backup/export
+ * Accepts { files: ["path1", "path2", ...] } and creates an encrypted .bak download.
+ */
+app.post('/api/master/backup/export', isMasterAuth, async (req, res) => {
+    const { files } = req.body;
+    if (!files || !Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ error: 'No files selected for export' });
+    }
+
+    try {
+        const rootDir = __dirname;
+
+        // Validate and collect file data
+        const fileEntries = [];
+        for (const relPath of files) {
+            // Security: prevent path traversal
+            const normalized = path.normalize(relPath).replace(/\\/g, '/');
+            if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+                continue;
+            }
+            const fullPath = path.join(rootDir, normalized);
+            try {
+                const stat = await fs.stat(fullPath);
+                if (stat.isFile()) {
+                    fileEntries.push({ path: normalized, size: stat.size });
+                }
+            } catch (e) { /* skip missing files */ }
+        }
+
+        if (fileEntries.length === 0) {
+            return res.status(400).json({ error: 'No valid files found for export' });
+        }
+
+        // Build the payload: a simple binary format with file headers + data
+        // Format per file: [pathLen:4bytes][path:utf8][dataLen:4bytes][data:bytes]
+        const chunks = [];
+        for (const entry of fileEntries) {
+            const fullPath = path.join(rootDir, entry.path);
+            const fileData = await fs.readFile(fullPath);
+            const pathBuf = Buffer.from(entry.path, 'utf8');
+            const headerBuf = Buffer.alloc(8);
+            headerBuf.writeUInt32BE(pathBuf.length, 0);
+            headerBuf.writeUInt32BE(fileData.length, 4);
+            chunks.push(headerBuf, pathBuf, fileData);
+        }
+        const rawPayload = Buffer.concat(chunks);
+
+        // Gzip compress
+        const compressed = zlib.gzipSync(rawPayload);
+
+        // Build manifest
+        const manifest = {
+            version: 1,
+            createdAt: new Date().toISOString(),
+            fileCount: fileEntries.length,
+            files: fileEntries.map(f => ({ path: f.path, size: f.size })),
+            checksum: crypto.createHash('sha256').update(compressed).digest('hex')
+        };
+        const manifestBuf = Buffer.from(JSON.stringify(manifest), 'utf8');
+
+        // Encrypt manifest
+        const manifestIv = crypto.randomBytes(16);
+        const manifestCipher = crypto.createCipheriv('aes-256-cbc', fileEncryptionKeyBuffer, manifestIv);
+        const encryptedManifest = Buffer.concat([manifestCipher.update(manifestBuf), manifestCipher.final()]);
+
+        // Encrypt payload
+        const payloadIv = crypto.randomBytes(16);
+        const payloadCipher = crypto.createCipheriv('aes-256-cbc', fileEncryptionKeyBuffer, payloadIv);
+        const encryptedPayload = Buffer.concat([payloadCipher.update(compressed), payloadCipher.final()]);
+
+        // Assemble .bak file:
+        // [LOGBOOK_BAK\0 (12)] [manifestIV (16)] [manifestLen (4)] [encryptedManifest] [payloadIV (16)] [encryptedPayload]
+        const magic = Buffer.from('LOGBOOK_BAK\0', 'utf8');
+        const manifestLenBuf = Buffer.alloc(4);
+        manifestLenBuf.writeUInt32BE(encryptedManifest.length, 0);
+
+        const bakFile = Buffer.concat([
+            magic,              // 12 bytes
+            manifestIv,         // 16 bytes
+            manifestLenBuf,     // 4 bytes
+            encryptedManifest,  // variable
+            payloadIv,          // 16 bytes
+            encryptedPayload    // variable
+        ]);
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        const filename = `logbook_backup_${dateStr}.bak`;
+
+        logServerEvent('info', `Master exported server backup: ${fileEntries.length} files, ${(bakFile.length / 1024 / 1024).toFixed(2)} MB as ${filename}`);
+
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', bakFile.length);
+        res.send(bakFile);
+    } catch (e) {
+        logServerEvent('critical', `Backup export failed: ${e.message}`);
+        res.status(500).json({ error: 'Backup export failed: ' + e.message });
+    }
+});
+
+/**
+ * POST /api/master/backup/import
+ * If ?preview=true: returns the manifest from the .bak file without restoring.
+ * Otherwise: restores selected files from the backup.
+ * Body (for restore): { files: ["path1", ...] } — if empty/missing, restores all.
+ */
+const backupUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB max
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext === '.bak') return cb(null, true);
+        cb(new Error('Only .bak backup files are allowed'));
+    }
+});
+
+app.post('/api/master/backup/import', isMasterAuth, backupUpload.single('backup'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No backup file uploaded' });
+        }
+
+        const data = req.file.buffer;
+        const isPreview = req.query.preview === 'true';
+
+        // Validate magic header
+        if (data.length < 48) {
+            return res.status(400).json({ error: 'Invalid backup file: too small' });
+        }
+        const magic = data.subarray(0, 12).toString('utf8');
+        if (magic !== 'LOGBOOK_BAK\0') {
+            return res.status(400).json({ error: 'Invalid backup file: missing signature' });
+        }
+
+        // Read manifest
+        const manifestIv = data.subarray(12, 28);
+        const manifestLen = data.readUInt32BE(28);
+        const encryptedManifest = data.subarray(32, 32 + manifestLen);
+
+        // Decrypt manifest
+        let manifest;
+        try {
+            const manifestDecipher = crypto.createDecipheriv('aes-256-cbc', fileEncryptionKeyBuffer, manifestIv);
+            const decryptedManifest = Buffer.concat([manifestDecipher.update(encryptedManifest), manifestDecipher.final()]);
+            manifest = JSON.parse(decryptedManifest.toString('utf8'));
+        } catch (e) {
+            return res.status(400).json({ error: 'Failed to decrypt backup: invalid encryption key or corrupted file' });
+        }
+
+        // Preview mode: just return the manifest
+        if (isPreview) {
+            logServerEvent('info', `Master previewed backup import: ${manifest.fileCount} files from ${manifest.createdAt}`);
+
+            // Group manifest files by category
+            const categoryMap = {};
+            for (const cat of BACKUP_CATEGORIES) {
+                categoryMap[cat.id] = { id: cat.id, label: cat.label, icon: cat.icon, files: [] };
+            }
+            const uncategorizedFiles = [];
+            for (const file of manifest.files) {
+                const catId = categorizeFile(file.path);
+                if (catId && categoryMap[catId]) {
+                    categoryMap[catId].files.push(file);
+                } else {
+                    uncategorizedFiles.push(file);
+                }
+            }
+            const categories = Object.values(categoryMap).filter(c => c.files.length > 0);
+            if (uncategorizedFiles.length > 0) {
+                categories.push({
+                    id: 'uncategorized',
+                    label: 'Other Files',
+                    icon: 'FolderOpen',
+                    files: uncategorizedFiles
+                });
+            }
+
+            return res.json({
+                success: true,
+                manifest: {
+                    version: manifest.version,
+                    createdAt: manifest.createdAt,
+                    fileCount: manifest.fileCount,
+                    files: manifest.files,
+                    categories
+                }
+            });
+        }
+
+        // Restore mode: decrypt and decompress payload
+        const payloadStart = 32 + manifestLen;
+        const payloadIv = data.subarray(payloadStart, payloadStart + 16);
+        const encryptedPayload = data.subarray(payloadStart + 16);
+
+        let rawPayload;
+        try {
+            const payloadDecipher = crypto.createDecipheriv('aes-256-cbc', fileEncryptionKeyBuffer, payloadIv);
+            const decryptedPayload = Buffer.concat([payloadDecipher.update(encryptedPayload), payloadDecipher.final()]);
+
+            // Verify checksum
+            const checksum = crypto.createHash('sha256').update(decryptedPayload).digest('hex');
+            if (manifest.checksum && checksum !== manifest.checksum) {
+                return res.status(400).json({ error: 'Backup integrity check failed: checksum mismatch' });
+            }
+
+            rawPayload = zlib.gunzipSync(decryptedPayload);
+        } catch (e) {
+            return res.status(400).json({ error: 'Failed to decompress backup payload: ' + e.message });
+        }
+
+        // Parse the selected files to restore
+        let selectedFiles = null;
+        try {
+            if (req.body && req.body.files) {
+                const filesParam = typeof req.body.files === 'string' ? JSON.parse(req.body.files) : req.body.files;
+                if (Array.isArray(filesParam) && filesParam.length > 0) {
+                    selectedFiles = new Set(filesParam);
+                }
+            }
+        } catch (e) { /* restore all if parsing fails */ }
+
+        // Extract files from payload
+        const rootDir = __dirname;
+        let offset = 0;
+        let restoredCount = 0;
+        let skippedCount = 0;
+        const restoredFiles = [];
+
+        while (offset < rawPayload.length) {
+            if (offset + 8 > rawPayload.length) break;
+            const pathLen = rawPayload.readUInt32BE(offset);
+            const dataLen = rawPayload.readUInt32BE(offset + 4);
+            offset += 8;
+
+            if (offset + pathLen > rawPayload.length) break;
+            const filePath = rawPayload.subarray(offset, offset + pathLen).toString('utf8');
+            offset += pathLen;
+
+            if (offset + dataLen > rawPayload.length) break;
+            const fileData = rawPayload.subarray(offset, offset + dataLen);
+            offset += dataLen;
+
+            // Security: prevent path traversal
+            const normalized = path.normalize(filePath).replace(/\\/g, '/');
+            if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+                skippedCount++;
+                continue;
+            }
+
+            // If selective restore, skip files not in the selection
+            if (selectedFiles && !selectedFiles.has(normalized)) {
+                skippedCount++;
+                continue;
+            }
+
+            // Write file
+            const fullPath = path.join(rootDir, normalized);
+            try {
+                await fs.ensureDir(path.dirname(fullPath));
+                await fs.writeFile(fullPath, fileData);
+                restoredCount++;
+                restoredFiles.push(normalized);
+            } catch (e) {
+                logServerEvent('warning', `Backup import: failed to restore '${normalized}': ${e.message}`);
+                skippedCount++;
+            }
+        }
+
+        logServerEvent('warning', `Master imported server backup: ${restoredCount} files restored, ${skippedCount} skipped from backup created ${manifest.createdAt}`);
+
+        res.json({
+            success: true,
+            message: `Backup restored successfully`,
+            restoredCount,
+            skippedCount,
+            restoredFiles
+        });
+    } catch (e) {
+        logServerEvent('critical', `Backup import failed: ${e.message}`);
+        res.status(500).json({ error: 'Backup import failed: ' + e.message });
+    }
+});
+
 async function migrateTwoFactorSecrets() {
     try {
         const allDocs = await db.find({});

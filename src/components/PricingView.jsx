@@ -1,77 +1,79 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X, Shield, Cpu, Cloud, HelpCircle, ArrowLeft, Terminal } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 export default function PricingView({ onNavigate }) {
+  const { t } = useLanguage();
   const [period, setPeriod] = useState('monthly');
 
   const plans = [
     {
-      name: 'Free Plan',
+      name: t('freePlanName'),
       icon: Terminal,
       price: '₹0',
       originalPrice: null,
       discount: null,
       periodText: 'forever',
-      desc: 'Essential logging features for everyone. Keep your logs locally secured.',
-      buttonText: 'Use Free Tier',
+      desc: t('freePlanDesc'),
+      buttonText: t('freePlanButton'),
       buttonClass: 'border transition-all',
       buttonStyle: { background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-secondary)' },
       accentColor: 'border-zinc-800',
       features: [
-        { text: '2 entries per day', included: true },
-        { text: '2 photos per entry', included: true },
-        { text: '2 exports per month (Excel/Word)', included: true },
-        { text: 'Encrypted local backups', included: true },
-        { text: 'Custom tags & categories', included: false },
-        { text: 'PDF export format', included: false },
-        { text: 'Cloud backup auto-sync', included: false },
+        { text: t('freeFeature1'), included: true },
+        { text: t('freeFeature2'), included: true },
+        { text: t('freeFeature3'), included: true },
+        { text: t('freeFeature4'), included: true },
+        { text: t('freeFeature5'), included: false },
+        { text: t('freeFeature6'), included: false },
+        { text: t('freeFeature7'), included: false },
       ]
     },
     {
-      name: 'Cloud Premium Backup',
+      name: t('premiumPlanName'),
       icon: Cloud,
       price: period === 'monthly' ? '₹50' : '₹500',
       originalPrice: period === 'monthly' ? '₹100' : '₹1,000',
       discount: '50% OFF',
       periodText: period === 'monthly' ? 'month' : 'year',
-      desc: 'Secure API access to host your encrypted backups directly on our redundant cloud vault.',
-      buttonText: 'Get Premium Access',
+      desc: t('premiumPlanDesc'),
+      buttonText: t('premiumPlanButton'),
       buttonClass: 'bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-[0_0_20px_rgba(96,165,250,0.25)] hover:shadow-[0_0_30px_rgba(192,132,252,0.45)]',
-      badge: 'Most Popular',
+      badge: t('mostPopular'),
       accentColor: 'border-accent-purple/50 bg-gradient-to-b from-accent-purple/5 to-transparent',
-      note: period === 'yearly' ? 'Billed annually (₹500/yr) · ₹41.67/mo effective' : 'Cancel anytime',
+      note: period === 'yearly' ? t('billedAnnuallyPremium') : t('cancelAnytime'),
       features: [
-        { text: 'Everything in Free', included: true },
-        { text: 'Unlimited daily entries', included: true },
-        { text: 'Unlimited monthly exports', included: true },
-        { text: 'Up to 10 photos per entry', included: true },
-        { text: 'Unlock PDF export format', included: true },
-        { text: 'Unlock all tags & categories', included: true },
-        { text: 'Cloud backup (240MB limit)', included: true },
+        { text: t('premiumFeature1'), included: true },
+        { text: t('premiumFeature2'), included: true },
+        { text: t('premiumFeature3'), included: true },
+        { text: t('premiumFeature4'), included: true },
+        { text: t('premiumFeature5'), included: true },
+        { text: t('premiumFeature6'), included: true },
+        { text: t('premiumFeature7'), included: true },
       ]
     },
     {
-      name: 'Self-Hosted License',
+      name: t('selfHostedPlanName'),
       icon: Cpu,
       price: period === 'monthly' ? '₹199' : '₹1,499',
       originalPrice: period === 'monthly' ? '₹399' : '₹2,999',
       discount: '50% OFF',
       periodText: period === 'monthly' ? 'month' : 'year',
-      desc: 'Absolute developer ownership. Run backup administrative targets on your own private server or Pi.',
-      buttonText: 'Purchase License',
+      desc: t('selfHostedPlanDesc'),
+      buttonText: t('selfHostedPlanButton'),
       buttonClass: 'bg-accent-blue text-white hover:bg-accent-blue/90 shadow-[0_0_20px_rgba(255,255,255,0.1)]',
       buttonStyle: null,
       accentColor: 'border-accent-cyan/50',
-      note: period === 'yearly' ? 'Billed annually (₹1,499/yr) · ₹124.92/mo effective' : 'Run on private server',
+      note: period === 'yearly' ? t('billedAnnuallySelfHosted') : t('runOnServer'),
       features: [
-        { text: 'Everything in Premium', included: true },
-        { text: 'Run on private server / Pi', included: true },
-        { text: 'Unlimited local users', included: true },
-        { text: 'Cryptographic offline activation', included: true },
-        { text: 'Zero external servers required', included: true },
-        { text: 'Full control over size limits', included: true },
-        { text: 'Self-hosting support', included: true },
+        { text: t('selfHostedFeature1'), included: true },
+        { text: t('selfHostedFeature2'), included: true },
+        { text: t('selfHostedFeature3'), included: true },
+        { text: t('selfHostedFeature4'), included: true },
+        { text: t('selfHostedFeature5'), included: true },
+        { text: t('selfHostedFeature6'), included: true },
+        { text: t('selfHostedFeature7'), included: true },
       ]
     }
   ];
@@ -86,7 +88,7 @@ export default function PricingView({ onNavigate }) {
           animate={{ opacity: 1, y: 0 }}
           className="text-xs font-semibold text-accent-blue tracking-widest uppercase"
         >
-          Pricing Plans
+          {t('pricingPlans')}
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 15 }}
@@ -94,7 +96,7 @@ export default function PricingView({ onNavigate }) {
           transition={{ delay: 0.1 }}
           className="text-3xl md:text-5xl font-extrabold tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}
         >
-          Simple, Transparent Pricing
+          {t('simplePricing')}
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 15 }}
@@ -102,7 +104,7 @@ export default function PricingView({ onNavigate }) {
           transition={{ delay: 0.2 }}
           className="text-sm md:text-base max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}
         >
-          Unlock the power of secure, local-first backup management. No hidden fees. Cancel anytime.
+          {t('unlockSecure')}
         </motion.p>
       </div>
 
@@ -116,7 +118,7 @@ export default function PricingView({ onNavigate }) {
             {period === 'monthly' && (
               <motion.div layoutId="toggleBg" className="absolute inset-0 bg-sky-50/10 border border-sky-500/50 rounded-lg -z-10" />
             )}
-            Monthly
+            {t('monthly')}
           </button>
           <button
             onClick={() => setPeriod('yearly')}
@@ -125,9 +127,9 @@ export default function PricingView({ onNavigate }) {
             {period === 'yearly' && (
               <motion.div layoutId="toggleBg" className="absolute inset-0 bg-sky-50/10 border border-sky-500/50 rounded-lg -z-10" />
             )}
-            Yearly
+            {t('yearly')}
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase">
-              Save 16%
+              {t('save16')}
             </span>
           </button>
         </div>
@@ -218,12 +220,12 @@ export default function PricingView({ onNavigate }) {
 
       {/* FAQ Accordion */}
       <div className="max-w-2xl mx-auto space-y-6">
-        <h3 className="text-2xl font-bold text-center" style={{ color: 'var(--text-primary)' }}>Frequently Asked Questions</h3>
+        <h3 className="text-2xl font-bold text-center" style={{ color: 'var(--text-primary)' }}>{t('faqHeader')}</h3>
         <div className="space-y-4">
           {[
-            { q: "Is the data really client-side encrypted?", a: "Yes. All data logged inside Logbook Plus is encrypted locally using the AES-256 block cipher before it is cached or synced. Without your private key passphrase, no one (including our infrastructure providers or developers) can read your records." },
-            { q: "What happens if I cancel my premium subscription?", a: "If you cancel your subscription, you will retain local access to all your entries. Your backups on our cloud vault will remain active until the end of your billing cycle. After expiry, we provide a 30-day grace period to download your vault backup before it is securely purged." },
-            { q: "How does the Self-Hosted Master License work?", a: "The Self-Hosted Master License gives you a perpetual, royalty-free key to run the Logbook backup target console on your own server hardware (e.g. via Docker, Node.js, WebDAV). This bypasses our cloud servers entirely while maintaining full encrypted sync functionality." }
+            { q: t('faqQ1'), a: t('faqA1') },
+            { q: t('faqQ2'), a: t('faqA2') },
+            { q: t('faqQ3'), a: t('faqA3') }
           ].map((item, idx) => (
             <div key={idx} className="p-5 rounded-2xl text-left space-y-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.q}</h4>

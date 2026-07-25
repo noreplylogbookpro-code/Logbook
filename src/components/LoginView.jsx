@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Mail, Lock, User, HelpCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../useLanguage.js';
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
@@ -13,6 +14,7 @@ const SECURITY_QUESTIONS = [
 ];
 
 export default function LoginView({ onNavigate }) {
+  const { t } = useLanguage();
   const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot' | 'mfa'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -265,8 +267,8 @@ export default function LoginView({ onNavigate }) {
             <Shield className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">Logbook Plus Console</h2>
-            <p className="text-sm text-zinc-500 mt-1">Access your encrypted database vaults</p>
+            <h2 className="text-xl font-bold text-zinc-800 dark:text-white tracking-tight">{t('logbookConsole')}</h2>
+            <p className="text-sm text-zinc-500 mt-1">{t('accessVaults')}</p>
           </div>
         </div>
 
@@ -286,14 +288,14 @@ export default function LoginView({ onNavigate }) {
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Username or Email</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('usernameEmail')}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
                 <input
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Username or Email"
+                  placeholder={t('usernameEmail')}
                   className="input-unified pl-10 pr-4"
                   required
                 />
@@ -302,13 +304,13 @@ export default function LoginView({ onNavigate }) {
 
             <div className="space-y-2">
               <div className="flex justify-between items-center px-1">
-                <label className="text-sm font-bold text-zinc-500 uppercase block">Password</label>
+                <label className="text-sm font-bold text-zinc-500 uppercase block">{t('password')}</label>
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
                   className="text-sm font-bold text-accent-blue hover:underline"
                 >
-                  Forgot password?
+                  {t('forgotPassword')}
                 </button>
               </div>
               <div className="relative">
@@ -330,18 +332,18 @@ export default function LoginView({ onNavigate }) {
               disabled={loading}
               className="w-full btn-primary-unified"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? '...' : t('signIn')}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             <div className="text-center pt-2">
-              <span className="text-sm text-zinc-500">Don't have an account? </span>
+              <span className="text-sm text-zinc-500">{t('dontHaveAccount')} </span>
               <button
                 type="button"
                 onClick={() => setMode('signup')}
                 className="text-sm font-bold text-accent-blue hover:underline"
               >
-                Create Account
+                {t('signUp')}
               </button>
             </div>
           </form>
@@ -351,25 +353,25 @@ export default function LoginView({ onNavigate }) {
         {mode === 'signup' && (
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Username</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('username')}</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Username"
+                  placeholder={t('username')}
                   className="input-unified pl-10 pr-4"
                   required
                 />
               </div>
-              {checkingName && <p className="text-[13px] text-zinc-500 pl-1">Checking availability...</p>}
-              {!checkingName && nameAvailable === true && <p className="text-[13px] text-emerald-400 pl-1">✓ Username is available</p>}
-              {!checkingName && nameAvailable === false && <p className="text-[13px] text-rose-400 pl-1">✗ Username is already taken</p>}
+              {checkingName && <p className="text-[13px] text-zinc-500 pl-1">{t('checkingAvailability')}</p>}
+              {!checkingName && nameAvailable === true && <p className="text-[13px] text-emerald-400 pl-1">✓ {t('usernameAvailable')}</p>}
+              {!checkingName && nameAvailable === false && <p className="text-[13px] text-rose-400 pl-1">✗ {t('usernameTaken')}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Email address</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('emailAddress')}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
                 <input
@@ -381,13 +383,13 @@ export default function LoginView({ onNavigate }) {
                   required
                 />
               </div>
-              {checkingEmail && <p className="text-[10px] text-zinc-500 pl-1">Checking availability...</p>}
-              {!checkingEmail && emailAvailable === true && <p className="text-[10px] text-emerald-400 pl-1">✓ Email is available</p>}
-              {!checkingEmail && emailAvailable === false && <p className="text-[10px] text-rose-400 pl-1">✗ Email is already registered</p>}
+              {checkingEmail && <p className="text-[10px] text-zinc-500 pl-1">{t('checkingAvailability')}</p>}
+              {!checkingEmail && emailAvailable === true && <p className="text-[10px] text-emerald-400 pl-1">✓ {t('emailAvailable')}</p>}
+              {!checkingEmail && emailAvailable === false && <p className="text-[10px] text-rose-400 pl-1">✗ {t('emailRegistered')}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Password</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
                 <input
@@ -402,25 +404,27 @@ export default function LoginView({ onNavigate }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Security Question</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('securityQuestion')}</label>
               <select
                 value={securityQuestion}
                 onChange={(e) => setSecurityQuestion(e.target.value)}
                 className="select-unified"
               >
-                {SECURITY_QUESTIONS.map(q => (
-                  <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">{q}</option>
+                {SECURITY_QUESTIONS.map((q, idx) => (
+                  <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">
+                    {t('securityQuestion' + (idx + 1))}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Your Answer</label>
+              <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('yourAnswer')}</label>
               <input
                 type="text"
                 value={securityAnswer}
                 onChange={(e) => setSecurityAnswer(e.target.value)}
-                placeholder="Secret answer"
+                placeholder={t('secretAnswer')}
                 className="input-unified"
                 required
               />
@@ -432,17 +436,17 @@ export default function LoginView({ onNavigate }) {
               disabled={loading || nameAvailable === false || emailAvailable === false}
               className="w-full btn-primary-unified"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? t('creatingAccount') : t('createAccount')}
             </button>
 
             <div className="text-center pt-2">
-              <span className="text-sm text-zinc-500">Already have an account? </span>
+              <span className="text-sm text-zinc-500">{t('alreadyHaveAccount')} </span>
               <button
                 type="button"
                 onClick={() => setMode('login')}
                 className="text-sm font-bold text-accent-blue hover:underline"
               >
-                Sign In
+                {t('signIn')}
               </button>
             </div>
           </form>
@@ -454,14 +458,14 @@ export default function LoginView({ onNavigate }) {
             {!forgotQuestion ? (
               <form onSubmit={handleForgotQuestionFetch} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Enter your Username or Email</label>
+                  <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('enterUsernameEmail')}</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
                     <input
                       type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Username or Email"
+                      placeholder={t('usernameEmail')}
                       className="input-unified pl-10 pr-4"
                       required
                     />
@@ -472,7 +476,7 @@ export default function LoginView({ onNavigate }) {
                   disabled={loading}
                   className="w-full btn-secondary-unified"
                 >
-                  {loading ? 'Verifying...' : 'Verify User'}
+                  {loading ? t('verifying') : t('verifyUser')}
                 </button>
               </form>
             ) : (
@@ -480,30 +484,34 @@ export default function LoginView({ onNavigate }) {
                 <div className="p-4 rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-zinc-950/60 space-y-2">
                   <span className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-1.5">
                     <HelpCircle className="w-3.5 h-3.5 text-accent-blue" />
-                    Security Question Challenge
+                    {t('securityChallenge')}
                   </span>
-                  <p className="text-xs text-zinc-700 dark:text-white leading-relaxed">{forgotQuestion}</p>
+                  <p className="text-xs text-zinc-700 dark:text-white leading-relaxed">
+                    {SECURITY_QUESTIONS.includes(forgotQuestion) 
+                      ? t('securityQuestion' + (SECURITY_QUESTIONS.indexOf(forgotQuestion) + 1)) 
+                      : forgotQuestion}
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Your Answer</label>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('yourAnswer')}</label>
                   <input
                     type="text"
                     value={forgotAnswer}
                     onChange={(e) => setForgotAnswer(e.target.value)}
-                    placeholder="Enter answer"
+                    placeholder={t('enterAnswer')}
                     className="input-unified"
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">New Password</label>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('newPassword')}</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
+                    placeholder={t('enterNewPassword')}
                     className="input-unified"
                     required
                   />
@@ -514,7 +522,7 @@ export default function LoginView({ onNavigate }) {
                   disabled={loading}
                   className="w-full btn-primary-unified"
                 >
-                  {loading ? 'Resetting Password...' : 'Reset Password'}
+                  {loading ? t('resettingPassword') : t('resetPassword')}
                 </button>
               </form>
             )}
@@ -523,7 +531,7 @@ export default function LoginView({ onNavigate }) {
               onClick={() => { setMode('login'); setForgotQuestion(''); }}
               className="w-full text-center text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
             >
-              Back to Login
+              {t('backToLogin')}
             </button>
           </div>
         )}
@@ -533,7 +541,7 @@ export default function LoginView({ onNavigate }) {
           <form onSubmit={handleMfaVerify} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-[13px] font-bold text-zinc-500 uppercase block text-center">
-                Enter 2FA Code
+                {t('enter2faCode')}
               </label>
               <input
                 type="text"
@@ -553,7 +561,7 @@ export default function LoginView({ onNavigate }) {
               className="w-full btn-primary-unified"
             >
               <ShieldCheck className="w-4 h-6 text-emerald-900" />
-              Verify
+              {t('verify')}
             </button>
             <div className="space-y-1.5"></div>
 
@@ -562,7 +570,7 @@ export default function LoginView({ onNavigate }) {
               onClick={() => setMode('login')}
               className="w-full text-center text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
           </form>
         )}

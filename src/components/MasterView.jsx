@@ -4,7 +4,8 @@ import {
   Shield, Server, Cloud, FolderOpen, Calendar, Trash2,
   User, Key, ShieldAlert, CreditCard, LogOut, ChevronDown,
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
-  BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon
+  BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
+  Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info
 } from 'lucide-react';
 
 export default function MasterView({ onNavigate, theme, toggleTheme }) {
@@ -77,6 +78,20 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   // Retention cleanup state
   const [cleanupDays, setCleanupDays] = useState('30');
+
+  // Backup export/import states
+  const [backupFiles, setBackupFiles] = useState([]); // categorized file list from server scan
+  const [selectedExportFiles, setSelectedExportFiles] = useState(new Set());
+  const [backupExporting, setBackupExporting] = useState(false);
+  const [backupImporting, setBackupImporting] = useState(false);
+  const [backupScanning, setBackupScanning] = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // manifest data from uploaded .bak
+  const [selectedImportFiles, setSelectedImportFiles] = useState(new Set());
+  const [backupResult, setBackupResult] = useState(null); // { type: 'success'|'error', message }
+  const [importFile, setImportFile] = useState(null); // File object for import
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [expandedImportCategories, setExpandedImportCategories] = useState(new Set());
+  const importFileRef = useRef(null);
 
   // Timers and Refs
   const logsConsoleRef = useRef(null);
@@ -716,6 +731,213 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     }
   };
 
+  // --- Backup Export/Import Handlers ---
+  const fetchBackupFiles = async () => {
+    setBackupScanning(true);
+    setBackupResult(null);
+    try {
+      const res = await masterApiCall('/api/master/backup/files');
+      if (res.ok) {
+        const data = await res.json();
+        setBackupFiles(data.categories || []);
+        // Auto-select all files
+        const allPaths = new Set();
+        (data.categories || []).forEach(cat => cat.files.forEach(f => allPaths.add(f.path)));
+        setSelectedExportFiles(allPaths);
+        // Expand all categories by default
+        setExpandedCategories(new Set((data.categories || []).map(c => c.id)));
+      }
+    } catch { }
+    setBackupScanning(false);
+  };
+
+  const toggleExportCategory = (catId) => {
+    const cat = backupFiles.find(c => c.id === catId);
+    if (!cat) return;
+    const newSet = new Set(selectedExportFiles);
+    const allSelected = cat.files.every(f => newSet.has(f.path));
+    cat.files.forEach(f => {
+      if (allSelected) newSet.delete(f.path);
+      else newSet.add(f.path);
+    });
+    setSelectedExportFiles(newSet);
+  };
+
+  const toggleExportFile = (filePath) => {
+    const newSet = new Set(selectedExportFiles);
+    if (newSet.has(filePath)) newSet.delete(filePath);
+    else newSet.add(filePath);
+    setSelectedExportFiles(newSet);
+  };
+
+  const toggleSelectAllExport = () => {
+    const allPaths = new Set();
+    backupFiles.forEach(cat => cat.files.forEach(f => allPaths.add(f.path)));
+    if (selectedExportFiles.size === allPaths.size) {
+      setSelectedExportFiles(new Set());
+    } else {
+      setSelectedExportFiles(allPaths);
+    }
+  };
+
+  const toggleExpandCategory = (catId) => {
+    const newSet = new Set(expandedCategories);
+    if (newSet.has(catId)) newSet.delete(catId);
+    else newSet.add(catId);
+    setExpandedCategories(newSet);
+  };
+
+  const handleBackupExport = async () => {
+    if (selectedExportFiles.size === 0) return;
+    setBackupExporting(true);
+    setBackupResult(null);
+    try {
+      const token = localStorage.getItem('masterToken');
+      const res = await fetch('/api/master/backup/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ files: Array.from(selectedExportFiles) })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disposition = res.headers.get('Content-Disposition');
+        const filenameMatch = disposition && disposition.match(/filename="(.+)"/);
+        a.download = filenameMatch ? filenameMatch[1] : `LogbookPlus_Server_Config_${new Date().toISOString().split('T')[0]}.bak`;
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setBackupResult({ type: 'success', message: `Backup exported: ${selectedExportFiles.size} files` });
+      } else {
+        const data = await res.json();
+        setBackupResult({ type: 'error', message: data.error || 'Export failed' });
+      }
+    } catch (err) {
+      setBackupResult({ type: 'error', message: 'Export request failed: ' + err.message });
+    } finally {
+      setBackupExporting(false);
+    }
+  };
+
+  const handleImportFileSelect = async (file) => {
+    if (!file) return;
+    setImportFile(file);
+    setImportPreview(null);
+    setBackupResult(null);
+    setBackupImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('backup', file);
+      const token = localStorage.getItem('masterToken');
+      const res = await fetch('/api/master/backup/import?preview=true', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.manifest) {
+        setImportPreview(data.manifest);
+        const allPaths = new Set(data.manifest.files.map(f => f.path));
+        setSelectedImportFiles(allPaths);
+        if (data.manifest.categories) {
+          setExpandedImportCategories(new Set(data.manifest.categories.map(c => c.id)));
+        } else {
+          setExpandedImportCategories(new Set(['all']));
+        }
+      } else {
+        setBackupResult({ type: 'error', message: data.error || 'Failed to read backup file' });
+      }
+    } catch (err) {
+      setBackupResult({ type: 'error', message: 'Failed to preview backup: ' + err.message });
+    } finally {
+      setBackupImporting(false);
+    }
+  };
+
+  const toggleImportFile = (filePath) => {
+    const newSet = new Set(selectedImportFiles);
+    if (newSet.has(filePath)) newSet.delete(filePath);
+    else newSet.add(filePath);
+    setSelectedImportFiles(newSet);
+  };
+
+  const toggleImportCategory = (catId) => {
+    if (!importPreview || !importPreview.categories) return;
+    const cat = importPreview.categories.find(c => c.id === catId);
+    if (!cat) return;
+    const newSet = new Set(selectedImportFiles);
+    const allSelected = cat.files.every(f => newSet.has(f.path));
+    cat.files.forEach(f => {
+      if (allSelected) newSet.delete(f.path);
+      else newSet.add(f.path);
+    });
+    setSelectedImportFiles(newSet);
+  };
+
+  const toggleExpandImportCategory = (catId) => {
+    const newSet = new Set(expandedImportCategories);
+    if (newSet.has(catId)) newSet.delete(catId);
+    else newSet.add(catId);
+    setExpandedImportCategories(newSet);
+  };
+
+  const toggleSelectAllImport = () => {
+    if (!importPreview) return;
+    const allPaths = new Set(importPreview.files.map(f => f.path));
+    if (selectedImportFiles.size === allPaths.size) {
+      setSelectedImportFiles(new Set());
+    } else {
+      setSelectedImportFiles(allPaths);
+    }
+  };
+
+  const handleBackupRestore = async () => {
+    if (!importFile || selectedImportFiles.size === 0) return;
+    setBackupImporting(true);
+    setBackupResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('backup', importFile);
+      formData.append('files', JSON.stringify(Array.from(selectedImportFiles)));
+      const token = localStorage.getItem('masterToken');
+      const res = await fetch('/api/master/backup/import', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBackupResult({ type: 'success', message: `Restored ${data.restoredCount} files successfully${data.skippedCount > 0 ? ` (${data.skippedCount} skipped)` : ''}` });
+        setImportPreview(null);
+        setImportFile(null);
+        setSelectedImportFiles(new Set());
+        setActiveModal(null);
+        if (importFileRef.current) importFileRef.current.value = '';
+      } else {
+        setBackupResult({ type: 'error', message: data.error || 'Restore failed' });
+      }
+    } catch (err) {
+      setBackupResult({ type: 'error', message: 'Restore request failed: ' + err.message });
+    } finally {
+      setBackupImporting(false);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  // Map category icon name strings to components
+  const BACKUP_ICON_MAP = {
+    HardDrive, FolderOpen, Settings, FileCheck, Terminal, Cloud, BookOpen
+  };
+
   // Copy helper
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -1056,7 +1278,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
           <div className="flex items-center gap-3">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-all cursor-pointer"
+              className="hidden md:block p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-all cursor-pointer"
               title="Toggle theme"
             >
               {theme === 'dark' ? (
@@ -1076,54 +1298,54 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <ChevronDown className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
               </button>
 
-            <AnimatePresence>
-              {profileDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-2 w-52 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-30 text-left space-y-1"
-                >
-                  <div className="px-3 py-2 bg-zinc-50 dark:bg-white/2 rounded-lg mb-1">
-                    <p className="text-xs font-bold text-zinc-800 dark:text-white truncate">{masterProfile.name}</p>
-                    <p className="text-[10px] text-zinc-500 truncate mt-0.5">{masterProfile.email}</p>
-                  </div>
-                  <button
-                    onClick={() => { setActiveModal('editProfile'); setProfileDropdownOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+              <AnimatePresence>
+                {profileDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-2 w-52 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-30 text-left space-y-1"
                   >
-                    <User className="w-4 h-4" />
-                    Edit Profile
-                  </button>
-                  <button
-                    onClick={() => { setActiveModal('changePwd'); setProfileDropdownOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
-                  >
-                    <Key className="w-4 h-4" />
-                    Change Password
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (masterProfile.twoFactorEnabled) {
-                        setDisablePwd('');
-                        setDisableCode('');
-                        setActiveModal('disableMfa');
-                      } else {
-                        handleStart2faSetup();
-                      }
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
-                  >
-                    <ShieldAlert className="w-4 h-4" />
-                    Master 2FA Settings
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    <div className="px-3 py-2 rounded-lg mb-1 border border-zinc-200 dark:border-white/10">
+                      <p className="text-xs font-bold text-zinc-800 dark:text-white truncate">{masterProfile.name}</p>
+                      <p className="text-[10px] text-zinc-500 truncate mt-0.5">{masterProfile.email}</p>
+                    </div>
+                    <button
+                      onClick={() => { setActiveModal('editProfile'); setProfileDropdownOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <User className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                    <button
+                      onClick={() => { setActiveModal('changePwd'); setProfileDropdownOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <Key className="w-4 h-4" />
+                      Change Password
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (masterProfile.twoFactorEnabled) {
+                          setDisablePwd('');
+                          setDisableCode('');
+                          setActiveModal('disableMfa');
+                        } else {
+                          handleStart2faSetup();
+                        }
+                        setProfileDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      Master 2FA Settings
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
         {/* TAB CONTENTS */}
         <AnimatePresence mode="wait">
@@ -1531,7 +1753,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 ref={logsConsoleRef}
                 className="h-[450px] bg-zinc-50 dark:bg-black/80 rounded-xl border border-zinc-200 dark:border-white/10 p-4 overflow-y-auto font-mono text-[14px] leading-relaxed text-zinc-700 dark:text-zinc-300 space-y-1"
               >
-                {logsList.map((log, idx) => (
+                {[...logsList].reverse().map((log, idx) => (
                   <div key={log._id || idx} className="hover:bg-white/5 p-0.5 rounded transition">
                     <span className="text-zinc-500">[{new Date(log.timestamp).toISOString()}]</span>{' '}
                     <span className={`uppercase font-bold ${log.level === 'critical' ? 'text-red-400' :
@@ -1571,7 +1793,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-white/2 border border-zinc-200 dark:border-white/5">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5">
                     <div className="text-left">
                       <span className="text-md font-semibold text-zinc-800 dark:text-white block">Enable Public Signups</span>
                       <span className="text-[14px] text-zinc-500 mt-0.5">Toggle new account registrations</span>
@@ -1642,6 +1864,319 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 )}
               </div>
 
+              {/* Server Backup Export/Import card */}
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-5 col-span-1 md:col-span-2">
+                <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-2">
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <FolderArchive className="w-4 h-4 text-accent-purple" />
+                    Server Backup
+                  </h3>
+                </div>
+
+                {/* Permanent overwrite notice */}
+                <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-left">
+                    <p className="text-[16px] font-semibold text-zinc-800 dark:text-white">Important Notice</p>
+                    <p className="text-[13.5px] text-zinc-500 mt-0.5">
+                      <strong>Export</strong> creates an encrypted <code className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[11px]">.bak</code> archive of selected server files. <strong>Import</strong> will <span className="text-amber-500 font-semibold">overwrite existing files</span> at their original paths with the backup contents. Always export a fresh backup before importing one.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Result feedback */}
+                {backupResult && (
+                  <div className={`p-3 rounded-xl border text-xs flex items-center gap-3 ${backupResult.type === 'success'
+                    ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                    : 'border-red-500/20 bg-red-500/5 text-red-400'
+                    }`}>
+                    {backupResult.type === 'success' ? <Check className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+                    <span className="font-medium">{backupResult.message}</span>
+                  </div>
+                )}
+
+                {/* EXPORT SECTION */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                      <Download className="w-3.5 h-3.5" />
+                      Export Backup
+                    </h4>
+                    <button
+                      onClick={fetchBackupFiles}
+                      disabled={backupScanning}
+                      className="text-[14px] text-accent-purple hover:text-accent-blue transition-colors cursor-pointer font-semibold flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${backupScanning ? 'animate-spin' : ''}`} />
+                      {backupScanning ? 'Scanning...' : 'Scan Server Files'}
+                    </button>
+                  </div>
+
+                  {backupFiles.length > 0 && (
+                    <div className="space-y-2">
+                      {/* Select All / Deselect All */}
+                      <div className="flex items-center justify-between px-1">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={(() => {
+                              let total = 0;
+                              backupFiles.forEach(c => total += c.files.length);
+                              return selectedExportFiles.size === total && total > 0;
+                            })()}
+                            onChange={toggleSelectAllExport}
+                            className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer"
+                          />
+                          <span className="text-[15px] font-semibold text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-white transition-colors">Select All</span>
+                        </label>
+                        <span className="text-[15px] text-zinc-500">
+                          {selectedExportFiles.size} file{selectedExportFiles.size !== 1 ? 's' : ''} selected
+                          ({formatFileSize(
+                            backupFiles.reduce((sum, cat) => sum + cat.files.filter(f => selectedExportFiles.has(f.path)).reduce((s, f) => s + f.size, 0), 0)
+                          )})
+                        </span>
+                      </div>
+
+                      {/* Category tree */}
+                      <div className="border border-zinc-200 dark:border-white/5 rounded-xl overflow-hidden max-h-[400px] overflow-y-auto">
+                        {backupFiles.map(cat => {
+                          const CatIcon = BACKUP_ICON_MAP[cat.icon] || FolderOpen;
+                          const catSelected = cat.files.filter(f => selectedExportFiles.has(f.path)).length;
+                          const isExpanded = expandedCategories.has(cat.id);
+                          const allInCatSelected = catSelected === cat.files.length;
+                          const someInCatSelected = catSelected > 0 && !allInCatSelected;
+                          const catSize = cat.files.reduce((s, f) => s + f.size, 0);
+
+                          return (
+                            <div key={cat.id} className="border-b border-zinc-100 dark:border-white/5 last:border-b-0">
+                              {/* Category header */}
+                              <div className="flex items-center gap-2 px-3 py-2.5 bg-zinc-50/50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={allInCatSelected}
+                                  ref={el => { if (el) el.indeterminate = someInCatSelected; }}
+                                  onChange={() => toggleExportCategory(cat.id)}
+                                  className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer flex-shrink-0"
+                                />
+                                <button
+                                  onClick={() => toggleExpandCategory(cat.id)}
+                                  className="flex items-center gap-2 flex-grow text-left cursor-pointer min-w-0"
+                                >
+                                  <ChevronRight className={`w-3.5 h-3.5 text-zinc-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <CatIcon className="w-4 h-4 text-accent-purple flex-shrink-0" />
+                                  <span className="text-[16px] font-semibold text-zinc-700 dark:text-zinc-300 truncate">{cat.label}</span>
+                                  <span className="text-[13px] text-zinc-400 ml-auto flex-shrink-0">{cat.files.length} file{cat.files.length !== 1 ? 's' : ''} · {formatFileSize(catSize)}</span>
+                                </button>
+                              </div>
+
+                              {/* Expanded file list */}
+                              {isExpanded && (
+                                <div className="bg-white dark:bg-zinc-950/50">
+                                  {cat.files.map(file => (
+                                    <label
+                                      key={file.path}
+                                      className="flex items-center gap-2.5 px-3 pl-10 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/10 cursor-pointer transition-colors group"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedExportFiles.has(file.path)}
+                                        onChange={() => toggleExportFile(file.path)}
+                                        className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer flex-shrink-0"
+                                      />
+                                      <span className="text-[13.4px] text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-white transition-colors truncate min-w-0 flex-grow" title={file.path}>{file.path}</span>
+                                      <span className="text-[10px] text-zinc-400 flex-shrink-0">{formatFileSize(file.size)}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Export button */}
+                      <button
+                        onClick={handleBackupExport}
+                        disabled={backupExporting || selectedExportFiles.size === 0}
+                        className="w-full btn-primary-unified py-2.5 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {backupExporting ? (
+                          <><RefreshCw className="w-4 h-4 animate-spin" /> Encrypting & Exporting...</>
+                        ) : (
+                          <><Download className="w-4 h-4" /> Export Selected ({selectedExportFiles.size} files) as .bak</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-zinc-200 dark:border-white/5"></div>
+
+                {/* IMPORT SECTION */}
+                <div className="space-y-3">
+                  <h4 className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                    <Upload className="w-3.5 h-3.5" />
+                    Import / Restore Backup
+                  </h4>
+
+                  {/* Upload dropzone */}
+                  <div className="relative">
+                    {!importFile && (
+                      <input
+                        ref={importFileRef}
+                        type="file"
+                        accept=".bak"
+                        onChange={(e) => handleImportFileSelect(e.target.files[0])}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                    )}
+                    <div className="p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl text-center hover:border-accent-purple/50 transition-colors bg-zinc-50/50 dark:bg-zinc-900/20 relative">
+                      {importFile ? (
+                        <div className="space-y-3">
+                          <FolderArchive className="w-10 h-10 text-accent-purple mx-auto animate-pulse" />
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-xs mx-auto">
+                              {importFile.name}
+                            </p>
+                            <p className="text-xs text-zinc-400 mt-1">
+                              {formatFileSize(importFile.size)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setImportFile(null);
+                              setImportPreview(null);
+                              setSelectedImportFiles(new Set());
+                              if (importFileRef.current) importFileRef.current.value = '';
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-red-500/10 dark:hover:bg-red-600/60 hover:text-red-500 dark:hover:text-white/50 text-xs font-semibold text-zinc-600 dark:text-zinc-400 cursor-pointer transition-all border border-zinc-200 dark:border-white/5 relative z-20"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Cancel File
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                            Drop a .bak file here or click to browse
+                          </p>
+                          <p className="text-[11px] text-zinc-400 mt-1">
+                            Only encrypted .bak backup files are accepted
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {backupImporting && !importPreview && (
+                    <div className="flex items-center justify-center gap-2 py-3 text-xs text-zinc-500">
+                      <RefreshCw className="w-4 h-4 animate-spin text-accent-purple" />
+                      Decrypting and reading backup manifest...
+                    </div>
+                  )}
+
+                  {/* Import Preview — file list from manifest */}
+                  {importPreview && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-zinc-500">Backup created: <strong className="text-zinc-700 dark:text-zinc-300">{new Date(importPreview.createdAt).toLocaleString()}</strong></span>
+                          <span className="text-zinc-500">{importPreview.fileCount} files</span>
+                        </div>
+                      </div>
+
+                      {/* Select All / Deselect All */}
+                      <div className="flex items-center justify-between px-1">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={selectedImportFiles.size === importPreview.files.length && importPreview.files.length > 0}
+                            onChange={toggleSelectAllImport}
+                            className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer"
+                          />
+                          <span className="text-[15px] font-semibold text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-white transition-colors">Select All</span>
+                        </label>
+                        <span className="text-[15px] text-zinc-500">
+                          {selectedImportFiles.size} of {importPreview.files.length} selected
+                        </span>
+                      </div>
+
+                      {/* File list from manifest */}
+                      <div className="border border-zinc-200 dark:border-white/5 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                        {(importPreview.categories || []).map(cat => {
+                          const CatIcon = BACKUP_ICON_MAP[cat.icon] || FolderOpen;
+                          const catSelected = cat.files.filter(f => selectedImportFiles.has(f.path)).length;
+                          const isExpanded = expandedImportCategories.has(cat.id);
+                          const allInCatSelected = catSelected === cat.files.length;
+                          const someInCatSelected = catSelected > 0 && !allInCatSelected;
+                          const catSize = cat.files.reduce((s, f) => s + f.size, 0);
+
+                          return (
+                            <div key={cat.id} className="border-b border-zinc-100 dark:border-white/5 last:border-b-0">
+                              {/* Category header */}
+                              <div className="flex items-center gap-2 px-3 py-2.5 bg-zinc-50/50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={allInCatSelected}
+                                  ref={el => { if (el) el.indeterminate = someInCatSelected; }}
+                                  onChange={() => toggleImportCategory(cat.id)}
+                                  className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer flex-shrink-0"
+                                />
+                                <button
+                                  onClick={() => toggleExpandImportCategory(cat.id)}
+                                  className="flex items-center gap-2 flex-grow text-left cursor-pointer min-w-0"
+                                >
+                                  <ChevronRight className={`w-3.5 h-3.5 text-zinc-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <CatIcon className="w-4 h-4 text-accent-purple flex-shrink-0" />
+                                  <span className="text-[16px] font-semibold text-zinc-700 dark:text-zinc-300 truncate">{cat.label}</span>
+                                  <span className="text-[13px] text-zinc-400 ml-auto flex-shrink-0">{cat.files.length} file{cat.files.length !== 1 ? 's' : ''} · {formatFileSize(catSize)}</span>
+                                </button>
+                              </div>
+
+                              {/* Expanded file list */}
+                              {isExpanded && (
+                                <div className="bg-white dark:bg-zinc-950/50">
+                                  {cat.files.map(file => (
+                                    <label
+                                      key={file.path}
+                                      className="flex items-center gap-2.5 px-3 pl-10 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/ cursor-pointer transition-colors group"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedImportFiles.has(file.path)}
+                                        onChange={() => toggleImportFile(file.path)}
+                                        className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer flex-shrink-0"
+                                      />
+                                      <span className="text-[13.4px] text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-white transition-colors truncate min-w-0 flex-grow" title={file.path}>{file.path}</span>
+                                      <span className="text-[10px] text-zinc-400 flex-shrink-0">{formatFileSize(file.size)}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Restore button */}
+                      <button
+                        onClick={() => { setActiveModal('confirmImport'); setActionError(''); setActionSuccess(''); }}
+                        disabled={backupImporting || selectedImportFiles.size === 0}
+                        className="w-full btn-primary-unified py-2.5 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Restore Selected ({selectedImportFiles.size} files)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Server System Control card */}
               <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4 col-span-1 md:col-span-2">
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider border-b border-zinc-200 dark:border-white/5 pb-2">Server Maintenance & System Control</h3>
@@ -1691,6 +2226,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   {activeModal === 'mfaSetup' && 'Configure 2FA Authenticator'}
                   {activeModal === 'disableMfa' && 'Disable 2FA Authenticator'}
                   {activeModal === 'rebootServer' && 'Reboot Application Server'}
+                  {activeModal === 'confirmImport' && 'Confirm Backup Restore'}
                 </h3>
                 <button
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
@@ -2074,6 +2610,57 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                         <RefreshCw className="w-3.5 h-3.5" />
                       )}
                       Reboot Server
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CONFIRM IMPORT MODAL CONTENT */}
+              {activeModal === 'confirmImport' && (
+                <div className="space-y-4">
+                  <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-bounce" />
+                    <div>
+                      <p className="font-bold text-zinc-800 dark:text-white">Overwrite Warning</p>
+                      <p className="text-[11.5px] text-zinc-500 mt-0.5">
+                        This will restore <strong className="text-amber-400">{selectedImportFiles.size} file{selectedImportFiles.size !== 1 ? 's' : ''}</strong> from the backup and <strong className="text-amber-400">overwrite</strong> any existing files at their original locations on the server.
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedImportFiles.size > 0 && selectedImportFiles.size <= 20 && (
+                    <div className="max-h-[150px] overflow-y-auto border border-zinc-200 dark:border-white/5 rounded-lg p-2 space-y-0.5">
+                      {Array.from(selectedImportFiles).map(fp => (
+                        <p key={fp} className="text-[10px] text-zinc-500 font-mono truncate" title={fp}>{fp}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-zinc-400">
+                    It is strongly recommended to export a fresh backup before proceeding. This action cannot be undone.
+                  </p>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="btn-secondary-unified px-4 py-2 text-xs cursor-pointer"
+                      disabled={backupImporting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBackupRestore}
+                      className="btn-danger-unified px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer"
+                      disabled={backupImporting}
+                    >
+                      {backupImporting ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {backupImporting ? 'Restoring...' : `Restore ${selectedImportFiles.size} Files`}
                     </button>
                   </div>
                 </div>
