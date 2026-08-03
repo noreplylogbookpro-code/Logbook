@@ -1376,7 +1376,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
 
 app.post('/api/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
-    const user = await db.findOne({ $or: [{ username }, { name: username }] });
+    const user = await db.findOne({ $or: [{ username }, { name: username }, { email: username }] });
 
     if (user && await bcrypt.compare(password, user.password)) {
         if (user.twoFactorEnabled) {
@@ -1449,7 +1449,7 @@ app.post('/api/logout', (req, res) => {
 
 // --- Forgot/Recovery Operations ---
 app.post('/api/forgot/question', forgotLimiter, async (req, res) => {
-    const user = await db.findOne({ $or: [{ username: req.body.username }, { name: req.body.username }] });
+    const user = await db.findOne({ $or: [{ username: req.body.username }, { name: req.body.username }, { email: req.body.username }] });
     if (!user || !user.securityQuestion) {
         return res.json({ question: null, message: "Verification matching targets deployed safely." });
     }
@@ -1460,7 +1460,7 @@ app.post('/api/forgot/reset', forgotLimiter, async (req, res) => {
     const { username, securityAnswer, newPassword } = req.body;
     if (!username || !securityAnswer || !newPassword || newPassword.length < 8) return res.status(400).json({ error: "Invalid input structure sizes." });
 
-    const user = await db.findOne({ $or: [{ username }, { name: username }] });
+    const user = await db.findOne({ $or: [{ username }, { name: username }, { email: username }] });
     if (!user || !user.securityAnswer) return res.status(400).json({ error: "Profile missing verification keys." });
 
     const answerMatch = await bcrypt.compare(securityAnswer.trim().toLowerCase(), user.securityAnswer);
@@ -1551,6 +1551,7 @@ app.get('/api/profile', isAuthenticated, async (req, res) => {
     res.json({
         userId: user._id,
         name: user.name || user.username,
+        username: user.username,
         email: user.email || user.username,
         profilePicIndex: user.profilePicIndex || 0,
         plan: user.plan || "unpaid",
@@ -1605,7 +1606,26 @@ app.get('/api/profile/avatar/:userId', async (req, res) => {
 });
 
 app.post('/api/profile', isAuthenticated, async (req, res) => {
-    await db.update({ _id: req.userId }, { $set: { name: req.body.name, email: req.body.email, profilePicIndex: parseInt(req.body.profilePicIndex) || 0 } });
+    const user = await db.findOne({ _id: req.userId });
+    if (!user) return res.status(404).json({ error: "Identity missing registration profiles." });
+
+    const { name, username, email, profilePicIndex } = req.body;
+    const updateFields = {
+        name,
+        email,
+        profilePicIndex: parseInt(profilePicIndex) || 0
+    };
+
+    if (username && username.trim() !== user.username) {
+        const usernameTrimmed = username.trim();
+        const exists = await db.findOne({ username: usernameTrimmed });
+        if (exists) {
+            return res.status(400).json({ error: "Username is already taken." });
+        }
+        updateFields.username = usernameTrimmed;
+    }
+
+    await db.update({ _id: req.userId }, { $set: updateFields });
     db.compactDatafile();
     logServerEvent('info', `User ID '${req.userId}' updated their profile details`);
     res.json({ message: "Profiles details aligned successfully." });

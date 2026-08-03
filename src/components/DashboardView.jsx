@@ -32,7 +32,7 @@ const AVATARS = [
 export default function DashboardView({ onNavigate }) {
   const { t } = useLanguage();
   // Stats states
-  const [profile, setProfile] = useState({ name: 'User', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
+  const [profile, setProfile] = useState({ name: 'User', username: '', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
   const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 240 });
   const [stats, setStats] = useState({ totalBackups: 0, storageUsedMB: 0 });
   const [backups, setBackups] = useState([]);
@@ -46,6 +46,10 @@ export default function DashboardView({ onNavigate }) {
 
   // Forms inputs
   const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [selectedAvatarIndex, setSelectedAvatarIndex] = useState(0);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
   const avatarInputRef = useRef(null);
@@ -85,6 +89,38 @@ export default function DashboardView({ onNavigate }) {
   useEffect(() => {
     setAvatarFailed(false);
   }, [profile.userId]);
+
+  // Debounced check for Username in edit profile
+  useEffect(() => {
+    if (activeModal !== 'profile' || !editUsername || editUsername.trim().length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+    // If it's the user's current username, it's always available
+    if (editUsername.trim().toLowerCase() === (profile.username || '').trim().toLowerCase()) {
+      setUsernameAvailable(true);
+      return;
+    }
+    setCheckingUsername(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/signup/check-availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getHeaders() },
+          body: JSON.stringify({ username: editUsername.trim() })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUsernameAvailable(data.usernameAvailable);
+        }
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [editUsername, activeModal, profile.username]);
 
   const addActivity = (msg) => {
     setActivities(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 15)]);
@@ -139,6 +175,8 @@ export default function DashboardView({ onNavigate }) {
       const profData = await profRes.json();
       setProfile(profData);
       setEditName(profData.name || '');
+      setEditUsername(profData.username || '');
+      setEditEmail(profData.email || '');
 
       // 2. Load License info
       const licRes = await fetch('/api/licenses/check', { headers });
@@ -259,22 +297,30 @@ export default function DashboardView({ onNavigate }) {
     e.preventDefault();
     setActionError('');
     setActionSuccess('');
+
+    if (usernameAvailable === false) {
+      setActionError('Username is already taken.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // 1. Update Name & Preset Avatar Index
+      // 1. Update Profile Details
       const nameRes = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
         body: JSON.stringify({ 
           name: editName,
-          email: profile.email,
+          username: editUsername,
+          email: editEmail,
           profilePicIndex: selectedAvatarIndex
         })
       });
 
       if (!nameRes.ok) {
-        setActionError('Failed to modify profile details.');
+        const errData = await nameRes.json().catch(() => ({}));
+        setActionError(errData.error || 'Failed to modify profile details.');
         setLoading(false);
         return;
       }
@@ -530,6 +576,8 @@ export default function DashboardView({ onNavigate }) {
                     {[
                       { label: t('editProfile'), icon: User, action: () => { 
                         setEditName(profile.name || '');
+                        setEditUsername(profile.username || '');
+                        setEditEmail(profile.email || '');
                         setSelectedAvatarIndex(profile.profilePicIndex || 0);
                         setSelectedAvatarFile(null);
                         setActiveModal('profile'); 
@@ -760,6 +808,33 @@ export default function DashboardView({ onNavigate }) {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder={t('yourNamePlaceholder')} 
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('username')}</label>
+                    <input 
+                      type="text" 
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder={t('username')} 
+                      className="input-unified"
+                      required
+                    />
+                    {checkingUsername && <p className="text-[11px] text-zinc-500 pl-1">{t('checkingAvailability')}</p>}
+                    {!checkingUsername && usernameAvailable === true && editUsername.trim().toLowerCase() !== (profile.username || '').trim().toLowerCase() && <p className="text-[11px] text-emerald-400 pl-1">✓ {t('usernameAvailable')}</p>}
+                    {!checkingUsername && usernameAvailable === false && <p className="text-[11px] text-rose-400 pl-1">✗ {t('usernameTaken')}</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('emailAddress')}</label>
+                    <input 
+                      type="email" 
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder={t('emailPlaceholder')} 
                       className="input-unified"
                       required
                     />
