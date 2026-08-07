@@ -4,6 +4,10 @@ RewriteEngine On
 RewriteCond %{HTTP_HOST} !^master\. [NC]
 RewriteRule ^master(/.*)?$ - [R=404,L]
 
+# 🔹 Block direct /helpdesk access on non-subdomain host
+RewriteCond %{HTTP_HOST} !^helpdesk\. [NC]
+RewriteRule ^helpdesk(/.*)?$ - [R=404,L]
+
 
 # 🔹 Allow direct access to existing files/folders
 RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -27,6 +31,21 @@ RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^master/(.*)$ master/index.html [L]
+
+# 🔹 Subdomain: helpdesk.yourdomain.com -> route to helpdesk/ folder
+RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/helpdesk/
+RewriteRule ^(.*)$ helpdesk/$1 [L]
+
+# 🔹 SPA fallback for helpdesk subdomain (if file/dir doesn't exist)
+RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^helpdesk/(.*)$ helpdesk/index.html [L]
 
 # 🔹 Remove .html from URLs (optional clean URLs)
 RewriteCond %{REQUEST_FILENAME}.html -f

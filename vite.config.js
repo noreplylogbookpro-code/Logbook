@@ -5,21 +5,30 @@ import path from 'path';
 
 // Plugin: after every build, copy public/index.html → public/master/index.html
 // so the master.* subdomain always has the correct asset hashes.
+
 function copyMasterHtml() {
   return {
     name: 'copy-master-html',
     closeBundle() {
       const src = path.resolve('public', 'index.html');
-      const dest = path.resolve('public', 'master', 'index.html');
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      const masterDest = path.resolve('public', 'master', 'index.html');
+      const helpdeskDest = path.resolve('public', 'helpdesk', 'index.html');
+
+      fs.mkdirSync(path.dirname(masterDest), { recursive: true });
+      fs.mkdirSync(path.dirname(helpdeskDest), { recursive: true });
+
+      const defaultTitle = '<title>Logbook Plus | Modern Expense Intelligence</title>';
       let html = fs.readFileSync(src, 'utf8');
+
       // Update title for master console
-      html = html.replace(
-        '<title>Logbook Plus | Modern Expense Intelligence</title>',
-        '<title>Logbook Plus | Master Console</title>'
-      );
-      fs.writeFileSync(dest, html);
+      let masterHtml = html.replace(defaultTitle, '<title>Logbook Plus | Master Console</title>');
+      fs.writeFileSync(masterDest, masterHtml);
       console.log('[copy-master-html] public/master/index.html updated');
+
+      // Update title for helpdesk console
+      let helpdeskHtml = html.replace(defaultTitle, '<title>Logbook Plus | IT Helpdesk</title>');
+      fs.writeFileSync(helpdeskDest, helpdeskHtml);
+      console.log('[copy-master-html] public/helpdesk/index.html updated');
     }
   };
 }

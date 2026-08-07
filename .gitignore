@@ -43,4 +43,6 @@ google_auth/
 .htaccess
 public/
 .idea/
+#database
+database/
 

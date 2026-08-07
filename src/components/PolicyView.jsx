@@ -343,7 +343,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
             </div>
           </div>
 
-          {selectedBlog.imageUrl && !selectedBlog.imageUrl.includes('blog_hero.png') && (
+          {selectedBlog.imageUrl && !selectedBlog.imageUrl.includes('blog_hero.webp') && (
             <div className="w-full h-48 md:h-64 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--bg-input)' }}>
               <img
                 src={selectedBlog.imageUrl}

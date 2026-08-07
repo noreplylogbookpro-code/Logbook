@@ -133,6 +133,13 @@ a {
   background: var(--scrollbar-thumb-hover);
 }
 
+::selection {
+  background-color: #c084fc;
+  /* Highlight background */
+  color: #ffffff;
+  /* Selected text color */
+}
+
 /* =========================================================
    COMPONENT LAYER
    ========================================================= */

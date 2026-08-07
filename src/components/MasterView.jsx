@@ -5,7 +5,8 @@ import {
   User, Key, ShieldAlert, CreditCard, LogOut, ChevronDown,
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
-  Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info
+  Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2
 } from 'lucide-react';
 
 export default function MasterView({ onNavigate, theme, toggleTheme }) {
@@ -25,6 +26,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   // Dashboard Data states
   const [stats, setStats] = useState({ totalUsers: 0, totalStorageMB: 0, uptimeSeconds: 0, masterUser: 'admin' });
+  const [networkHistory, setNetworkHistory] = useState([]);
+  const [networkGraphExpanded, setNetworkGraphExpanded] = useState(false);
   const [serverUptime, setServerUptime] = useState(0);
   const [users, setUsers] = useState([]);
   const [licenses, setLicenses] = useState([]);
@@ -40,6 +43,57 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [editPlanStatus, setEditPlanStatus] = useState('active');
   const [editPlanExpiry, setEditPlanExpiry] = useState('');
 
+  // Super User Password Reset modal states
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState(null);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
+  const [resetErrorMsg, setResetErrorMsg] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+
+  const openResetPasswordModal = (user) => {
+    setResetTargetUser(user);
+    setNewPasswordVal('');
+    setResetSuccessMsg('');
+    setResetErrorMsg('');
+    setResetModalOpen(true);
+  };
+
+  const handleExecutePasswordReset = async (e) => {
+    e.preventDefault();
+    if (!newPasswordVal || !newPasswordVal.trim()) {
+      setResetErrorMsg('Please enter a new valid password.');
+      return;
+    }
+    setResetSubmitting(true);
+    setResetSuccessMsg('');
+    setResetErrorMsg('');
+
+    try {
+      const res = await masterApiCall('/api/master/users/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: resetTargetUser.username,
+          newPassword: newPasswordVal.trim(),
+          school: resetTargetUser.school || resetTargetUser.source || 'NHSST'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResetSuccessMsg(`Password for @${resetTargetUser.username} updated & encrypted with bcrypt!`);
+        setTimeout(() => {
+          setResetModalOpen(false);
+        }, 1800);
+      } else {
+        setResetErrorMsg(data.error || 'Failed to reset user password.');
+      }
+    } catch (err) {
+      setResetErrorMsg('Connection error resetting user password.');
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   // Blog Form states
   const [selectedBlogId, setSelectedBlogId] = useState('');
   const [blogTitle, setBlogTitle] = useState('');
@@ -53,6 +107,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [licenseeEmail, setLicenseeEmail] = useState('');
   const [licenseDuration, setLicenseDuration] = useState('365');
   const [newlyGeneratedKey, setNewlyGeneratedKey] = useState('');
+  const [extendingLicense, setExtendingLicense] = useState(null);
+  const [extendDurationDays, setExtendDurationDays] = useState('365');
 
   // Settings states
   const [currentPwd, setCurrentPwd] = useState('');
@@ -71,6 +127,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   // Search / Filters
   const [userSearch, setUserSearch] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('ALL'); // 'ALL' | 'ONLINE' | 'OFFLINE'
   const [copiedKey, setCopiedKey] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
@@ -93,6 +150,15 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [expandedImportCategories, setExpandedImportCategories] = useState(new Set());
   const importFileRef = useRef(null);
 
+  // Self Host subscriptions state
+  const [selfHostSubscriptions, setSelfHostSubscriptions] = useState([]);
+  const [selfHostLoading, setSelfHostLoading] = useState(false);
+
+  // Logs Search & Filter state
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+  const [logLevelFilter, setLogLevelFilter] = useState('ALL');
+  const [selectedLogDetails, setSelectedLogDetails] = useState(null);
+
   // Timers and Refs
   const logsConsoleRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -103,12 +169,18 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   };
 
-  const masterApiCall = async (endpoint, options = {}) => {
-    const headers = { ...options.headers, ...getMasterHeaders() };
-    if (!(options.body instanceof FormData)) {
+  const masterApiCall = async (endpoint, options = {}, bodyPayload = null) => {
+    let opts = typeof options === 'string' ? { method: options } : { ...options };
+    if (bodyPayload && typeof options === 'string') {
+      opts.body = typeof bodyPayload === 'object' && !(bodyPayload instanceof FormData)
+        ? JSON.stringify(bodyPayload)
+        : bodyPayload;
+    }
+    const headers = { ...opts.headers, ...getMasterHeaders() };
+    if (opts.body && !(opts.body instanceof FormData)) {
       headers['Content-Type'] = headers['Content-Type'] || 'application/json';
     }
-    const res = await fetch(endpoint, { ...options, headers });
+    const res = await fetch(endpoint, { ...opts, headers });
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
         localStorage.removeItem('masterToken');
@@ -148,14 +220,25 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         const res = await masterApiCall('/api/master/stats');
         if (res.ok) {
           const data = await res.json();
-          setStats(data);
+          setStats(prev => ({ ...prev, ...data }));
           setServerUptime(data.uptimeSeconds || 0);
+
+          if (data.network) {
+            setNetworkHistory(prev => {
+              const next = [...prev, {
+                rx: data.network.rxMB || 0,
+                tx: data.network.txMB || 0,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              }];
+              return next.slice(-20);
+            });
+          }
         }
       } catch { }
     };
 
     loadStats();
-    const statsInterval = setInterval(loadStats, 15000);
+    const statsInterval = setInterval(loadStats, 3000);
     return () => clearInterval(statsInterval);
   }, [isAuthenticated]);
 
@@ -173,8 +256,13 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     if (!isAuthenticated) return;
     if (activeTab === 'Overview') {
       fetchRecentLogs();
+      fetchConfig();
+      const overviewPoller = setInterval(fetchConfig, 3000);
+      return () => clearInterval(overviewPoller);
     } else if (activeTab === 'Users') {
       fetchUsersList();
+      const usersPoller = setInterval(fetchUsersList, 4000);
+      return () => clearInterval(usersPoller);
     } else if (activeTab === 'Licenses') {
       fetchLicensesList();
     } else if (activeTab === 'Blogs') {
@@ -186,6 +274,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     } else if (activeTab === 'Settings') {
       fetchMasterProfile();
       fetchConfig();
+    } else if (activeTab === 'Helpdesk' || activeTab === 'Subscriptions' || activeTab === 'Billing') {
+      fetchSelfHostSubscriptions();
     }
   }, [activeTab, isAuthenticated]);
 
@@ -222,6 +312,21 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       }
     } catch { }
   };
+
+  const filteredUsersList = users.filter(user => {
+    const statusMatch = userStatusFilter === 'ALL' ||
+      (userStatusFilter === 'ONLINE' && user.isOnline) ||
+      (userStatusFilter === 'OFFLINE' && !user.isOnline);
+    if (!statusMatch) return false;
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase().trim();
+    return (
+      (user.username || '').toLowerCase().includes(q) ||
+      (user.name || '').toLowerCase().includes(q) ||
+      (user.school || '').toLowerCase().includes(q) ||
+      (user._id || '').toString().toLowerCase().includes(q)
+    );
+  });
 
   const fetchLicensesList = async () => {
     try {
@@ -260,11 +365,37 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     } catch { }
   };
 
+  const handleClearLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear all server logs?')) return;
+    try {
+      const res = await masterApiCall('/api/master/logs/clear', { method: 'POST' });
+      if (res.ok) {
+        setLogsList([]);
+      }
+    } catch (e) {
+      alert('Failed to clear logs.');
+    }
+  };
+
+  const filteredLogs = logsList.filter(log => {
+    const levelMatch = logLevelFilter === 'ALL' || (log.level || '').toLowerCase() === logLevelFilter.toLowerCase();
+    if (!levelMatch) return false;
+    if (!logSearchQuery.trim()) return true;
+    const q = logSearchQuery.toLowerCase().trim();
+    const msgMatch = (log.message || '').toLowerCase().includes(q);
+    const urlMatch = (log.metadata?.url || '').toLowerCase().includes(q);
+    const ipMatch = (log.metadata?.ip || '').toLowerCase().includes(q);
+    const levelTextMatch = (log.level || '').toLowerCase().includes(q);
+    return msgMatch || urlMatch || ipMatch || levelTextMatch;
+  });
+
   const fetchConfig = async () => {
     try {
       const res = await masterApiCall('/api/master/config');
       if (res.ok) {
-        setServerConfig(await res.json());
+        const data = await res.json();
+        setStats(prev => ({ ...prev, ...data }));
+        setServerConfig(prev => ({ ...prev, ...data }));
       }
     } catch { }
   };
@@ -280,6 +411,73 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         setEditProfilePicIndex(profile.profilePicIndex || 0);
       }
     } catch { }
+  };
+
+  const fetchSelfHostSubscriptions = async () => {
+    try {
+      setSelfHostLoading(true);
+      const res = await masterApiCall('/api/v1/master/subscriptions');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setSelfHostSubscriptions(data.subscriptions || []);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch self host subscriptions:', e);
+    } finally {
+      setSelfHostLoading(false);
+    }
+  };
+
+  const handleToggleSelfHostSubscription = async (school, currentStatus) => {
+    const nextStatus = currentStatus === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+    if (!confirm(`Are you sure you want to change the status of ${school} to ${nextStatus}?`)) {
+      return;
+    }
+    try {
+      const res = await masterApiCall('/api/v1/master/subscriptions/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ school, status: nextStatus })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          alert(`Campus ${school} status updated to ${nextStatus}!`);
+          fetchSelfHostSubscriptions();
+        } else {
+          alert(data.error || 'Failed to update campus status.');
+        }
+      } else {
+        alert('Server returned an error.');
+      }
+    } catch (err) {
+      alert('Network request failed.');
+    }
+  };
+
+  const handleUpdateSelfHostExpiry = async (school, expiryDate) => {
+    try {
+      const res = await masterApiCall('/api/v1/master/subscriptions/toggle', {
+        method: 'POST',
+        body: JSON.stringify({
+          school,
+          expiresAt: expiryDate ? new Date(expiryDate).toISOString() : null
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          fetchSelfHostSubscriptions();
+        } else {
+          alert(data.error || 'Failed to update expiry date.');
+        }
+      } else {
+        alert('Server returned an error.');
+      }
+    } catch (err) {
+      alert('Network request failed.');
+    }
   };
 
   // Auth Operations
@@ -447,11 +645,14 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     try {
       const res = await masterApiCall('/api/master/licenses/generate', {
         method: 'POST',
-        body: JSON.stringify({ licensee: licenseeEmail, durationDays: licenseDuration })
+        body: JSON.stringify({
+          clientName: licenseeEmail,
+          daysValid: licenseDuration
+        })
       });
       const data = await res.json();
       if (res.ok) {
-        setNewlyGeneratedKey(data.licenseKey);
+        setNewlyGeneratedKey(data.license?.key || data.licenseKey || (data.license && data.license.licenseKey));
         setLicenseeEmail('');
         fetchLicensesList();
       } else {
@@ -476,6 +677,47 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     }
   };
 
+  const openExtendLicenseModal = (lic) => {
+    setExtendingLicense(lic);
+    setExtendDurationDays('365');
+    setActiveModal('extendLicense');
+  };
+
+  const handleExtendLicenseSubmit = async (e) => {
+    e.preventDefault();
+    if (!extendingLicense) return;
+    const parsedDays = parseInt(extendDurationDays, 10);
+    if (isNaN(parsedDays) || parsedDays <= 0) {
+      alert('Please enter a valid positive number of days.');
+      return;
+    }
+
+    setLoading(true);
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await masterApiCall(`/api/master/licenses/${encodeURIComponent(extendingLicense._id)}/extend`, {
+        method: 'PATCH',
+        body: JSON.stringify({ daysValid: parsedDays })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewlyGeneratedKey(data.license?.key || data.licenseKey || (data.license && data.license.licenseKey));
+        fetchLicensesList();
+        setActionSuccess('License extended successfully! You can copy the newly signed key below.');
+        setTimeout(() => {
+          setActiveModal(null);
+        }, 3000);
+      } else {
+        setActionError(data.error || 'Failed to extend license.');
+      }
+    } catch {
+      setActionError('Failed to extend license due to connection error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Blog Actions
   const openBlogEditModal = (blog = null) => {
     if (blog) {
@@ -483,7 +725,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       setBlogTitle(blog.title || '');
       setBlogCategory(blog.category || 'Guides');
       setBlogDate(blog.date || '');
-      setBlogImageUrl(blog.imageUrl === '/assets/images/blog_hero.png' ? '' : (blog.imageUrl || ''));
+      setBlogImageUrl(blog.imageUrl === '/assets/images/blog_hero.webp' ? '' : (blog.imageUrl || ''));
       setBlogExcerpt(blog.excerpt || '');
       setBlogContent(blog.content || '');
     } else {
@@ -1172,6 +1414,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     { name: 'Overview', icon: Server },
                     { name: 'Users', icon: Users },
                     { name: 'Licenses', icon: Key },
+                    { name: 'Subscriptions', icon: CreditCard },
                     { name: 'Blogs', icon: BookOpen },
                     { name: 'Logs', icon: Terminal },
                     { name: 'Settings', icon: Settings },
@@ -1231,6 +1474,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               { name: 'Overview', icon: Server },
               { name: 'Users', icon: Users },
               { name: 'Licenses', icon: Key },
+              { name: 'Subscriptions', icon: CreditCard },
               { name: 'Blogs', icon: BookOpen },
               { name: 'Logs', icon: Terminal },
               { name: 'Settings', icon: Settings },
@@ -1243,7 +1487,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   onClick={() => setActiveTab(tab.name)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
                     ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white'
-                    : 'text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
+                    : 'hover:scale-110 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
                     }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-400 dark:text-zinc-500'}`} />
@@ -1357,37 +1601,330 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Stats Grid */}
+              {/* Stats & Telemetry Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
-                  <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Registered Users</span>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white">{stats.totalUsers || 0}</span>
-                    <Users className="w-5 h-5 text-accent-blue" />
+                {/* Registered Users */}
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">Registered Accounts</span>
+                    <Users className="w-5 h-5 text-accent-blue bg-accent-blue/10 p-1 rounded-lg" />
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-2xl font-black text-zinc-800 dark:text-white">{stats.totalUsers || 0}</span>
+                    <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      Vault + Campus
+                    </span>
                   </div>
                 </div>
-                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
-                  <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Total Disk Storage</span>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white">{parseFloat(stats.totalStorageMB || 0).toFixed(1)} MB</span>
-                    <Cloud className="w-5 h-5 text-accent-purple" />
+
+                {/* Live CPU Usage */}
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">CPU Usage</span>
+                    <Cpu className="w-5 h-5 text-accent-purple bg-accent-purple/10 p-1 rounded-lg" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-black text-zinc-800 dark:text-white">{stats.cpuUsage || 0}%</span>
+                      <span className="text-[11px] text-zinc-400 font-mono">{stats.cpuCores || 1} Cores</span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-200 dark:border-white/5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${(stats.cpuUsage || 0) > 80 ? 'bg-red-500' :
+                          (stats.cpuUsage || 0) > 50 ? 'bg-amber-500' : 'bg-accent-purple'
+                          }`}
+                        style={{ width: `${Math.max(5, Math.min(100, stats.cpuUsage || 0))}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
-                  <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Uptime Server Clock</span>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white font-mono">{formatUptimeDisplay(serverUptime)}</span>
-                    <Clock className="w-5 h-5 text-accent-cyan animate-pulse" />
+
+                {/* Live Network Bandwidth (Click to Expand) */}
+                <div
+                  onClick={() => setNetworkGraphExpanded(!networkGraphExpanded)}
+                  className={`card-unified p-4 border transition-all cursor-pointer space-y-3 group ${networkGraphExpanded
+                    ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-white dark:bg-zinc-950/50 border-zinc-200 dark:border-white/5 hover:border-emerald-500/30'
+                    }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                      Network Traffic
+                      <span className="text-[10px] text-emerald-400 font-normal lowercase opacity-0 group-hover:opacity-100 transition-opacity">
+                        (click to {networkGraphExpanded ? 'collapse' : 'expand'})
+                      </span>
+                    </span>
+                    <button className="p-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition">
+                      {networkGraphExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <div className="flex items-center gap-1 text-xs font-mono text-emerald-400 font-bold">
+                        <ArrowDown className="w-3 h-3" /> Rx: {stats.network?.rxMB || '0.00'} MB
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-mono text-accent-blue font-bold mt-0.5">
+                        <ArrowUp className="w-3 h-3" /> Tx: {stats.network?.txMB || '0.00'} MB
+                      </div>
+                    </div>
+                    <span className="text-[10.5px] font-bold text-zinc-500 font-mono">
+                      {stats.network?.totalRequests || 0} reqs
+                    </span>
                   </div>
                 </div>
-                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5">
-                  <span className="text-[14px] font-bold text-zinc-500 uppercase tracking-wider block">Server Master User</span>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-2xl font-extrabold text-zinc-800 dark:text-white truncate max-w-[140px]" title={stats.masterUser}>{stats.masterUser}</span>
-                    <Shield className="w-5 h-5 text-amber-500" />
+
+                {/* RAM Memory Load */}
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">Memory (RAM)</span>
+                    <HardDrive className="w-5 h-5 text-accent-cyan bg-accent-cyan/10 p-1 rounded-lg" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-black text-zinc-800 dark:text-white">{stats.ramUsageMB || 0} <span className="text-xs font-normal text-zinc-400">MB RSS</span></span>
+                      <span className="text-[11px] text-zinc-400 font-mono">{stats.ramUsedPercent || 0}% System</span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-200 dark:border-white/5">
+                      <div
+                        className="h-full rounded-full bg-accent-cyan transition-all duration-500"
+                        style={{ width: `${Math.max(5, Math.min(100, stats.ramUsedPercent || 0))}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Disk Storage */}
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">Disk Storage</span>
+                    <Cloud className="w-5 h-5 text-amber-400 bg-amber-500/10 p-1 rounded-lg" />
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-2xl font-black text-zinc-800 dark:text-white">{parseFloat(stats.totalStorageMB || 0).toFixed(1)} <span className="text-xs font-normal text-zinc-400">MB</span></span>
+                    <span className="text-[11px] text-zinc-400 font-mono">Uploads Dir</span>
+                  </div>
+                </div>
+
+                {/* System Uptime Clock */}
+                <div className="card-unified bg-white dark:bg-zinc-950/50 p-4 border border-zinc-200 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-zinc-500 uppercase tracking-wider">System Uptime</span>
+                    <Clock className="w-5 h-5 text-emerald-400 bg-emerald-500/10 p-1 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-2xl font-black text-zinc-800 dark:text-white font-mono">{formatUptimeDisplay(serverUptime)}</span>
+                    <span className="text-[11px] font-bold text-emerald-400">Active</span>
                   </div>
                 </div>
               </div>
+
+              {/* EXPANDABLE REAL-TIME NETWORK GRAPH PANEL */}
+              <AnimatePresence>
+                {networkGraphExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                    exit={{ opacity: 0, height: 0, scale: 0.98 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="card-unified bg-white dark:bg-zinc-950/50 p-5 border border-emerald-500/20 shadow-lg space-y-4 text-left">
+                      {/* Header & Legend */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-white/5 pb-3">
+                        <div>
+                          <h4 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <Wifi className="w-4 h-4 text-emerald-400" />
+                            Live Network Bandwidth Stream (Tx / Rx Real-Time Graph)
+                          </h4>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            Real-time HTTP Request/Response throughput. Blue path = Transmitted (Tx), Green path = Received (Rx).
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 font-mono">
+                            <ArrowDown className="w-3.5 h-3.5" />
+                            Rx: {stats.network?.rxMB || '0.00'} MB ({stats.network?.rxKB || '0.0'} KB)
+                          </div>
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-xs font-bold text-accent-blue font-mono">
+                            <ArrowUp className="w-3.5 h-3.5" />
+                            Tx: {stats.network?.txMB || '0.00'} MB ({stats.network?.txKB || '0.0'} KB)
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setNetworkGraphExpanded(false); }}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 hover:text-white transition cursor-pointer flex items-center gap-1 text-xs font-bold"
+                          >
+                            <Minimize2 className="w-3.5 h-3.5" />
+                            Close Graph
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SVG Line Graph Container */}
+                      <div className="relative h-44 w-full bg-zinc-50 dark:bg-black/80 rounded-xl border border-zinc-200 dark:border-white/10 p-3 flex flex-col justify-between overflow-hidden">
+                        {networkHistory.length < 2 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-xs text-zinc-400 space-y-1.5">
+                            <Activity className="w-5 h-5 text-emerald-400 animate-spin" />
+                            <span className="font-semibold">Sampling network traffic telemetry stream...</span>
+                          </div>
+                        ) : (
+                          (() => {
+                            const width = 600;
+                            const height = 120;
+                            const maxVal = Math.max(10, ...networkHistory.map(d => d.rx), ...networkHistory.map(d => d.tx));
+                            const ptsCount = networkHistory.length;
+
+                            const rxPoints = networkHistory.map((d, i) => {
+                              const x = (i / (ptsCount - 1)) * width;
+                              const y = height - (d.rx / maxVal) * (height - 20) - 10;
+                              return `${x},${y}`;
+                            });
+
+                            const txPoints = networkHistory.map((d, i) => {
+                              const x = (i / (ptsCount - 1)) * width;
+                              const y = height - (d.tx / maxVal) * (height - 20) - 10;
+                              return `${x},${y}`;
+                            });
+
+                            const rxPath = `M ${rxPoints.join(' L ')}`;
+                            const txPath = `M ${txPoints.join(' L ')}`;
+                            const rxArea = `M 0,${height} L ${rxPoints.join(' L ')} L ${width},${height} Z`;
+                            const txArea = `M 0,${height} L ${txPoints.join(' L ')} L ${width},${height} Z`;
+
+                            return (
+                              <>
+                                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                                  <defs>
+                                    <linearGradient id="rxGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                                    </linearGradient>
+                                    <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                                    </linearGradient>
+                                  </defs>
+
+                                  {/* Grid Lines */}
+                                  <line x1="0" y1={height / 4} x2={width} y2={height / 4} stroke="currentColor" className="text-zinc-200 dark:text-zinc-800" strokeDasharray="3 3" />
+                                  <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="currentColor" className="text-zinc-200 dark:text-zinc-800" strokeDasharray="3 3" />
+                                  <line x1="0" y1={(3 * height) / 4} x2={width} y2={(3 * height) / 4} stroke="currentColor" className="text-zinc-200 dark:text-zinc-800" strokeDasharray="3 3" />
+
+                                  {/* Area Fills */}
+                                  <path d={rxArea} fill="url(#rxGrad)" />
+                                  <path d={txArea} fill="url(#txGrad)" />
+
+                                  {/* Line Strokes */}
+                                  <path d={txPath} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d={rxPath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                                  {/* Data Dots */}
+                                  {networkHistory.map((d, i) => {
+                                    const x = (i / (ptsCount - 1)) * width;
+                                    const rxY = height - (d.rx / maxVal) * (height - 20) - 10;
+                                    const txY = height - (d.tx / maxVal) * (height - 20) - 10;
+                                    return (
+                                      <g key={i}>
+                                        <circle cx={x} cy={rxY} r="3" className="fill-emerald-400 stroke-zinc-950" strokeWidth="1.5" />
+                                        <circle cx={x} cy={txY} r="3" className="fill-blue-500 stroke-zinc-950" strokeWidth="1.5" />
+                                      </g>
+                                    );
+                                  })}
+                                </svg>
+
+                                {/* Time axis labels */}
+                                <div className="flex justify-between items-center text-[10px] text-zinc-400 font-mono pt-1 border-t border-zinc-200 dark:border-white/5 mt-1">
+                                  <span>Started: {networkHistory[0]?.time}</span>
+                                  <span className="hidden sm:inline text-zinc-500 font-sans">Rolling Live Stream ({networkHistory.length} samples)</span>
+                                  <span className="text-emerald-400 font-bold">Latest: {networkHistory[networkHistory.length - 1]?.time}</span>
+                                </div>
+                              </>
+                            );
+                          })()
+                        )}
+                      </div>
+
+                      {/* Traffic Breakdown & Route Destinations Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {/* Top Endpoints */}
+                        <div className="p-3.5 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5 space-y-2.5">
+                          <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-2">
+                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Terminal className="w-3.5 h-3.5 text-accent-purple" />
+                              Top Endpoint Route Traffic Destinations
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400">Route Breakdown</span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            {(!stats.network?.topEndpoints || stats.network.topEndpoints.length === 0) ? (
+                              <div className="text-center py-4 text-zinc-400 text-[11px]">No active route telemetry available.</div>
+                            ) : (
+                              stats.network.topEndpoints.map((ep, idx) => (
+                                <div key={idx} className="space-y-1">
+                                  <div className="flex justify-between items-center font-mono text-[11px]">
+                                    <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-[200px]" title={ep.endpoint}>
+                                      {ep.endpoint}
+                                    </span>
+                                    <span className="text-zinc-500 font-semibold">
+                                      {ep.count} reqs ({ep.pct || 0}%)
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className="bg-accent-purple h-full rounded-full transition-all"
+                                      style={{ width: `${Math.max(4, Math.min(100, ep.pct || 0))}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Top Client IPs & Method Ratios */}
+                        <div className="p-3.5 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5 space-y-3">
+                          <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-2">
+                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-accent-blue" />
+                              Client IP Sources & Method Ratios
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400">Client Sources</span>
+                          </div>
+
+                          {/* HTTP Method Ratios */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                              GET: {stats.network?.methodStats?.GET || 0}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              POST: {stats.network?.methodStats?.POST || 0}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              PUT: {stats.network?.methodStats?.PUT || 0}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                              DELETE: {stats.network?.methodStats?.DELETE || 0}
+                            </span>
+                          </div>
+
+                          {/* Top IPs */}
+                          <div className="space-y-1.5 font-mono text-xs">
+                            {(!stats.network?.topClients || stats.network.topClients.length === 0) ? (
+                              <div className="text-center py-2 text-zinc-400 text-[11px]">No client IP data yet.</div>
+                            ) : (
+                              stats.network.topClients.map((client, idx) => (
+                                <div key={idx} className="flex justify-between items-center p-1.5 bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-white/5 text-[11px]">
+                                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{client.ip}</span>
+                                  <span className="text-zinc-500 font-semibold">{client.count} requests</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Server Logs and Actions layout */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1470,80 +2007,211 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4"
+              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-6 text-left"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-3">
-                <h3 className="text-md font-bold text-zinc-800 dark:text-white uppercase tracking-wider">User Account Management</h3>
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Search by Username, Email, ID..."
-                  className="input-unified py-1.5 px-3 text-sm max-w-xs"
-                />
+              {/* Header Toolbar & Live Stat Summary */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-3">
+                  <div>
+                    <h3 className="text-md font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Users className="w-5 h-5 text-accent-purple" />
+                      Live User Account Directory
+                    </h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Real-time online status and active user sessions across all vault & campus instances.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+
+                    <button
+                      onClick={fetchUsersList}
+                      className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                      title="Refresh Users List"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Total Accounts</p>
+                      <p className="text-2xl font-black text-zinc-800 dark:text-white mt-1">{users.length}</p>
+                    </div>
+                    <Users className="w-7 h-7 text-accent-purple bg-accent-purple/10 p-1.5 rounded-lg" />
+                  </div>
+                  <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Online Now</p>
+                      <p className="text-2xl font-black text-emerald-400 mt-1">{users.filter(u => u.isOnline).length}</p>
+                    </div>
+                    <Activity className="w-7 h-7 text-emerald-400 bg-emerald-500/10 p-1.5 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Offline Accounts</p>
+                      <p className="text-2xl font-black text-zinc-500 mt-1">{users.filter(u => !u.isOnline).length}</p>
+                    </div>
+                    <User className="w-7 h-7 text-zinc-400 bg-zinc-500/10 p-1.5 rounded-lg" />
+                  </div>
+                </div>
+
+                {/* Search & Status Filter Bar */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                  <div className="relative sm:col-span-2">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search by Username, Name, School, ID..."
+                      className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-accent-purple"
+                    />
+                    {userSearch && (
+                      <button
+                        onClick={() => setUserSearch('')}
+                        className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-200 text-xs"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                    <select
+                      value={userStatusFilter}
+                      onChange={(e) => setUserStatusFilter(e.target.value)}
+                      className="w-full py-2 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-purple cursor-pointer font-semibold"
+                    >
+                      <option value="ALL">All Statuses ({users.length})</option>
+                      <option value="ONLINE">🟢 Online Now ({users.filter(u => u.isOnline).length})</option>
+                      <option value="OFFLINE">⚪ Offline ({users.filter(u => !u.isOnline).length})</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+              {/* Users Table */}
+              <div className="overflow-x-auto border border-zinc-200 dark:border-white/5 rounded-xl bg-white dark:bg-zinc-950">
+                <table className="w-full text-sm text-left border-collapse">
                   <thead>
-                    <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
-                      <th className="py-2.5">User Identity</th>
-                      <th className="py-2.5">User ID</th>
-                      <th className="py-2.5">Billing Plan</th>
-                      <th className="py-2.5 text-right">Actions</th>
+                    <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-white/5 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                      <th className="px-5 py-3.5">User Identity</th>
+                      <th className="px-5 py-3.5">Live Status</th>
+                      <th className="px-5 py-3.5">Source / Campus</th>
+                      <th className="px-5 py-3.5">Billing Plan</th>
+                      <th className="px-5 py-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
-                        <td className="py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-800 dark:text-white uppercase">
-                              {user.name ? user.name.charAt(0) : user.username.charAt(0)}
-                            </div>
-                            <div className="text-left">
-                              <p className="font-semibold text-zinc-800 dark:text-white flex items-center gap-1.5">
-                                {user.name || 'N/A'}
-                                {user.twoFactorEnabled && <Shield className="w-4 h-4 text-accent-purple" title="2FA Enabled" />}
-                              </p>
-                              <p className="text-sm text-zinc-500">{user.username}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 font-mono text-zinc-500 dark:text-zinc-400">{user._id}</td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded text-[12px] font-semibold uppercase ${user.plan === 'premium' || user.plan === 'licensed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-white/5'
-                            }`}>
-                            {user.plan || 'unpaid'}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            {user.twoFactorEnabled && (
-                              <button
-                                onClick={() => handleForceReset2FA(user._id, user.username)}
-                                className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-semibold rounded-lg border border-amber-500/20 transition-all cursor-pointer flex items-center gap-1"
-                              >
-                                Reset 2FA
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openPlanModal(user)}
-                              className="px-2.5 py-1.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-semibold rounded-lg border border-accent-blue/20 transition-all cursor-pointer flex items-center gap-1"
-                            >
-                              Edit Plan
-                            </button>
-                            <button
-                              onClick={() => handleWipeUser(user._id, user.username)}
-                              className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              Wipe
-                            </button>
-                          </div>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-white/5">
+                    {filteredUsersList.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="py-12 text-center text-xs text-zinc-400 font-sans">
+                          No users match your criteria.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredUsersList.map((user) => (
+                        <tr key={user._id} className="hover:bg-zinc-100 dark:hover:bg-zinc-900/60 transition">
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-blue/20 to-accent-purple/20 border border-accent-purple/30 flex items-center justify-center font-extrabold text-zinc-800 dark:text-white uppercase">
+                                  {user.name ? user.name.charAt(0) : user.username.charAt(0)}
+                                </div>
+                                <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-950 ${user.isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                              </div>
+                              <div className="text-left">
+                                <p className="font-bold text-zinc-800 dark:text-white flex items-center gap-1.5">
+                                  {user.name || user.username}
+                                  {user.twoFactorEnabled && <Shield className="w-3.5 h-3.5 text-accent-purple" title="2FA Enabled" />}
+                                </p>
+                                <p className="text-xs font-mono text-zinc-500">@{user.username}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            {user.isOnline ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                Online
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                                Offline
+                              </span>
+                            )}
+                            {user.lastActiveAt ? (
+                              <p className="text-[10.5px] text-zinc-500 font-mono mt-1">
+                                {user.isOnline ? 'Active now' : `Last: ${new Date(user.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/5 uppercase">
+                              {user.source || user.school || 'Vault'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${user.plan === 'premium' || user.plan === 'licensed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-300 dark:border-white/5'
+                              }`}>
+                              {user.plan || 'campus'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <div className="flex justify-end gap-2 flex-wrap">
+                              <button
+                                onClick={() => openResetPasswordModal(user)}
+                                className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1"
+                                title="Reset & Encrypt Password"
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                                Reset Pwd
+                              </button>
+                              {user.twoFactorEnabled && (
+                                <button
+                                  onClick={() => handleForceReset2FA(user._id, user.username)}
+                                  className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold rounded-lg border border-amber-500/20 transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  Reset 2FA
+                                </button>
+                              )}
+                              {user.plan === 'campus' || (user.source && user.source !== 'Main Vault') ? (
+                                <a
+                                  href={window.location.href.replace('master', 'helpdesk')}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <Cloud className="w-3.5 h-3.5" />
+                                  Manage on Helpdesk
+                                </a>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => openPlanModal(user)}
+                                    className="px-2.5 py-1.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-bold rounded-lg border border-accent-blue/20 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    Edit Plan
+                                  </button>
+                                  <button
+                                    onClick={() => handleWipeUser(user._id, user.username)}
+                                    className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Wipe
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1635,22 +2303,28 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       {licenses.map((lic) => {
                         const isExpired = Date.now() > lic.expiresAt;
                         return (
-                          <tr key={lic._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
-                            <td className="py-3 text-left font-semibold text-zinc-850 dark:text-white">{lic.licensee}</td>
+                          <tr key={lic._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition">
+                            <td className="py-3 text-left font-semibold text-zinc-850 dark:text-white">{lic.licensee || lic.clientName}</td>
                             <td className="py-3">
                               <span className={`font-semibold ${isExpired ? 'text-red-400' : 'text-zinc-650 dark:text-zinc-300'}`}>
                                 {new Date(lic.expiresAt).toLocaleDateString()}
                               </span>
                               {isExpired && <span className="text-[8px] uppercase tracking-wider text-red-500 border border-red-500/20 bg-red-500/5 px-1 ml-1.5 rounded">EXPIRED</span>}
                             </td>
-                            <td className="py-3 font-mono text-[11px] text-zinc-500 truncate max-w-[120px]">{lic.licenseKey}</td>
+                            <td className="py-3 font-mono text-[11px] text-zinc-500 truncate max-w-[120px]">{lic.licenseKey || lic.key}</td>
                             <td className="py-3 text-right">
                               <div className="flex justify-end gap-2">
                                 <button
-                                  onClick={() => copyToClipboard(lic.licenseKey)}
+                                  onClick={() => copyToClipboard(lic.licenseKey || lic.key)}
                                   className="px-2.5 py-1.5 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold rounded-lg border border-zinc-200 dark:border-white/5 transition-all cursor-pointer flex items-center gap-1"
                                 >
-                                  {copiedKey === lic.licenseKey ? 'Copied!' : 'Copy Key'}
+                                  {copiedKey === (lic.licenseKey || lic.key) ? 'Copied!' : 'Copy Key'}
+                                </button>
+                                <button
+                                  onClick={() => openExtendLicenseModal(lic)}
+                                  className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-semibold rounded-lg border border-emerald-500/20 transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  Extend
                                 </button>
                                 <button
                                   onClick={() => handleRevokeLicense(lic._id)}
@@ -1741,30 +2415,123 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               exit={{ opacity: 0, y: -10 }}
               className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4 text-left"
             >
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-2">
-                <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-accent-purple" />
-                  Live Server Console Logs
-                </h3>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              {/* Header Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-accent-purple" />
+                    Live Server Audit & Console Logs
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Real-time HTTP requests, authentication alerts, and server event logs. Click any log entry to inspect details & payload.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    Live Polling (2.5s)
+                  </span>
+                  <button
+                    onClick={fetchLiveLogs}
+                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                    title="Refresh Logs Now"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleClearLogs}
+                    className="px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear Logs
+                  </button>
+                </div>
               </div>
 
+              {/* Filter & Search Toolbar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                {/* Search */}
+                <div className="relative sm:col-span-2">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={logSearchQuery}
+                    onChange={(e) => setLogSearchQuery(e.target.value)}
+                    placeholder="Search logs by keyword, endpoint, IP address, status..."
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-accent-purple"
+                  />
+                  {logSearchQuery && (
+                    <button
+                      onClick={() => setLogSearchQuery('')}
+                      className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-200 text-xs"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Level Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                  <select
+                    value={logLevelFilter}
+                    onChange={(e) => setLogLevelFilter(e.target.value)}
+                    className="w-full py-2 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-purple cursor-pointer"
+                  >
+                    <option value="ALL">All Levels ({logsList.length})</option>
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="alarm">Alarm</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Logs Console Container */}
               <div
                 ref={logsConsoleRef}
-                className="h-[450px] bg-zinc-50 dark:bg-black/80 rounded-xl border border-zinc-200 dark:border-white/10 p-4 overflow-y-auto font-mono text-[14px] leading-relaxed text-zinc-700 dark:text-zinc-300 space-y-1"
+                className="h-[480px] bg-zinc-50 dark:bg-black/90 rounded-xl border border-zinc-200 dark:border-white/10 p-4 overflow-y-auto font-mono text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300 space-y-1.5"
               >
-                {[...logsList].reverse().map((log, idx) => (
-                  <div key={log._id || idx} className="hover:bg-white/5 p-0.5 rounded transition">
-                    <span className="text-zinc-500">[{new Date(log.timestamp).toISOString()}]</span>{' '}
-                    <span className={`uppercase font-bold ${log.level === 'critical' ? 'text-red-400' :
-                      log.level === 'warning' ? 'text-amber-400' :
-                        'text-accent-blue'
-                      }`}>
-                      [{log.level}]
-                    </span>{' '}
-                    <span>{log.message}</span>
+                {filteredLogs.length === 0 ? (
+                  <div className="py-20 text-center text-zinc-400 text-xs font-sans">
+                    No logs match your search & filter criteria.
                   </div>
-                ))}
+                ) : (
+                  filteredLogs.map((log, idx) => {
+                    const levelLower = (log.level || 'info').toLowerCase();
+                    const levelColors = {
+                      critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+                      alarm: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+                      info: 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    };
+                    const colorClass = levelColors[levelLower] || levelColors.info;
+
+                    return (
+                      <div
+                        key={log._id || idx}
+                        onClick={() => setSelectedLogDetails(log)}
+                        className="group flex items-start justify-between gap-3 hover:bg-zinc-200/60 dark:hover:bg-white/5 p-2 rounded-lg transition cursor-pointer border border-transparent hover:border-zinc-300 dark:hover:border-white/10"
+                      >
+                        <div className="flex items-start gap-2.5 overflow-hidden">
+                          <span className="text-zinc-400 text-[11px] whitespace-nowrap font-mono pt-0.5">
+                            {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border font-sans ${colorClass}`}>
+                            {log.level || 'INFO'}
+                          </span>
+                          <span className="break-all font-mono text-zinc-800 dark:text-zinc-200 group-hover:text-accent-purple transition-colors">
+                            {log.message}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <span className="text-[10px] font-sans text-accent-purple font-bold">Details</span>
+                          <Info className="w-4 h-4 text-accent-purple" />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           )}
@@ -1849,8 +2616,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center gap-3">
                       <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                       <div>
-                        <p className="font-bold text-zinc-800 dark:text-white">2FA is currently Disabled</p>
-                        <p className="text-[10px] text-zinc-500 mt-0.5">Enable two-factor authentication to secure server control access.</p>
+                        <p className="font-bold text-[13.5px] pb-1 text-zinc-800 dark:text-white">2FA is currently Disabled</p>
+                        <p className="text-[12.5px] text-zinc-500 mt-0.5">Enable two-factor authentication to secure server control access.</p>
                       </div>
                     </div>
 
@@ -2202,11 +2969,208 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               </div>
             </motion.div>
           )}
+
+          {(activeTab === 'Helpdesk' || activeTab === 'Subscriptions' || activeTab === 'Billing') && (
+            <motion.div
+              key="Subscriptions"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6 text-left"
+            >
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-zinc-800 dark:text-white flex items-center gap-2">
+                    <Cloud className="w-5 h-5 text-accent-purple" />
+                    Helpdesk Campus Subscriptions
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Manage self-hosted helpdesk campus subscriptions and billing status.
+                  </p>
+                </div>
+
+                {selfHostLoading ? (
+                  <div className="py-12 text-center text-sm text-zinc-550 font-bold flex flex-col items-center gap-2">
+                    <Activity className="w-6 h-6 text-accent-purple animate-spin" />
+                    <span>Loading campus subscriptions database...</span>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-zinc-200 dark:border-white/5 rounded-xl bg-white dark:bg-zinc-950">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-white/5 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                          <th className="px-6 py-4">Campus Code</th>
+                          <th className="px-6 py-4">Active Admins</th>
+                          <th className="px-6 py-4">Open Tickets</th>
+                          <th className="px-6 py-4">Monthly Rate</th>
+                          <th className="px-6 py-4">License Expiry</th>
+                          <th className="px-6 py-4">License Status</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-white/5 text-sm text-zinc-700 dark:text-zinc-355">
+                        {selfHostSubscriptions.map(sub => (
+                          <tr key={sub.school} className="hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                            <td className="px-6 py-4 font-bold text-zinc-800 dark:text-white">{sub.school}</td>
+                            <td className="px-6 py-4 font-mono font-bold text-accent-blue">{sub.activeAdmins}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${sub.activeTickets > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-zinc-500/10 text-zinc-500 border border-zinc-550/20'}`}>
+                                {sub.activeTickets} open
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 font-bold text-zinc-800 dark:text-zinc-200">₹{sub.activeAdmins * 100}/mo</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="date"
+                                  value={sub.expiresAt ? new Date(sub.expiresAt).toISOString().split('T')[0] : ''}
+                                  onChange={(e) => handleUpdateSelfHostExpiry(sub.school, e.target.value)}
+                                  className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-accent-purple cursor-pointer"
+                                />
+                                {sub.expiresAt && new Date(sub.expiresAt) < new Date() && (
+                                  <span className="text-[10px] font-bold text-red-400 uppercase bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded animate-pulse">
+                                    Expired
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${sub.status === 'ACTIVE'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${sub.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                {sub.status === 'ACTIVE' ? 'Active' : 'Suspended'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                onClick={() => handleToggleSelfHostSubscription(sub.school, sub.status)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border cursor-pointer ${sub.status === 'ACTIVE'
+                                  ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+                                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20'
+                                  }`}
+                              >
+                                {sub.status === 'ACTIVE' ? 'Suspend Access' : 'Reactivate School'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
       {/* ALL MODALS RENDER */}
       <AnimatePresence>
+        {/* LOG DETAILS INSPECTOR MODAL */}
+        {selectedLogDetails && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-xl card-unified space-y-4 relative overflow-hidden bg-white dark:bg-zinc-950 text-left border border-zinc-200 dark:border-white/10 p-6 shadow-2xl"
+            >
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-5 h-5 text-accent-purple" />
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Server Log Payload Inspector</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedLogDetails(null)}
+                  className="p-1.5 rounded-lg bg-zinc-200 dark:bg-white/5 hover:scale-110 hover:bg-red-300 dark:hover:bg-red-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Info summary */}
+                <div className="grid grid-cols-2 gap-3 text-xs bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                  <div>
+                    <span className="text-zinc-400 font-semibold block text-[10px] uppercase">Timestamp</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200 font-bold">{new Date(selectedLogDetails.timestamp).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-400 font-semibold block text-[10px] uppercase">Severity Level</span>
+                    <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-bold uppercase mt-0.5 ${selectedLogDetails.level === 'critical' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                      selectedLogDetails.level === 'warning' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                        selectedLogDetails.level === 'alarm' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      }`}>
+                      {selectedLogDetails.level || 'INFO'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Log message */}
+                <div className="space-y-1">
+                  <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Log Message</span>
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/10 rounded-xl font-mono text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">
+                    {selectedLogDetails.message}
+                  </div>
+                </div>
+
+                {/* HTTP Metadata Cards if available */}
+                {selectedLogDetails.metadata && Object.keys(selectedLogDetails.metadata).length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider">HTTP Request Breakdown</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                      {selectedLogDetails.metadata.method && (
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-xl">
+                          <span className="text-zinc-400 text-[10px] block uppercase font-bold">Method</span>
+                          <span className="font-extrabold text-accent-blue">{selectedLogDetails.metadata.method}</span>
+                        </div>
+                      )}
+                      {selectedLogDetails.metadata.status && (
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-xl">
+                          <span className="text-zinc-400 text-[10px] block uppercase font-bold font-sans">Status</span>
+                          <span className={`font-extrabold ${selectedLogDetails.metadata.status >= 400 ? 'text-red-400' : 'text-emerald-400'}`}>{selectedLogDetails.metadata.status}</span>
+                        </div>
+                      )}
+                      {selectedLogDetails.metadata.ip && (
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-xl">
+                          <span className="text-zinc-400 text-[10px] block uppercase font-bold font-sans">IP Address</span>
+                          <span className="font-extrabold text-zinc-700 dark:text-zinc-300 truncate block">{selectedLogDetails.metadata.ip}</span>
+                        </div>
+                      )}
+                      {selectedLogDetails.metadata.durationMs !== undefined && (
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-xl">
+                          <span className="text-zinc-400 text-[10px] block uppercase font-bold font-sans">Latency</span>
+                          <span className="font-extrabold text-accent-purple">{selectedLogDetails.metadata.durationMs}ms</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Raw JSON Payload block */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Raw JSON Record</span>
+                    <button
+                      onClick={() => copyToClipboard(JSON.stringify(selectedLogDetails, null, 2))}
+                      className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/10 rounded-lg text-xs font-bold text-zinc-600 dark:text-zinc-300 cursor-pointer flex items-center gap-1.5 transition"
+                    >
+                      {copiedKey === JSON.stringify(selectedLogDetails, null, 2) ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      Copy JSON
+                    </button>
+                  </div>
+                  <pre className="p-3 bg-zinc-950 text-emerald-400 border border-zinc-800 rounded-xl font-mono text-[11px] max-h-48 overflow-y-auto leading-relaxed shadow-inner">
+                    {JSON.stringify(selectedLogDetails, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {activeModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
@@ -2227,10 +3191,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   {activeModal === 'disableMfa' && 'Disable 2FA Authenticator'}
                   {activeModal === 'rebootServer' && 'Reboot Application Server'}
                   {activeModal === 'confirmImport' && 'Confirm Backup Restore'}
+                  {activeModal === 'extendLicense' && 'Extend Self-Hosted License'}
                 </h3>
                 <button
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-900 hover:scale-110 hover:bg-red-200 dark:hover:bg-red-800 hover:text-zinc-850 dark:hover:text-white text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -2246,6 +3211,62 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-semibold text-center">
                   {actionSuccess}
                 </div>
+              )}
+
+              {/* EXTEND LICENSE MODAL CONTENT */}
+              {activeModal === 'extendLicense' && extendingLicense && (
+                <form onSubmit={handleExtendLicenseSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Client Name / Licensee</label>
+                    <input
+                      type="text"
+                      value={extendingLicense.licensee || extendingLicense.clientName || ''}
+                      readOnly
+                      className="input-unified bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 text-zinc-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Current Expiration Date</label>
+                    <input
+                      type="text"
+                      value={new Date(extendingLicense.expiresAt).toLocaleDateString()}
+                      readOnly
+                      className="input-unified bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 text-zinc-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Extend Validity Period</label>
+                    <select
+                      value={extendDurationDays}
+                      onChange={(e) => setExtendDurationDays(e.target.value)}
+                      className="select-unified bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10"
+                    >
+                      <option value="30">30 Days</option>
+                      <option value="90">90 Days</option>
+                      <option value="365">1 Year (365 Days)</option>
+                      <option value="3650">Lifetime (10 Years)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
+                      className="w-1/2 btn-secondary-unified py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5"
+                    >
+                      Confirm Extension
+                    </button>
+                  </div>
+                </form>
               )}
 
               {/* EDIT PLAN MODAL CONTENT */}
@@ -2425,7 +3446,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   {/* Avatar Index Grid Selector */}
                   <div className="space-y-2">
                     <label className="text-[13.5px] font-bold text-zinc-500 uppercase block pl-1">Admin Profile Icon</label>
-                    <div className="grid grid-cols-5 gap-2 bg-zinc-900 p-2.5 rounded-xl border border-white/5">
+                    <div className="grid grid-cols-5 gap-2 bg-zinc-200 dark:bg-zinc-900 p-2.5 rounded-xl border border-white/5">
                       {AVATARS.map((av, idx) => (
                         <button
                           key={idx}
@@ -2665,6 +3686,86 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* RESET USER PASSWORD MODAL */}
+      <AnimatePresence>
+        {resetModalOpen && resetTargetUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-5 text-left"
+            >
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+                <div className="flex items-center gap-2 text-zinc-800 dark:text-white font-bold text-base">
+                  <Key className="w-5 h-5 text-emerald-400" />
+                  <span>Reset User Password</span>
+                </div>
+                <button
+                  onClick={() => setResetModalOpen(false)}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3.5 bg-zinc-50 dark:bg-zinc-900/80 rounded-xl border border-zinc-200 dark:border-white/5 space-y-1">
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Target Account</p>
+                <p className="text-sm font-bold text-zinc-800 dark:text-white">{resetTargetUser.name || resetTargetUser.username}</p>
+                <p className="text-xs font-mono text-emerald-400">@{resetTargetUser.username} • {resetTargetUser.source || resetTargetUser.school || 'Campus'}</p>
+              </div>
+
+              <form onSubmit={handleExecutePasswordReset} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">New Account Password</label>
+                  <input
+                    type="password"
+                    value={newPasswordVal}
+                    onChange={(e) => setNewPasswordVal(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl text-sm font-mono text-zinc-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                  />
+                  <p className="text-[11px] text-zinc-400">New password will be encrypted with bcrypt before being saved.</p>
+                </div>
+
+                {resetSuccessMsg && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold rounded-xl flex items-center gap-2">
+                    <Check className="w-4 h-4 flex-shrink-0" />
+                    <span>{resetSuccessMsg}</span>
+                  </div>
+                )}
+
+                {resetErrorMsg && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>{resetErrorMsg}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetSubmitting}
+                    className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {resetSubmitting ? <Activity className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                    <span>Encrypt & Save Password</span>
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

@@ -1,0 +1,15 @@
+tunnel: 62a377f9-f8ff-4916-971e-7c7dc9066729
+credentials-file: /data/data/com.termux/files/home/.cloudflared/62a377f9-f8ff-4916-971e-7c7dc9066729.json
+
+ingress:
+  - hostname: logbookplus.co.in
+    service: http://localhost:8080
+  - hostname: master.logbookplus.co.in
+    service: http://localhost:8080
+    originRequest:
+     httpHostHeader: master.logbookplus.co.in
+  - hostname: helpdesk.logbookplus.co.in
+    service: http://localhost:8080
+    originRequest:
+     httpHostHeader: helpdesk.logbookplus.co.in
+  - service: http_status:404

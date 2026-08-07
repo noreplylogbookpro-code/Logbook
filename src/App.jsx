@@ -8,6 +8,7 @@ import LoginView from './components/LoginView.jsx';
 import DashboardView from './components/DashboardView.jsx';
 import MasterView from './components/MasterView.jsx';
 import DevPortalView from './components/DevPortalView.jsx';
+import HelpdeskDashboard from './components/HelpdeskDashboard.jsx';
 import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useTheme } from './useTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
@@ -162,11 +163,14 @@ function AppContent() {
 
   const cleanPath = currentPath.replace(/^\/|\/$/g, '');
   const isMasterHost = window.location.hostname.startsWith('master.');
+  const isHelpdeskHost = window.location.hostname.startsWith('helpdesk.');
 
   let view = 'home';
   let initialDoc = 'security';
 
-  if (isMasterHost) {
+  if (isHelpdeskHost) {
+    view = 'helpdesk';
+  } else if (isMasterHost) {
     if (cleanPath === 'dev') {
       view = 'devportal';
     } else {
@@ -197,7 +201,7 @@ function AppContent() {
       className="min-h-screen flex flex-col font-sans select-none overflow-x-hidden"
       style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}
     >
-      {view !== 'master' && view !== 'devportal' && (
+      {view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (
         <header
           className="w-full py-6 px-6 md:px-12 border-b sticky top-0 z-50 backdrop-blur-md"
           style={{
@@ -208,7 +212,7 @@ function AppContent() {
           <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto flex items-center justify-between">
             <a href="/" className="flex items-center gap-3">
               <img
-                src="/assets/images/app_logo.png"
+                src="/assets/images/app_logo.webp"
                 alt="Logbook Plus Logo"
                 className="h-8 w-auto rounded-lg"
                 style={{ border: '1px solid var(--border)' }}
@@ -352,9 +356,10 @@ function AppContent() {
         {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
         {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
         {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
+        {view === 'helpdesk' && <HelpdeskDashboard />}
       </main>
 
-      {view !== 'dashboard' && view !== 'master' && view !== 'devportal' && (
+      {view !== 'dashboard' && view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (
         <footer
           className="border-t pt-16 pb-10 px-4 sm:px-6 md:px-12 relative overflow-hidden"
           style={{ backgroundColor: 'var(--bg-footer)', borderColor: 'var(--border)' }}
@@ -369,7 +374,7 @@ function AppContent() {
             <div className="lg:col-span-5 space-y-6 text-left">
               <a href="/" className="flex items-center gap-3">
                 <img
-                  src="/assets/images/app_logo.png"
+                  src="/assets/images/app_logo.webp"
                   alt="Logbook Plus Logo"
                   className="h-12 sm:h-16 w-auto rounded-lg"
                   style={{ border: '1px solid var(--border)' }}
