@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Hero from './components/Hero.jsx';
 import BentoFeatures from './components/BentoFeatures.jsx';
-import AboutView from './components/AboutView.jsx';
-import PricingView from './components/PricingView.jsx';
-import PolicyView from './components/PolicyView.jsx';
-import LoginView from './components/LoginView.jsx';
-import DashboardView from './components/DashboardView.jsx';
-import MasterView from './components/MasterView.jsx';
-import DevPortalView from './components/DevPortalView.jsx';
-import HelpdeskDashboard from './components/HelpdeskDashboard.jsx';
 import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useTheme } from './useTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
+
+const AboutView = lazy(() => import('./components/AboutView.jsx'));
+const PricingView = lazy(() => import('./components/PricingView.jsx'));
+const PolicyView = lazy(() => import('./components/PolicyView.jsx'));
+const LoginView = lazy(() => import('./components/LoginView.jsx'));
+const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
+const MasterView = lazy(() => import('./components/MasterView.jsx'));
+const DevPortalView = lazy(() => import('./components/DevPortalView.jsx'));
+const HelpdeskDashboard = lazy(() => import('./components/HelpdeskDashboard.jsx'));
 
 function AppContent() {
   const { language, setLanguage, t, languages } = useLanguage();
@@ -332,31 +333,37 @@ function AppContent() {
       )}
 
       <main className="flex-grow">
-        {view === 'home' && (
-          <>
-            <Hero />
-            <BentoFeatures />
-            <section className="py-24 px-6 md:px-12 bg-input relative text-center border-t border" style={{
-              borderColor: 'var(--border)',
-            }}>
-              <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
-                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
-                <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-medium bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-xl hover:scale-[1.02] transition-all">
-                  {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </a>
-              </div>
-            </section>
-          </>
-        )}
-        {view === 'about' && <AboutView onNavigate={navigate} />}
-        {view === 'pricing' && <PricingView onNavigate={navigate} />}
-        {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
-        {view === 'login' && <LoginView onNavigate={navigate} />}
-        {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
-        {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
-        {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
-        {view === 'helpdesk' && <HelpdeskDashboard />}
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          {view === 'home' && (
+            <>
+              <Hero />
+              <BentoFeatures />
+              <section className="py-24 px-6 md:px-12 bg-input relative text-center border-t border" style={{
+                borderColor: 'var(--border)',
+              }}>
+                <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
+                  <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
+                  <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-medium bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-xl hover:scale-[1.02] transition-all">
+                    {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </a>
+                </div>
+              </section>
+            </>
+          )}
+          {view === 'about' && <AboutView onNavigate={navigate} />}
+          {view === 'pricing' && <PricingView onNavigate={navigate} />}
+          {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
+          {view === 'login' && <LoginView onNavigate={navigate} />}
+          {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
+          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+          {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
+          {view === 'helpdesk' && <HelpdeskDashboard />}
+        </Suspense>
       </main>
 
       {view !== 'dashboard' && view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (

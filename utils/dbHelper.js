@@ -169,6 +169,29 @@ function writeLicenses(data) {
     fs.writeFileSync(LICENSES_FILE, JSON.stringify(data, null, 2));
 }
 
+const TAGS_FILE = path.join(DB_DIR, 'tags.json');
+
+function readTags() {
+    if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(TAGS_FILE)) {
+        fs.writeFileSync(TAGS_FILE, JSON.stringify(["IT Support", "Regional Manager", "HR", "Maintenance"], null, 2));
+    }
+    try {
+        return JSON.parse(fs.readFileSync(TAGS_FILE, 'utf8'));
+    } catch (e) {
+        return ["IT Support", "Regional Manager", "HR", "Maintenance"];
+    }
+}
+
+function writeTags(tags) {
+    if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    fs.writeFileSync(TAGS_FILE, JSON.stringify(tags, null, 2));
+}
+
 module.exports = {
     SCHOOLS,
     getSchoolKey,
@@ -180,5 +203,7 @@ module.exports = {
     writeSubscriptions,
     getSubscriptionForSchool,
     readLicenses,
-    writeLicenses
+    writeLicenses,
+    readTags,
+    writeTags
 };

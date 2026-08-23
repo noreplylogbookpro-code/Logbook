@@ -14,4 +14,13 @@ router.patch('/:id/close', ticketController.closeTicket);
 // Report Generation Endpoint
 router.get('/reports/csv', ticketController.exportTicketsCSV);
 
+// Tags Routes
+router.get('/tags', ticketController.getTags);
+router.post('/tags', ticketController.addTag);
+router.delete('/tags/:tag', ticketController.deleteTag);
+
+// Notification Dispatcher
+router.post('/send-notification', ticketController.sendNotification);
+router.get('/settings/defaults', ticketController.getNotificationDefaults);
+
 module.exports = router;

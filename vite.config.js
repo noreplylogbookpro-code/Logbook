@@ -51,5 +51,23 @@ export default defineConfig({
     outDir: 'public',
     emptyOutDir: false, // Do not wipe out static about, pricing, careers, etc. folders in public
     assetsDir: 'dist-assets', // Save CSS and JS bundles here
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-motion';
+            }
+          }
+        },
+      },
+    },
   },
 });

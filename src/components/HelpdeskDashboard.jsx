@@ -202,6 +202,14 @@ export default function HelpdeskDashboard() {
     // Active Admin Tab
     const [activeTab, setActiveTab] = useState('tickets');
 
+    // Custom Admin Tags
+    const [tags, setTags] = useState([]);
+    const [newTagInput, setNewTagInput] = useState('');
+
+    // Bot testing status
+    const [isTestingBot, setIsTestingBot] = useState(false);
+    const [botTestResult, setBotTestResult] = useState(null);
+
     // Filter & Search State
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
@@ -329,6 +337,46 @@ export default function HelpdeskDashboard() {
         if ('Notification' in window) {
             setBrowserNotificationPermission(Notification.permission);
         }
+
+        // Fetch custom tags
+        const fetchTags = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/tickets/tags`);
+                const data = await res.json();
+                if (data.success) {
+                    setTags(data.tags || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch tags:', err);
+            }
+        };
+
+        // Fetch server default notification settings
+        const fetchDefaultSettings = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/tickets/settings/defaults`);
+                const data = await res.json();
+                if (data.success) {
+                    setSettingsForm(prev => {
+                        const storedRaw = localStorage.getItem('it_support_notifications_config');
+                        const stored = storedRaw ? JSON.parse(storedRaw) : {};
+                        return {
+                            telegramEnabled: stored.telegramEnabled !== undefined ? !!stored.telegramEnabled : (!!data.defaults.telegramBotToken),
+                            telegramBotToken: stored.telegramBotToken || data.defaults.telegramBotToken || '',
+                            telegramChatId: stored.telegramChatId || data.defaults.telegramChatId || '',
+                            whatsappEnabled: stored.whatsappEnabled !== undefined ? !!stored.whatsappEnabled : (!!data.defaults.whatsappPhone),
+                            whatsappPhone: stored.whatsappPhone || data.defaults.whatsappPhone || '',
+                            whatsappApiKey: stored.whatsappApiKey || data.defaults.whatsappApiKey || ''
+                        };
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to fetch default settings:', err);
+            }
+        };
+
+        fetchTags();
+        fetchDefaultSettings();
     }, []);
 
     // Save Notifications Config
@@ -336,6 +384,69 @@ export default function HelpdeskDashboard() {
         e.preventDefault();
         localStorage.setItem('it_support_notifications_config', JSON.stringify(settingsForm));
         alert('Notification settings saved successfully!');
+    };
+
+    // Send Test Message to verify configuration in real time with progress and exact errors
+    const handleSendTestMessage = async () => {
+        setIsTestingBot(true);
+        setBotTestResult(null);
+        try {
+            const res = await fetch(`${API_BASE_URL}/tickets/send-notification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegramEnabled: settingsForm.telegramEnabled,
+                    telegramBotToken: settingsForm.telegramBotToken,
+                    telegramChatId: settingsForm.telegramChatId,
+                    whatsappEnabled: settingsForm.whatsappEnabled,
+                    whatsappPhone: settingsForm.whatsappPhone,
+                    whatsappApiKey: settingsForm.whatsappApiKey,
+                    title: 'Test Bot Alert 🤖',
+                    message: `Congratulations! Your IT Helpdesk notification bot integration is working in real time! (Time: ${new Date().toLocaleTimeString()})`,
+                    alertType: 'GENERAL',
+                    school: session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school || 'NHSST')
+                })
+            });
+            const result = await res.json();
+            
+            const telegramAttempted = settingsForm.telegramEnabled;
+            const whatsappAttempted = settingsForm.whatsappEnabled;
+
+            let isAnySuccess = false;
+            let report = {};
+
+            if (telegramAttempted) {
+                report.telegram = {
+                    sent: result.telegramSent,
+                    error: result.telegramError || 'Unknown connection error'
+                };
+                if (result.telegramSent) isAnySuccess = true;
+            }
+            if (whatsappAttempted) {
+                report.whatsapp = {
+                    sent: result.whatsappSent,
+                    error: result.whatsappError || 'Unknown connection error'
+                };
+                if (result.whatsappSent) isAnySuccess = true;
+            }
+
+            if (!telegramAttempted && !whatsappAttempted) {
+                report.general = 'Neither Telegram nor WhatsApp alerts are checked/enabled in settings.';
+            }
+
+            setBotTestResult({
+                success: isAnySuccess,
+                ...report
+            });
+        } catch (err) {
+            console.error('Test message failed:', err);
+            setBotTestResult({
+                success: false,
+                general: `Network error: ${err.message}`
+            });
+        } finally {
+            setIsTestingBot(false);
+        }
     };
 
     // Request Notification permission
@@ -350,37 +461,35 @@ export default function HelpdeskDashboard() {
     };
 
     // Trigger Mobile & Browser Alert Dispatcher
-    const triggerNotificationAlert = async (title, message) => {
+    const triggerNotificationAlert = async (title, message, alertType, ticket) => {
         let mobileAlertSent = false;
+        const activeSchool = session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school || 'NHSST');
 
-        if (settingsForm.telegramEnabled && settingsForm.telegramBotToken && settingsForm.telegramChatId) {
+        if (settingsForm.telegramEnabled || settingsForm.whatsappEnabled) {
             try {
-                const text = `🚨 <b>${title}</b>\n\n${message}`;
-                const url = `https://api.telegram.org/bot${settingsForm.telegramBotToken}/sendMessage`;
-                const res = await fetch(url, {
+                const res = await fetch(`${API_BASE_URL}/tickets/send-notification`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        chat_id: settingsForm.telegramChatId,
-                        text: text,
-                        parse_mode: 'HTML'
+                        telegramEnabled: settingsForm.telegramEnabled,
+                        telegramBotToken: settingsForm.telegramBotToken,
+                        telegramChatId: settingsForm.telegramChatId,
+                        whatsappEnabled: settingsForm.whatsappEnabled,
+                        whatsappPhone: settingsForm.whatsappPhone,
+                        whatsappApiKey: settingsForm.whatsappApiKey,
+                        title,
+                        message,
+                        alertType: alertType || 'GENERAL',
+                        school: activeSchool,
+                        ticket: ticket || null
                     })
                 });
-                if (res.ok) mobileAlertSent = true;
+                const result = await res.json();
+                if (result.telegramSent || result.whatsappSent) {
+                    mobileAlertSent = true;
+                }
             } catch (err) {
-                console.error('Telegram notification failed:', err);
-            }
-        }
-
-        if (settingsForm.whatsappEnabled && settingsForm.whatsappPhone && settingsForm.whatsappApiKey) {
-            try {
-                const cleanMessage = `[IT Helpdesk] ${title}: ${message}`.replace(/<[^>]*>/g, '');
-                const encodedMsg = encodeURIComponent(cleanMessage);
-                const url = `https://api.callmebot.com/whatsapp.php?phone=${settingsForm.whatsappPhone.trim()}&apikey=${settingsForm.whatsappApiKey.trim()}&text=${encodedMsg}`;
-                const res = await fetch(url);
-                if (res.ok) mobileAlertSent = true;
-            } catch (err) {
-                console.error('WhatsApp notification failed:', err);
+                console.error('Server-side notification request failed:', err);
             }
         }
 
@@ -388,9 +497,10 @@ export default function HelpdeskDashboard() {
             try {
                 new Notification(title, {
                     body: message.replace(/<[^>]*>/g, ''),
+                    icon: '/favicon.ico'
                 });
-            } catch (err) {
-                console.error('HTML5 browser notification failed:', err);
+            } catch (e) {
+                console.error('Desktop notification failed:', e);
             }
         }
     };
@@ -463,7 +573,7 @@ export default function HelpdeskDashboard() {
                         message = `Ticket ${ticket.token} was CLOSED by ${ticket.closedBy || 'IT Admin'}. Action: "${ticket.adminRemark || 'No remarks provided'}"`;
                         type = 'CLOSED';
                     } else if (ticket.status === 'IN_PROGRESS') {
-                        message = `Ticket ${ticket.token} is now IN PROGRESS.`;
+                        message = `Ticket ${ticket.token} is now IN PROGRESS. Action: "${ticket.adminRemark || 'No remark provided'}"`;
                     }
 
                     newAlerts.push({
@@ -485,7 +595,7 @@ export default function HelpdeskDashboard() {
             setNotifications(prev => [...newAlerts, ...prev]);
             setLatestToast(newAlerts[0]);
             newAlerts.forEach(alert => {
-                triggerNotificationAlert(alert.title, alert.message);
+                triggerNotificationAlert(alert.title, alert.message, alert.type, alert.ticket);
             });
         }
 
@@ -522,7 +632,8 @@ export default function HelpdeskDashboard() {
         floor: 'Ground Floor',
         roomNumber: '',
         subject: '',
-        description: ''
+        description: '',
+        adminTag: 'IT Support'
     });
 
     const [newUserForm, setNewUserForm] = useState({
@@ -769,6 +880,47 @@ export default function HelpdeskDashboard() {
         }));
     };
 
+    // Custom Tags handlers
+    const handleAddTag = async (e) => {
+        e.preventDefault();
+        if (!newTagInput.trim()) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/tickets/tags`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag: newTagInput })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setTags(data.tags);
+                setNewTagInput('');
+                alert('Tag added successfully!');
+            } else {
+                alert(data.error || 'Failed to add tag.');
+            }
+        } catch (err) {
+            console.error('Add tag error:', err);
+        }
+    };
+
+    const handleDeleteTag = async (tagToDelete) => {
+        if (!confirm(`Are you sure you want to delete the tag "${tagToDelete}"?`)) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/tickets/tags/${encodeURIComponent(tagToDelete)}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                setTags(data.tags);
+                alert('Tag deleted successfully!');
+            } else {
+                alert(data.error || 'Failed to delete tag.');
+            }
+        } catch (err) {
+            console.error('Delete tag error:', err);
+        }
+    };
+
     // Create New Ticket
     const handleCreateTicketSubmit = async (e) => {
         e.preventDefault();
@@ -801,7 +953,8 @@ export default function HelpdeskDashboard() {
                     floor: 'Ground Floor',
                     roomNumber: '',
                     subject: '',
-                    description: ''
+                    description: '',
+                    adminTag: tags[0] || 'IT Support'
                 });
                 fetchDashboardData();
             }
@@ -812,6 +965,16 @@ export default function HelpdeskDashboard() {
 
     // Update Ticket Status
     const handleUpdateStatus = async (id, status) => {
+        let remark = '';
+        if (status === 'IN_PROGRESS') {
+            const resultRemark = prompt('Please enter a technical remark to mark this ticket as In Progress:');
+            if (resultRemark === null) return; // User cancelled
+            if (!resultRemark.trim()) {
+                alert('A technical remark is required to start this ticket.');
+                return;
+            }
+            remark = resultRemark.trim();
+        }
         try {
             const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
             const res = await fetch(`${API_BASE_URL}/tickets/${id}/status`, {
@@ -820,11 +983,13 @@ export default function HelpdeskDashboard() {
                     'Content-Type': 'application/json',
                     'x-school-key': activeSchool
                 },
-                body: JSON.stringify({ status })
+                body: JSON.stringify({ status, adminRemark: remark })
             });
             const result = await res.json();
             if (result.success) {
                 fetchDashboardData();
+            } else {
+                alert(result.error || 'Failed to update status.');
             }
         } catch (err) {
             alert('Failed to update ticket status.');
@@ -1144,7 +1309,7 @@ export default function HelpdeskDashboard() {
                             </div>
                             <div className="min-w-0">
                                 <h1 className="text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
-                                    {session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')} Logbook
+                                    {session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school)} Logbook
                                 </h1>
                                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Campus Maintenance Suite</p>
                             </div>
@@ -1298,7 +1463,7 @@ export default function HelpdeskDashboard() {
                                             />
                                             <div className="absolute left-0 bottom-12 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-40 animate-fade-in origin-bottom-left">
                                                 <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                                    <h3 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                                    <h3 className="text-xs font-black text-slate-900 dark:white flex items-center gap-1.5">
                                                         <Bell className="w-3.5 h-3.5 text-indigo-500" />
                                                         Recent Notifications
                                                     </h3>
@@ -1364,7 +1529,7 @@ export default function HelpdeskDashboard() {
             <div className="flex-1 min-w-0 p-4 lg:p-8 space-y-6 overflow-y-auto">
 
                 {/* Mobile Header (Hidden on Desktop since Sidebar is active) */}
-                <div className="lg:hidden bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3">
+                <div className={`bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3 ${(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN') ? 'lg:hidden' : ''}`}>
                     <div className="flex items-center gap-2.5 min-w-0">
                         <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-xs">
                             <Server className="w-5 h-5" />
@@ -1617,10 +1782,19 @@ export default function HelpdeskDashboard() {
                                                     <div className="text-xs text-slate-500 dark:text-slate-400">{ticket.userPhone || 'No Phone'}</div>
                                                 </td>
                                                 <td className="p-4">
-                                                    <div className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded inline-block mb-1">{ticket.category}</div>
-                                                    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                                        <MapPin className="w-3 h-3 text-indigo-500" />
-                                                        {ticket.floor} · {ticket.roomNumber}
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        <div className="flex gap-1.5 flex-wrap">
+                                                            <span className="font-bold text-[10.5px] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded inline-block">{ticket.category}</span>
+                                                            {ticket.adminTag && (
+                                                                <span className="font-extrabold text-[10.5px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-2 py-0.5 rounded inline-block">
+                                                                    {ticket.adminTag}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+                                                            <MapPin className="w-3 h-3 text-indigo-500" />
+                                                            {ticket.floor} · {ticket.roomNumber}
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 max-w-xs">
@@ -2022,6 +2196,46 @@ export default function HelpdeskDashboard() {
                                     </tbody>
                                 </table>
                             </div>
+                            {/* Custom Tags Section for SUPER_ADMIN */}
+                            {session.role === 'SUPER_ADMIN' && (
+                                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Manage Admin Tags / Departments</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Add or remove custom tags for routing complaints to specific personnel types (e.g. HR, Regional Manager).</p>
+                                    </div>
+                                    <form onSubmit={handleAddTag} className="flex gap-2 max-w-md">
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="e.g. HR Manager"
+                                            value={newTagInput}
+                                            onChange={e => setNewTagInput(e.target.value)}
+                                            className="flex-1 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-4 h-4" /> Add Tag
+                                        </button>
+                                    </form>
+                                    <div className="flex gap-2 flex-wrap pt-2">
+                                        {tags.map(t => (
+                                            <div key={t} className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200">
+                                                <span>{t}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteTag(t)}
+                                                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition"
+                                                    title="Delete Tag"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Mobile List View */}
                             <div className="block sm:hidden space-y-2">
@@ -2067,202 +2281,270 @@ export default function HelpdeskDashboard() {
 
                 {/* VIEW: NOTIFICATIONS CONFIG */}
                 {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN') && activeTab === 'settings' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                        {/* Config Panel */}
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
-                            <div>
-                                <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Notifications Settings</h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Configure live mobile alerts for new tickets or status changes. Unconfigured alerts default to browser desktop alerts.
-                                </p>
-                            </div>
-
-                            <form onSubmit={handleSaveSettings} className="space-y-5">
-
-                                {/* 1. HTML5 Browser Permissions */}
-                                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2 flex items-center justify-between gap-4">
-                                    <div className="space-y-0.5">
-                                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">HTML5 Browser Notifications</h4>
-                                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                                            Enable native OS desktop alerts. This functions as a fallback if mobile alerts are disabled or fail.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleRequestNotificationPermission}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition ${browserNotificationPermission === 'granted'
-                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300 pointer-events-none'
-                                            : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/60'
-                                            }`}
-                                    >
-                                        {browserNotificationPermission === 'granted' ? 'Allowed ✓' : 'Allow Permission'}
-                                    </button>
-                                </div>
-
-                                {/* 2. Telegram Settings */}
-                                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-                                            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Telegram Bot Notifications</h4>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={settingsForm.telegramEnabled}
-                                            onChange={e => setSettingsForm({ ...settingsForm, telegramEnabled: e.target.checked })}
-                                            className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    {settingsForm.telegramEnabled && (
-                                        <div className="p-4 space-y-3.5 animate-fade-in bg-white dark:bg-slate-900">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Bot Token *</label>
-                                                <input
-                                                    type="password"
-                                                    required
-                                                    value={settingsForm.telegramBotToken}
-                                                    onChange={e => setSettingsForm({ ...settingsForm, telegramBotToken: e.target.value })}
-                                                    placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-                                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Chat ID *</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={settingsForm.telegramChatId}
-                                                    onChange={e => setSettingsForm({ ...settingsForm, telegramChatId: e.target.value })}
-                                                    placeholder="e.g. -100123456789 or 987654321"
-                                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* 3. WhatsApp Settings */}
-                                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                                            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">WhatsApp Alert (via CallMeBot)</h4>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={settingsForm.whatsappEnabled}
-                                            onChange={e => setSettingsForm({ ...settingsForm, whatsappEnabled: e.target.checked })}
-                                            className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    {settingsForm.whatsappEnabled && (
-                                        <div className="p-4 space-y-3.5 animate-fade-in bg-white dark:bg-slate-900">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">WhatsApp Phone Number *</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    value={settingsForm.whatsappPhone}
-                                                    onChange={e => setSettingsForm({ ...settingsForm, whatsappPhone: e.target.value })}
-                                                    placeholder="e.g. +1234567890 (international format)"
-                                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">CallMeBot API Key *</label>
-                                                <input
-                                                    type="password"
-                                                    required
-                                                    value={settingsForm.whatsappApiKey}
-                                                    onChange={e => setSettingsForm({ ...settingsForm, whatsappApiKey: e.target.value })}
-                                                    placeholder="e.g. 987654"
-                                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all duration-200"
-                                >
-                                    Save Configuration
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* Interactive Guides Panel */}
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-                            <div className="space-y-4">
+                            {/* Config Panel */}
+                            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
                                 <div>
-                                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Setup Guides</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Follow these instructions to connect your mobile phone to alerts.</p>
+                                    <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Notifications Settings</h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Configure live mobile alerts for new tickets or status changes. Unconfigured alerts default to browser desktop alerts.
+                                    </p>
                                 </div>
 
-                                {/* Guide Tab Switcher */}
-                                <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 p-1 rounded-lg border gap-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveGuideTab('telegram')}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition ${activeGuideTab === 'telegram' ? 'bg-white dark:bg-slate-800 shadow text-indigo-700 dark:text-indigo-300 border border-slate-200/50 dark:border-slate-700' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                            }`}
-                                    >
-                                        Telegram Setup
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveGuideTab('whatsapp')}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition ${activeGuideTab === 'whatsapp' ? 'bg-white dark:bg-slate-800 shadow text-indigo-700 dark:text-indigo-300 border border-slate-200/50 dark:border-slate-700' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                            }`}
-                                    >
-                                        WhatsApp Setup
-                                    </button>
+                                <form onSubmit={handleSaveSettings} className="space-y-5">
+
+                                    {/* 1. HTML5 Browser Permissions */}
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2 flex items-center justify-between gap-4">
+                                        <div className="space-y-0.5">
+                                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">HTML5 Browser Notifications</h4>
+                                            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                                                Enable native OS desktop alerts. This functions as a fallback if mobile alerts are disabled or fail.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleRequestNotificationPermission}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition ${browserNotificationPermission === 'granted'
+                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300 pointer-events-none'
+                                                : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/60'
+                                                }`}
+                                        >
+                                            {browserNotificationPermission === 'granted' ? 'Allowed ✓' : 'Allow Permission'}
+                                        </button>
+                                    </div>
+
+                                    {/* 2. Telegram Settings */}
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                                                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Telegram Bot Notifications</h4>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={settingsForm.telegramEnabled}
+                                                onChange={e => setSettingsForm({ ...settingsForm, telegramEnabled: e.target.checked })}
+                                                className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                            />
+                                        </div>
+
+                                        {settingsForm.telegramEnabled && (
+                                            <div className="p-4 space-y-3.5 animate-fade-in bg-white dark:bg-slate-900">
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Bot Token (Optional - Leave blank to use system bot)</label>
+                                                    <input
+                                                        type="password"
+                                                        value={settingsForm.telegramBotToken}
+                                                        onChange={e => setSettingsForm({ ...settingsForm, telegramBotToken: e.target.value })}
+                                                        placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Chat ID *</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={settingsForm.telegramChatId}
+                                                        onChange={e => setSettingsForm({ ...settingsForm, telegramChatId: e.target.value })}
+                                                        placeholder="e.g. -100123456789 or 987654321"
+                                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 3. WhatsApp Settings */}
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                                                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">WhatsApp Alert (via CallMeBot)</h4>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={settingsForm.whatsappEnabled}
+                                                onChange={e => setSettingsForm({ ...settingsForm, whatsappEnabled: e.target.checked })}
+                                                className="w-4 h-4 text-indigo-600 border-slate-300 dark:border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                            />
+                                        </div>
+
+                                        {settingsForm.whatsappEnabled && (
+                                            <div className="p-4 space-y-3.5 animate-fade-in bg-white dark:bg-slate-900">
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">WhatsApp Phone Number *</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={settingsForm.whatsappPhone}
+                                                        onChange={e => setSettingsForm({ ...settingsForm, whatsappPhone: e.target.value })}
+                                                        placeholder="e.g. +1234567890 (international format)"
+                                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">CallMeBot API Key (Optional - Leave blank to use system bot)</label>
+                                                    <input
+                                                        type="password"
+                                                        value={settingsForm.whatsappApiKey}
+                                                        onChange={e => setSettingsForm({ ...settingsForm, whatsappApiKey: e.target.value })}
+                                                        placeholder="e.g. 987654"
+                                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="submit"
+                                            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all duration-200"
+                                        >
+                                            Save Configuration
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={isTestingBot}
+                                            onClick={handleSendTestMessage}
+                                            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isTestingBot ? 'Sending...' : 'Send Test Message'}
+                                        </button>
+                                    </div>
+
+                                    {/* Test Progress & Real-Time Connection Diagnostic Console */}
+                                    {(isTestingBot || botTestResult) && (
+                                        <div className="space-y-3.5 pt-4 border-t border-slate-100 dark:border-slate-800/80 animate-fade-in">
+                                            {isTestingBot && (
+                                                <div className="flex items-center gap-2 p-3 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/40 rounded-xl text-xs text-indigo-700 dark:text-indigo-400 font-semibold animate-pulse">
+                                                    ⏳ <b>Sending Real-Time Test:</b> Dispatching test payload to target servers, please wait...
+                                                </div>
+                                            )}
+                                            {botTestResult && (
+                                                <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-2 shadow-sm ${
+                                                    botTestResult.success 
+                                                        ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300' 
+                                                        : 'bg-red-50/40 border-red-100 dark:bg-red-950/10 dark:border-red-900/40 text-red-800 dark:text-red-300'
+                                                }`}>
+                                                    <div className="font-extrabold uppercase tracking-wider text-[10.5px]">
+                                                        {botTestResult.success ? '✓ Integration Test Succeeded' : '✗ Integration Test Failed'}
+                                                    </div>
+                                                    
+                                                    {botTestResult.telegram && (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-bold flex items-center gap-1.5">
+                                                                <span className={`w-2 h-2 rounded-full ${botTestResult.telegram.sent ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                                Telegram Channel Status:
+                                                            </div>
+                                                            <div className="pl-3.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono break-all">
+                                                                {botTestResult.telegram.sent 
+                                                                    ? 'Sent successfully! Check your Telegram client.' 
+                                                                    : `Error: ${botTestResult.telegram.error}`
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {botTestResult.whatsapp && (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-bold flex items-center gap-1.5">
+                                                                <span className={`w-2 h-2 rounded-full ${botTestResult.whatsapp.sent ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                                WhatsApp Channel Status:
+                                                            </div>
+                                                            <div className="pl-3.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono break-all">
+                                                                {botTestResult.whatsapp.sent 
+                                                                    ? 'Sent successfully! Check your WhatsApp client.' 
+                                                                    : `Error: ${botTestResult.whatsapp.error}`
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {botTestResult.general && (
+                                                        <div className="text-red-700 dark:text-red-400 font-bold pl-1 font-mono text-[11px]">
+                                                            Notice: {botTestResult.general}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </form>
+                            </div>
+
+                            {/* Interactive Guides Panel */}
+                            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Setup Guides</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Follow these instructions to connect your mobile phone to alerts.</p>
+                                    </div>
+
+                                    {/* Guide Tab Switcher */}
+                                    <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 p-1 rounded-lg border gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveGuideTab('telegram')}
+                                            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition ${activeGuideTab === 'telegram' ? 'bg-white dark:bg-slate-800 shadow text-indigo-700 dark:text-indigo-300 border border-slate-200/50 dark:border-slate-700' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`}
+                                        >
+                                            Telegram Setup
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveGuideTab('whatsapp')}
+                                            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition ${activeGuideTab === 'whatsapp' ? 'bg-white dark:bg-slate-800 shadow text-indigo-700 dark:text-indigo-300 border border-slate-200/50 dark:border-slate-700' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`}
+                                        >
+                                            WhatsApp Setup
+                                        </button>
+                                    </div>
+
+                                    {/* Guide Instructions */}
+                                    {activeGuideTab === 'telegram' ? (
+                                        <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-fade-in">
+                                            <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 1: Create a Bot</span>
+                                                <p>Open Telegram and search for <b>@BotFather</b>. Send the command <code>/newbot</code> and follow the instructions to get a <b>Bot Token</b>.</p>
+                                            </div>
+                                            <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 2: Get Your Chat ID</span>
+                                                <p>To get your personal chat ID, message the bot <b>@userinfobot</b>. To alert a shared admin group, add your bot to that group and message the bot <b>@GetMyChatID_Bot</b> inside the group to read the group's Chat ID.</p>
+                                            </div>
+                                            <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 3: Save and Activate</span>
+                                                <p>Enter the Token and Chat ID in the form, check the "Telegram Bot Notifications" toggle, and click **Save Configuration**.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-fade-in">
+                                            <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 1: Register with CallMeBot</span>
+                                                <p>Add <b>+34 644 10 55 84</b> (or CallMeBot registration contact) to your mobile phone's address book contacts.</p>
+                                            </div>
+                                            <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 2: Request API Key</span>
+                                                <p>Send a WhatsApp message containing <code>I allow callmebot to send me messages</code> to that contact. Wait for the automated reply with your unique <b>API Key</b>.</p>
+                                            </div>
+                                            <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
+                                                <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 3: Save and Activate</span>
+                                                <p>Enter your phone number (including international prefix, e.g. <code>+19876543210</code>) and the CallMeBot API Key in the WhatsApp form block and click save.</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Guide Instructions */}
-                                {activeGuideTab === 'telegram' ? (
-                                    <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-fade-in">
-                                        <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 1: Create a Bot</span>
-                                            <p>Open Telegram and search for <b>@BotFather</b>. Send the command <code>/newbot</code> and follow the instructions to get a <b>Bot Token</b>.</p>
-                                        </div>
-                                        <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 2: Get Your Chat ID</span>
-                                            <p>To get your personal chat ID, message the bot <b>@userinfobot</b>. To alert a shared admin group, add your bot to that group and message the bot <b>@GetMyChatID_Bot</b> inside the group to read the group's Chat ID.</p>
-                                        </div>
-                                        <div className="p-3 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Step 3: Save and Activate</span>
-                                            <p>Enter the Token and Chat ID in the form, check the "Telegram Bot Notifications" toggle, and click **Save Configuration**.</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed animate-fade-in">
-                                        <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 1: Register with CallMeBot</span>
-                                            <p>Add <b>+34 644 10 55 84</b> (or CallMeBot registration contact) to your mobile phone's address book contacts.</p>
-                                        </div>
-                                        <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 2: Request API Key</span>
-                                            <p>Send a WhatsApp message containing <code>I allow callmebot to send me messages</code> to that contact. Wait for the automated reply with your unique <b>API Key</b>.</p>
-                                        </div>
-                                        <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-1">
-                                            <span className="text-[12.5px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Step 3: Save and Activate</span>
-                                            <p>Enter your phone number (including international prefix, e.g. <code>+19876543210</code>) and the CallMeBot API Key in the WhatsApp form block and click save.</p>
-                                        </div>
-                                    </div>
-                                )}
+                                {/* Notice Panel */}
+                                <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[13.5px] text-slate-600 dark:text-slate-300 font-medium">
+                                    💡 <b>Note:</b> Both systems trigger calls to standard public API URLs in your browser backend securely. Fallback HTML5 alerts rely on native desktop notifications; make sure to allow permissions in your browser.
+                                </div>
                             </div>
 
-                            {/* Notice Panel */}
-                            <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-[13.5px] text-slate-600 dark:text-slate-300 font-medium">
-                                💡 <b>Note:</b> Both systems trigger calls to standard public API URLs in your browser backend securely. Fallback HTML5 alerts rely on native desktop notifications; make sure to allow permissions in your browser.
-                            </div>
                         </div>
-
                     </div>
                 )}
 
@@ -2632,20 +2914,31 @@ export default function HelpdeskDashboard() {
                         </div>
 
                         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-300 text-sm flex-shrink-0">
-                                    {session.fullName.charAt(0)}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{session.fullName}</p>
-                                    <span className={`inline-block px-1.5 py-0.5 mt-0.5 rounded text-[9px] font-extrabold uppercase ${session.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' :
-                                        session.role === 'ADMIN' ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                        }`}>
-                                        {session.role === 'SUPER_ADMIN' ? 'Master' :
-                                            session.role === 'ADMIN' ? 'IT Admin' : 'School Staff'}
+                            <button
+                                onClick={() => {
+                                    setIsMobileDrawerOpen(false);
+                                    openProfileModal();
+                                }}
+                                className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 hover:bg-indigo-50/60 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all duration-200 group text-left"
+                            >
+                                <div className="relative flex-shrink-0">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                                        {session.fullName ? session.fullName.charAt(0).toUpperCase() : 'A'}
+                                    </div>
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 group-hover:text-indigo-600">
+                                        <Edit3 className="w-2.5 h-2.5" />
                                     </span>
                                 </div>
-                            </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                        {session.fullName}
+                                    </p>
+                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">
+                                        {session.role === 'SUPER_ADMIN' ? 'Super Admin' : session.role === 'ADMIN' ? 'IT Admin' : 'Staff'}
+                                    </span>
+                                </div>
+                            </button>
 
                             <button
                                 onClick={() => {
@@ -2830,6 +3123,19 @@ export default function HelpdeskDashboard() {
                                         className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Admin Tag / Department</label>
+                                <select
+                                    value={newTicketForm.adminTag || (tags[0] || 'IT Support')}
+                                    onChange={e => setNewTicketForm({ ...newTicketForm, adminTag: e.target.value })}
+                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                                >
+                                    {tags.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>
@@ -3066,8 +3372,13 @@ export default function HelpdeskDashboard() {
 
                         <div className="p-6 space-y-4">
                             <div className="flex items-center justify-between">
-                                <div className="text-[14px] text-slate-500 dark:text-slate-400 font-semibold">
+                                <div className="text-[14px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5 flex-wrap">
                                     Category: <span className="font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded">{selectedTicketToView.category}</span>
+                                    {selectedTicketToView.adminTag && (
+                                        <span className="font-extrabold text-[10.5px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-2.5 py-0.5 rounded inline-block">
+                                            Tag: {selectedTicketToView.adminTag}
+                                        </span>
+                                    )}
                                 </div>
                                 <div>
                                     {selectedTicketToView.status === 'PENDING' && (

@@ -2036,14 +2036,15 @@ const BACKUP_EXCLUDE_DIRS = new Set(['node_modules', '.git', '.idea', '.agents']
 const BACKUP_EXCLUDE_FILES = new Set([]);
 
 const BACKUP_CATEGORIES = [
-    { id: 'databases', label: 'Databases', icon: 'HardDrive', patterns: [/^[^/]+\.db$/] },
+    { id: 'databases', label: 'Databases', icon: 'HardDrive', patterns: [/\.db$/], prefixes: ['database/'] },
     { id: 'user_data', label: 'User Uploads', icon: 'FolderOpen', prefixes: ['uploads/'] },
-    { id: 'configuration', label: 'Configuration', icon: 'Settings', exact: ['.env'], prefixes: ['google_auth/'] },
-    { id: 'csv_exports', label: 'CSV / Exports', icon: 'FileCheck', patterns: [/^[^/]+\.csv$/] },
-    { id: 'server_code', label: 'Server Code', icon: 'Terminal', exact: ['server.js', 'api.js'], prefixes: ['config/', 'middleware/', 'scripts/', 'utils/'] },
+    { id: 'configuration', label: 'Configuration', icon: 'Settings', exact: ['.env', 'config.yml'], prefixes: ['google_auth/'] },
+    { id: 'csv_exports', label: 'CSV / Exports', icon: 'FileCheck', patterns: [/\.csv$/] },
+    { id: 'server_code', label: 'Server Code', icon: 'Terminal', exact: ['server.js', 'api.js'], prefixes: ['config/', 'controllers/', 'routes/', 'middleware/', 'scripts/', 'utils/'] },
     { id: 'frontend_source', label: 'Frontend Source', icon: 'Cloud', prefixes: ['src/'] },
     { id: 'static_assets', label: 'Static Assets', icon: 'FolderOpen', prefixes: ['public/', 'assets/'] },
     { id: 'project_files', label: 'Project Files', icon: 'BookOpen', exact: ['package.json', 'package-lock.json', 'vite.config.js', 'tailwind.config.js', 'postcss.config.js', '.htaccess', '.gitignore', 'index.html', 'README.md'] },
+    { id: 'other_files', label: 'Other Files', icon: 'FileText' }
 ];
 
 async function scanDirectory(dirPath, rootDir, results = []) {
@@ -2073,11 +2074,12 @@ async function scanDirectory(dirPath, rootDir, results = []) {
 
 function categorizeFile(filePath) {
     for (const cat of BACKUP_CATEGORIES) {
+        if (cat.id === 'other_files') continue;
         if (cat.exact && cat.exact.includes(filePath)) return cat.id;
         if (cat.prefixes && cat.prefixes.some(p => filePath.startsWith(p))) return cat.id;
         if (cat.patterns && cat.patterns.some(r => r.test(filePath))) return cat.id;
     }
-    return null;
+    return 'other_files';
 }
 
 router.get('/master/backup/files', isMasterAuth, async (req, res) => {
@@ -2107,65 +2109,82 @@ router.get('/master/backup/files', isMasterAuth, async (req, res) => {
     }
 });
 
-router.get('/master/backup/export', isMasterAuth, async (req, res) => {
+router.all('/master/backup/export', isMasterAuth, async (req, res) => {
     try {
         const rootDir = __dirname;
-        const includePaths = [
-            'assets',
-            'config',
-            'controllers',
-            'database',
-            'google_auth',
-            'middleware',
-            'public',
-            'routes',
-            'scripts',
-            'src',
-            'uploads',
-            'utils',
-            '.env',
-            '.gitignore',
-            '.htaccess',
-            'api.js',
-            'config.yml',
-            'index.html',
-            'package-lock.json',
-            'package.json',
-            'postcss.config.js',
-            'quary.csv',
-            'README.md',
-            'server.js',
-            'server_logs.db',
-            'server_users.db',
-            'subscribers.csv',
-            'tailwind.config.js',
-            'vite.config.js'
-        ];
-
+        const requestedFiles = req.body && Array.isArray(req.body.files) && req.body.files.length > 0 ? req.body.files : null;
         const manifestFiles = [];
 
-        for (const item of includePaths) {
-            const itemPath = path.join(rootDir, item);
-            if (!await fs.pathExists(itemPath)) continue;
+        if (requestedFiles) {
+            for (const relPath of requestedFiles) {
+                if (typeof relPath !== 'string') continue;
+                const normalized = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
+                if (normalized.includes('..') || path.isAbsolute(normalized)) continue;
 
-            const stat = await fs.stat(itemPath);
-            if (stat.isDirectory()) {
-                const scan = async (dir, rel) => {
-                    const entries = await fs.readdir(dir, { withFileTypes: true });
-                    for (const entry of entries) {
-                        const fp = path.join(dir, entry.name);
-                        const rp = path.join(rel, entry.name);
-                        if (entry.isDirectory()) {
-                            if (entry.name === 'node_modules' || entry.name === '.git') continue;
-                            await scan(fp, rp);
-                        } else {
-                            manifestFiles.push({ relativePath: rp.replace(/\\/g, '/'), fullPath: fp });
-                        }
+                const fullPath = path.join(rootDir, normalized);
+                if (await fs.pathExists(fullPath)) {
+                    const stat = await fs.stat(fullPath);
+                    if (stat.isFile()) {
+                        manifestFiles.push({ relativePath: normalized.replace(/\\/g, '/'), fullPath });
                     }
-                };
-                await scan(itemPath, item);
-            } else {
-                manifestFiles.push({ relativePath: item.replace(/\\/g, '/'), fullPath: itemPath });
+                }
+            }
+        } else {
+            const includePaths = [
+                'assets',
+                'config',
+                'controllers',
+                'database',
+                'google_auth',
+                'middleware',
+                'public',
+                'routes',
+                'scripts',
+                'src',
+                'uploads',
+                'utils',
+                '.env',
+                '.gitignore',
+                '.htaccess',
+                'api.js',
+                'config.yml',
+                'index.html',
+                'package-lock.json',
+                'package.json',
+                'postcss.config.js',
+                'quary.csv',
+                'README.md',
+                'server.js',
+                'server_logs.db',
+                'server_users.db',
+                'subscribers.csv',
+                'tailwind.config.js',
+                'vite.config.js'
+            ];
+
+            for (const item of includePaths) {
+                const itemPath = path.join(rootDir, item);
+                if (!await fs.pathExists(itemPath)) continue;
+
+                const stat = await fs.stat(itemPath);
+                if (stat.isDirectory()) {
+                    const scan = async (dir, rel) => {
+                        const entries = await fs.readdir(dir, { withFileTypes: true });
+                        for (const entry of entries) {
+                            const fp = path.join(dir, entry.name);
+                            const rp = path.join(rel, entry.name);
+                            if (entry.isDirectory()) {
+                                if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.idea' || entry.name === '.agents') continue;
+                                await scan(fp, rp);
+                            } else {
+                                manifestFiles.push({ relativePath: rp.replace(/\\/g, '/'), fullPath: fp });
+                            }
+                        }
+                    };
+                    await scan(itemPath, item);
+                } else {
+                    manifestFiles.push({ relativePath: item.replace(/\\/g, '/'), fullPath: itemPath });
+                }
             }
         }
 
