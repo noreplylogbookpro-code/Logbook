@@ -199,7 +199,7 @@ function AppContent() {
   return (
     <div
       onClick={handleGlobalClick}
-      className="min-h-screen flex flex-col font-sans select-none overflow-x-hidden"
+      className="min-h-screen flex flex-col font-sans select-text overflow-x-hidden"
       style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}
     >
       {view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (

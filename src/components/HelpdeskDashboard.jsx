@@ -27,12 +27,14 @@ import {
     Bell,
     Menu,
     Check,
+    ChevronDown,
     CreditCard,
     Shield,
     Sun,
     Moon
 } from 'lucide-react';
 import { useTheme } from '../useTheme';
+import CustomSelect from './DropdownMenu';
 
 const API_BASE_URL = '/api/v1';
 const DEFAULT_SCHOOL_CODE = import.meta.env.VITE_SCHOOL_CODE;
@@ -202,9 +204,15 @@ export default function HelpdeskDashboard() {
     // Active Admin Tab
     const [activeTab, setActiveTab] = useState('tickets');
 
-    // Custom Admin Tags
-    const [tags, setTags] = useState([]);
-    const [newTagInput, setNewTagInput] = useState('');
+    // Custom Role Badges State
+    const [roleBadges, setRoleBadges] = useState([
+        { name: 'Super Admin', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800', isSystem: true },
+        { name: 'IT Admin', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800', isSystem: true },
+        { name: 'School Staff', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800', isSystem: true },
+        { name: 'Lab Technician', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800', isSystem: false },
+        { name: 'Support Engineer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800', isSystem: false }
+    ]);
+    const [newBadgeInput, setNewBadgeInput] = useState('');
 
     // Bot testing status
     const [isTestingBot, setIsTestingBot] = useState(false);
@@ -219,6 +227,12 @@ export default function HelpdeskDashboard() {
     // Modals
     const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
     const [selectedTicketToClose, setSelectedTicketToClose] = useState(null);
+    const [selectedTicketToInProgress, setSelectedTicketToInProgress] = useState(null);
+    const [selectedUserToEditBadge, setSelectedUserToEditBadge] = useState(null);
+    const [editBadgeForm, setEditBadgeForm] = useState({ roleBadge: '', role: '' });
+    const [inProgressRemark, setInProgressRemark] = useState('');
+    const [inProgressError, setInProgressError] = useState('');
+    const [confirmModal, setConfirmModal] = useState(null);
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [templatePage, setTemplatePage] = useState(0);
     const [itemsPerPage, setItemsPerPage] = useState(3);
@@ -338,18 +352,7 @@ export default function HelpdeskDashboard() {
             setBrowserNotificationPermission(Notification.permission);
         }
 
-        // Fetch custom tags
-        const fetchTags = async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/tickets/tags`);
-                const data = await res.json();
-                if (data.success) {
-                    setTags(data.tags || []);
-                }
-            } catch (err) {
-                console.error('Failed to fetch tags:', err);
-            }
-        };
+
 
         // Fetch server default notification settings
         const fetchDefaultSettings = async () => {
@@ -375,7 +378,6 @@ export default function HelpdeskDashboard() {
             }
         };
 
-        fetchTags();
         fetchDefaultSettings();
     }, []);
 
@@ -408,7 +410,7 @@ export default function HelpdeskDashboard() {
                 })
             });
             const result = await res.json();
-            
+
             const telegramAttempted = settingsForm.telegramEnabled;
             const whatsappAttempted = settingsForm.whatsappEnabled;
 
@@ -632,8 +634,7 @@ export default function HelpdeskDashboard() {
         floor: 'Ground Floor',
         roomNumber: '',
         subject: '',
-        description: '',
-        adminTag: 'IT Support'
+        description: ''
     });
 
     const [newUserForm, setNewUserForm] = useState({
@@ -880,44 +881,67 @@ export default function HelpdeskDashboard() {
         }));
     };
 
-    // Custom Tags handlers
-    const handleAddTag = async (e) => {
+    // Custom Role Badges handlers
+    const handleAddRoleBadge = (e) => {
         e.preventDefault();
-        if (!newTagInput.trim()) return;
-        try {
-            const res = await fetch(`${API_BASE_URL}/tickets/tags`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tag: newTagInput })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setTags(data.tags);
-                setNewTagInput('');
-                alert('Tag added successfully!');
-            } else {
-                alert(data.error || 'Failed to add tag.');
+        if (!newBadgeInput.trim()) return;
+        const badgeName = newBadgeInput.trim();
+        if (roleBadges.some(b => b.name.toLowerCase() === badgeName.toLowerCase())) return;
+        setRoleBadges([
+            ...roleBadges,
+            {
+                name: badgeName,
+                color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+                isSystem: false
             }
-        } catch (err) {
-            console.error('Add tag error:', err);
-        }
+        ]);
+        setNewBadgeInput('');
     };
 
-    const handleDeleteTag = async (tagToDelete) => {
-        if (!confirm(`Are you sure you want to delete the tag "${tagToDelete}"?`)) return;
+    const handleDeleteRoleBadge = (badgeName) => {
+        setConfirmModal({
+            title: 'Delete Role Badge',
+            message: `Are you sure you want to remove the "${badgeName}" role badge?`,
+            confirmText: 'Remove Badge',
+            isDanger: true,
+            onConfirm: () => {
+                setRoleBadges(roleBadges.filter(b => b.name !== badgeName));
+            }
+        });
+    };
+
+    const handleOpenEditUserBadge = (u) => {
+        setSelectedUserToEditBadge(u);
+        setEditBadgeForm({
+            roleBadge: u.roleBadge || (u.role === 'SUPER_ADMIN' ? 'Super Admin' : u.role === 'ADMIN' ? 'IT Admin' : 'School Staff'),
+            role: u.role || 'USER'
+        });
+    };
+
+    const handleSaveUserBadge = async (e) => {
+        e.preventDefault();
+        if (!selectedUserToEditBadge) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/tickets/tags/${encodeURIComponent(tagToDelete)}`, {
-                method: 'DELETE'
+            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const res = await fetch(`${API_BASE_URL}/auth/users/${selectedUserToEditBadge.id}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-school-key': activeSchool,
+                    'x-caller-role': session.role
+                },
+                body: JSON.stringify({
+                    role: editBadgeForm.role,
+                    roleBadge: editBadgeForm.roleBadge
+                })
             });
             const data = await res.json();
-            if (data.success) {
-                setTags(data.tags);
-                alert('Tag deleted successfully!');
-            } else {
-                alert(data.error || 'Failed to delete tag.');
-            }
+            setUsers(users.map(u => u.id === selectedUserToEditBadge.id ? { ...u, role: editBadgeForm.role, roleBadge: editBadgeForm.roleBadge } : u));
+            setSelectedUserToEditBadge(null);
+            fetchDashboardData();
         } catch (err) {
-            console.error('Delete tag error:', err);
+            setUsers(users.map(u => u.id === selectedUserToEditBadge.id ? { ...u, role: editBadgeForm.role, roleBadge: editBadgeForm.roleBadge } : u));
+            setSelectedUserToEditBadge(null);
         }
     };
 
@@ -965,16 +989,17 @@ export default function HelpdeskDashboard() {
 
     // Update Ticket Status
     const handleUpdateStatus = async (id, status) => {
-        let remark = '';
         if (status === 'IN_PROGRESS') {
-            const resultRemark = prompt('Please enter a technical remark to mark this ticket as In Progress:');
-            if (resultRemark === null) return; // User cancelled
-            if (!resultRemark.trim()) {
-                alert('A technical remark is required to start this ticket.');
-                return;
-            }
-            remark = resultRemark.trim();
+            const ticketToUpdate = tickets.find(t => t.id === id);
+            setSelectedTicketToInProgress(ticketToUpdate || { id, token: `Ticket #${id}` });
+            setInProgressRemark('');
+            setInProgressError('');
+            return;
         }
+        await executeStatusUpdate(id, status, '');
+    };
+
+    const executeStatusUpdate = async (id, status, remark) => {
         try {
             const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
             const res = await fetch(`${API_BASE_URL}/tickets/${id}/status`, {
@@ -988,11 +1013,38 @@ export default function HelpdeskDashboard() {
             const result = await res.json();
             if (result.success) {
                 fetchDashboardData();
+                return true;
             } else {
-                alert(result.error || 'Failed to update status.');
+                setConfirmModal({
+                    title: 'Status Update Failed',
+                    message: result.error || 'Failed to update status.',
+                    confirmText: 'OK',
+                    isAlert: true
+                });
+                return false;
             }
         } catch (err) {
-            alert('Failed to update ticket status.');
+            setConfirmModal({
+                title: 'Network Error',
+                message: 'Failed to update ticket status.',
+                confirmText: 'OK',
+                isAlert: true
+            });
+            return false;
+        }
+    };
+
+    const handleInProgressSubmit = async (e) => {
+        e.preventDefault();
+        if (!inProgressRemark.trim()) {
+            setInProgressError('A technical remark is required to start this ticket.');
+            return;
+        }
+        const success = await executeStatusUpdate(selectedTicketToInProgress.id, 'IN_PROGRESS', inProgressRemark.trim());
+        if (success) {
+            setSelectedTicketToInProgress(null);
+            setInProgressRemark('');
+            setInProgressError('');
         }
     };
 
@@ -1053,28 +1105,44 @@ export default function HelpdeskDashboard() {
     };
 
     // Delete User Account
-    const handleDeleteUser = async (userId, fullName) => {
-        if (!confirm(`Are you sure you want to delete the account for ${fullName}?`)) return;
-        try {
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
-            const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
-                method: 'DELETE',
-                headers: {
-                    'x-school-key': activeSchool,
-                    'x-caller-role': session.role,
-                    'x-caller-username': session.username
+    const handleDeleteUser = (userId, fullName) => {
+        setConfirmModal({
+            title: 'Delete User Account',
+            message: `Are you sure you want to delete the account for ${fullName}? This action cannot be undone.`,
+            confirmText: 'Delete User',
+            isDanger: true,
+            onConfirm: async () => {
+                try {
+                    const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+                    const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'x-school-key': activeSchool,
+                            'x-caller-role': session.role,
+                            'x-caller-username': session.username
+                        }
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        fetchDashboardData();
+                    } else {
+                        setConfirmModal({
+                            title: 'Error',
+                            message: result.error || 'Failed to delete user.',
+                            confirmText: 'OK',
+                            isAlert: true
+                        });
+                    }
+                } catch (error) {
+                    setConfirmModal({
+                        title: 'Error',
+                        message: 'Error deleting user.',
+                        confirmText: 'OK',
+                        isAlert: true
+                    });
                 }
-            });
-            const result = await res.json();
-            if (result.success) {
-                alert(result.message || 'User deleted successfully.');
-                fetchDashboardData();
-            } else {
-                alert(result.error || 'Failed to delete user.');
             }
-        } catch (error) {
-            alert('Error deleting user.');
-        }
+        });
     };
 
     // Export CSV report
@@ -1295,7 +1363,7 @@ export default function HelpdeskDashboard() {
 
     // RENDER: DASHBOARD (ADMIN & USER) — sidebar layout for admin tabs
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 flex flex-col lg:flex-row transition-colors duration-300">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 flex flex-col lg:flex-row transition-colors duration-300 select-text">
 
             {/* DESKTOP SIDEBAR NAVIGATION */}
             {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN') && (
@@ -1321,15 +1389,11 @@ export default function HelpdeskDashboard() {
                                 <label className="block text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                     Active Campus:
                                 </label>
-                                <select
+                                <CustomSelect
                                     value={selectedSchool}
-                                    onChange={e => setSelectedSchool(e.target.value)}
-                                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
-                                >
-                                    {SCHOOLS.map(sc => (
-                                        <option key={sc} value={sc}>{sc}</option>
-                                    ))}
-                                </select>
+                                    onChange={val => setSelectedSchool(val)}
+                                    options={SCHOOLS}
+                                />
                             </div>
                         )}
 
@@ -1694,46 +1758,36 @@ export default function HelpdeskDashboard() {
                             {/* Status Filter */}
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">Status:</span>
-                                <select
+                                <CustomSelect
                                     value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg text-sm px-2.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                >
-                                    <option value="ALL">All Statuses</option>
-                                    <option value="PENDING">Pending</option>
-                                    <option value="IN_PROGRESS">In Progress</option>
-                                    <option value="CLOSED">Closed</option>
-                                </select>
+                                    onChange={(val) => setStatusFilter(val)}
+                                    options={[
+                                        { value: 'ALL', label: 'All Statuses' },
+                                        { value: 'PENDING', label: 'Pending' },
+                                        { value: 'IN_PROGRESS', label: 'In Progress' },
+                                        { value: 'CLOSED', label: 'Closed' }
+                                    ]}
+                                />
                             </div>
 
                             {/* Category Filter */}
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">Category:</span>
-                                <select
+                                <CustomSelect
                                     value={categoryFilter}
-                                    onChange={(e) => setCategoryFilter(e.target.value)}
-                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg text-sm px-2.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                >
-                                    <option value="ALL">All Categories</option>
-                                    {CATEGORIES.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setCategoryFilter(val)}
+                                    options={['ALL', ...CATEGORIES].map(cat => ({ value: cat, label: cat === 'ALL' ? 'All Categories' : cat }))}
+                                />
                             </div>
 
                             {/* Floor Location Filter */}
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">Location:</span>
-                                <select
+                                <CustomSelect
                                     value={floorFilter}
-                                    onChange={(e) => setFloorFilter(e.target.value)}
-                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg text-sm px-2.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                >
-                                    <option value="ALL">All Floors</option>
-                                    {FLOORS.map(fl => (
-                                        <option key={fl} value={fl}>{fl}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setFloorFilter(val)}
+                                    options={['ALL', ...FLOORS].map(fl => ({ value: fl, label: fl === 'ALL' ? 'All Floors' : fl }))}
+                                />
                             </div>
                         </div>
 
@@ -2108,31 +2162,34 @@ export default function HelpdeskDashboard() {
                                 {session.role === 'SUPER_ADMIN' && (
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Target School Group *</label>
-                                        <select
+                                        <CustomSelect
                                             value={newUserForm.school || selectedSchool}
-                                            onChange={e => setNewUserForm({ ...newUserForm, school: e.target.value })}
-                                            className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                        >
-                                            {SCHOOLS.map(sc => (
-                                                <option key={sc} value={sc}>{sc}</option>
-                                            ))}
-                                        </select>
+                                            onChange={val => setNewUserForm({ ...newUserForm, school: val })}
+                                            options={SCHOOLS}
+                                        />
                                     </div>
                                 )}
 
                                 <div>
+                                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Assign Role Badge</label>
+                                    <CustomSelect
+                                        value={newUserForm.roleBadge || (roleBadges[0]?.name || 'School Staff')}
+                                        onChange={val => setNewUserForm({ ...newUserForm, roleBadge: val })}
+                                        options={roleBadges.map(b => b.name)}
+                                    />
+                                </div>
+
+                                <div>
                                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Privilege Level</label>
-                                    <select
+                                    <CustomSelect
                                         value={newUserForm.role}
-                                        onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        <option value="USER">{session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')} Staff User (USER)</option>
-                                        <option value="ADMIN">IT Support Engineer (ADMIN)</option>
-                                        {session.role === 'SUPER_ADMIN' && (
-                                            <option value="SUPER_ADMIN">Super Administrator (SUPER_ADMIN)</option>
-                                        )}
-                                    </select>
+                                        onChange={val => setNewUserForm({ ...newUserForm, role: val })}
+                                        options={[
+                                            { value: 'USER', label: `${session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')} Staff User (USER)` },
+                                            { value: 'ADMIN', label: 'IT Support Engineer (ADMIN)' },
+                                            ...(session.role === 'SUPER_ADMIN' ? [{ value: 'SUPER_ADMIN', label: 'Super Administrator (SUPER_ADMIN)' }] : [])
+                                        ]}
+                                    />
                                 </div>
 
                                 <button
@@ -2169,68 +2226,97 @@ export default function HelpdeskDashboard() {
                                                 <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{u.fullName}</td>
                                                 <td className="p-3 font-mono text-slate-600 dark:text-slate-400">{u.username}</td>
                                                 <td className="p-3">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' :
-                                                        u.role === 'ADMIN' ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                                        }`}>
-                                                        {u.role === 'SUPER_ADMIN' ? 'Super Admin' :
-                                                            u.role === 'ADMIN' ? 'IT Admin' : 'School Staff'}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold border ${(u.roleBadge === 'Super Admin' || u.role === 'SUPER_ADMIN') ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800' :
+                                                            (u.roleBadge === 'IT Admin' || u.role === 'ADMIN') ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800' :
+                                                                'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                                            }`}>
+                                                            <Shield className="w-3 h-3" />
+                                                            {u.roleBadge || (u.role === 'SUPER_ADMIN' ? 'Super Admin' : u.role === 'ADMIN' ? 'IT Admin' : 'School Staff')}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                                 <td className="p-3 text-slate-400 dark:text-slate-500 font-mono text-[12px]">#{u.id}</td>
                                                 <td className="p-3 text-right">
-                                                    {((session.role === 'SUPER_ADMIN' && u.username !== session.username && u.username !== 'superadmin') ||
-                                                        (session.role === 'ADMIN' && u.role === 'USER' && u.username !== session.username && u.username !== 'admin')) ? (
-                                                        <button
-                                                            onClick={() => handleDeleteUser(u.id, u.fullName)}
-                                                            className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 transition p-1 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded inline-block"
-                                                            title="Delete Account"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Protected</span>
-                                                    )}
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {(session.role === 'SUPER_ADMIN' || session.role === 'ADMIN') && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenEditUserBadge(u)}
+                                                                className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg inline-flex items-center gap-1 text-xs font-bold"
+                                                                title="Edit Role Badge"
+                                                            >
+                                                                <Edit3 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                        {((session.role === 'SUPER_ADMIN' && u.username !== session.username && u.username !== 'superadmin') ||
+                                                            (session.role === 'ADMIN' && u.role === 'USER' && u.username !== session.username && u.username !== 'admin')) ? (
+                                                            <button
+                                                                onClick={() => handleDeleteUser(u.id, u.fullName)}
+                                                                className="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 transition p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg inline-block"
+                                                                title="Delete Account"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic px-1">Protected</span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                            {/* Custom Tags Section for SUPER_ADMIN */}
+                            {/* Manage Role Badges Section for SUPER_ADMIN */}
                             {session.role === 'SUPER_ADMIN' && (
                                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Manage Admin Tags / Departments</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Add or remove custom tags for routing complaints to specific personnel types (e.g. HR, Regional Manager).</p>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                                <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                Manage Role Badges
+                                            </h3>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Configure role titles and access level badges for staff members across all campuses.</p>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
+                                            {roleBadges.length} Active Badges
+                                        </span>
                                     </div>
-                                    <form onSubmit={handleAddTag} className="flex gap-2 max-w-md">
+
+                                    <form onSubmit={handleAddRoleBadge} className="flex gap-2 max-w-md">
                                         <input
                                             type="text"
                                             required
-                                            placeholder="e.g. HR Manager"
-                                            value={newTagInput}
-                                            onChange={e => setNewTagInput(e.target.value)}
-                                            className="flex-1 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            placeholder="e.g. Senior Network Engineer"
+                                            value={newBadgeInput}
+                                            onChange={e => setNewBadgeInput(e.target.value)}
+                                            className="flex-1 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
                                         />
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
                                         >
-                                            <Plus className="w-4 h-4" /> Add Tag
+                                            <Plus className="w-4 h-4" /> Add Badge
                                         </button>
                                     </form>
-                                    <div className="flex gap-2 flex-wrap pt-2">
-                                        {tags.map(t => (
-                                            <div key={t} className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200">
-                                                <span>{t}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteTag(t)}
-                                                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition"
-                                                    title="Delete Tag"
-                                                >
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
+
+                                    <div className="flex gap-2.5 flex-wrap pt-2">
+                                        {roleBadges.map(badge => (
+                                            <div key={badge.name} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs font-bold shadow-2xs ${badge.color}`}>
+                                                <span>{badge.name}</span>
+                                                {badge.isSystem ? (
+                                                    <span className="text-[9px] uppercase tracking-wider opacity-60 font-semibold">(System)</span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteRoleBadge(badge.name)}
+                                                        className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition ml-0.5"
+                                                        title="Remove Role Badge"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -2425,15 +2511,14 @@ export default function HelpdeskDashboard() {
                                                 </div>
                                             )}
                                             {botTestResult && (
-                                                <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-2 shadow-sm ${
-                                                    botTestResult.success 
-                                                        ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300' 
-                                                        : 'bg-red-50/40 border-red-100 dark:bg-red-950/10 dark:border-red-900/40 text-red-800 dark:text-red-300'
-                                                }`}>
+                                                <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-2 shadow-sm ${botTestResult.success
+                                                    ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                                                    : 'bg-red-50/40 border-red-100 dark:bg-red-950/10 dark:border-red-900/40 text-red-800 dark:text-red-300'
+                                                    }`}>
                                                     <div className="font-extrabold uppercase tracking-wider text-[10.5px]">
                                                         {botTestResult.success ? '✓ Integration Test Succeeded' : '✗ Integration Test Failed'}
                                                     </div>
-                                                    
+
                                                     {botTestResult.telegram && (
                                                         <div className="space-y-0.5">
                                                             <div className="font-bold flex items-center gap-1.5">
@@ -2441,8 +2526,8 @@ export default function HelpdeskDashboard() {
                                                                 Telegram Channel Status:
                                                             </div>
                                                             <div className="pl-3.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono break-all">
-                                                                {botTestResult.telegram.sent 
-                                                                    ? 'Sent successfully! Check your Telegram client.' 
+                                                                {botTestResult.telegram.sent
+                                                                    ? 'Sent successfully! Check your Telegram client.'
                                                                     : `Error: ${botTestResult.telegram.error}`
                                                                 }
                                                             </div>
@@ -2456,8 +2541,8 @@ export default function HelpdeskDashboard() {
                                                                 WhatsApp Channel Status:
                                                             </div>
                                                             <div className="pl-3.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono break-all">
-                                                                {botTestResult.whatsapp.sent 
-                                                                    ? 'Sent successfully! Check your WhatsApp client.' 
+                                                                {botTestResult.whatsapp.sent
+                                                                    ? 'Sent successfully! Check your WhatsApp client.'
                                                                     : `Error: ${botTestResult.whatsapp.error}`
                                                                 }
                                                             </div>
@@ -2822,18 +2907,14 @@ export default function HelpdeskDashboard() {
                             {session.role === 'SUPER_ADMIN' && (
                                 <div className="space-y-2 p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
                                     <label className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active School Group:</label>
-                                    <select
+                                    <CustomSelect
                                         value={selectedSchool}
-                                        onChange={e => {
-                                            setSelectedSchool(e.target.value);
+                                        onChange={val => {
+                                            setSelectedSchool(val);
                                             setIsMobileDrawerOpen(false);
                                         }}
-                                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                                    >
-                                        {SCHOOLS.map(sc => (
-                                            <option key={sc} value={sc}>{sc}</option>
-                                        ))}
-                                    </select>
+                                        options={SCHOOLS}
+                                    />
                                 </div>
                             )}
 
@@ -3090,27 +3171,19 @@ export default function HelpdeskDashboard() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Asset Class Category</label>
-                                    <select
+                                    <CustomSelect
                                         value={newTicketForm.category}
-                                        onChange={e => setNewTicketForm({ ...newTicketForm, category: e.target.value })}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        {CATEGORIES.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
+                                        onChange={val => setNewTicketForm({ ...newTicketForm, category: val })}
+                                        options={CATEGORIES}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Floor Location</label>
-                                    <select
+                                    <CustomSelect
                                         value={newTicketForm.floor}
-                                        onChange={e => setNewTicketForm({ ...newTicketForm, floor: e.target.value })}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        {FLOORS.map(fl => (
-                                            <option key={fl} value={fl}>{fl}</option>
-                                        ))}
-                                    </select>
+                                        onChange={val => setNewTicketForm({ ...newTicketForm, floor: val })}
+                                        options={FLOORS}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Room / Lab No *</label>
@@ -3125,18 +3198,7 @@ export default function HelpdeskDashboard() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Admin Tag / Department</label>
-                                <select
-                                    value={newTicketForm.adminTag || (tags[0] || 'IT Support')}
-                                    onChange={e => setNewTicketForm({ ...newTicketForm, adminTag: e.target.value })}
-                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                >
-                                    {tags.map(t => (
-                                        <option key={t} value={t}>{t}</option>
-                                    ))}
-                                </select>
-                            </div>
+
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Subject Brief *</label>
@@ -3225,6 +3287,190 @@ export default function HelpdeskDashboard() {
                 </div>
             )}
 
+            {/* MODAL: Start Ticket Work (In Progress Remark) */}
+            {selectedTicketToInProgress && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-xl">
+                                    <Wrench className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-slate-900 dark:text-white">Start Ticket Inspection</h3>
+                                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                        {selectedTicketToInProgress.token ? `Token: ${selectedTicketToInProgress.token}` : 'Technical Status Update'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTicketToInProgress(null)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleInProgressSubmit} className="p-6 space-y-4">
+                            <div className="bg-blue-50 dark:bg-blue-950/40 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-300">
+                                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5 animate-pulse" />
+                                <div>
+                                    Enter an administrative remark to update this ticket status to <strong>IN PROGRESS</strong>.
+                                </div>
+                            </div>
+
+                            {inProgressError && (
+                                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                                    <span>{inProgressError}</span>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                    Technical Remark / Initial Action *
+                                </label>
+                                <textarea
+                                    required
+                                    rows="3"
+                                    placeholder="e.g. Inspecting display cables and power supply unit on 3rd floor..."
+                                    value={inProgressRemark}
+                                    onChange={(e) => {
+                                        setInProgressRemark(e.target.value);
+                                        if (inProgressError) setInProgressError('');
+                                    }}
+                                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none font-medium transition"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedTicketToInProgress(null)}
+                                    className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+                                >
+                                    <Wrench className="w-4 h-4" /> Start Work (In Progress)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* GENERIC CONFIRMATION / ALERT MODAL */}
+            {confirmModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-6 space-y-4 text-center">
+                            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${confirmModal.isDanger ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'}`}>
+                                <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                                    {confirmModal.title || 'Confirm Action'}
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                    {confirmModal.message}
+                                </p>
+                            </div>
+                            <div className="flex items-center justify-center gap-3 pt-2">
+                                {!confirmModal.isAlert && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmModal(null)}
+                                        className="w-1/2 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const action = confirmModal.onConfirm;
+                                        setConfirmModal(null);
+                                        if (action) action();
+                                    }}
+                                    className={`${confirmModal.isAlert ? 'w-full' : 'w-1/2'} py-2.5 text-white font-bold text-xs rounded-xl shadow-md transition ${confirmModal.isDanger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                                >
+                                    {confirmModal.confirmText || 'Confirm'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: Edit User Role Badge & Privileges */}
+            {selectedUserToEditBadge && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-slate-900 dark:text-white">Edit User Role Badge</h3>
+                                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                        User: {selectedUserToEditBadge.fullName} ({selectedUserToEditBadge.username})
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSaveUserBadge} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                    Assigned Role Badge *
+                                </label>
+                                <CustomSelect
+                                    value={editBadgeForm.roleBadge}
+                                    onChange={val => setEditBadgeForm({ ...editBadgeForm, roleBadge: val })}
+                                    options={roleBadges.map(b => b.name)}
+                                />
+                            </div>
+
+                            {session.role === 'SUPER_ADMIN' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                                        Privilege Level
+                                    </label>
+                                    <CustomSelect
+                                        value={editBadgeForm.role}
+                                        onChange={val => setEditBadgeForm({ ...editBadgeForm, role: val })}
+                                        options={[
+                                            { value: 'USER', label: 'Staff User (USER)' },
+                                            { value: 'ADMIN', label: 'IT Support Engineer (ADMIN)' },
+                                            { value: 'SUPER_ADMIN', label: 'Super Administrator (SUPER_ADMIN)' }
+                                        ]}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedUserToEditBadge(null)}
+                                    className="px-4 py-2.5 text-xs hover:scale-115 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-red-600 hover:dark:text-red-400 rounded-xl transition"
+                                >Cancel</button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2.5 bg-indigo-600 hover:scale-105 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+                                >
+                                    <Check className="w-4 h-4" /> Save
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* MODAL: Export CSV Report with custom dates — added dark variants */}
             {isExportModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -3296,42 +3542,32 @@ export default function HelpdeskDashboard() {
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Status</label>
-                                    <select
+                                    <CustomSelect
                                         value={exportStatus}
-                                        onChange={e => setExportStatus(e.target.value)}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        <option value="ALL">All Statuses</option>
-                                        <option value="PENDING">Pending</option>
-                                        <option value="IN_PROGRESS">In Progress</option>
-                                        <option value="CLOSED">Closed</option>
-                                    </select>
+                                        onChange={val => setExportStatus(val)}
+                                        options={[
+                                            { value: 'ALL', label: 'All Statuses' },
+                                            { value: 'PENDING', label: 'Pending' },
+                                            { value: 'IN_PROGRESS', label: 'In Progress' },
+                                            { value: 'CLOSED', label: 'Closed' }
+                                        ]}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Category</label>
-                                    <select
+                                    <CustomSelect
                                         value={exportCategory}
-                                        onChange={e => setExportCategory(e.target.value)}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        <option value="ALL">All Categories</option>
-                                        {CATEGORIES.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
+                                        onChange={val => setExportCategory(val)}
+                                        options={['ALL', ...CATEGORIES].map(cat => ({ value: cat, label: cat === 'ALL' ? 'All Categories' : cat }))}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Floor</label>
-                                    <select
+                                    <CustomSelect
                                         value={exportFloor}
-                                        onChange={e => setExportFloor(e.target.value)}
-                                        className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                                    >
-                                        <option value="ALL">All Floors</option>
-                                        {FLOORS.map(fl => (
-                                            <option key={fl} value={fl}>{fl}</option>
-                                        ))}
-                                    </select>
+                                        onChange={val => setExportFloor(val)}
+                                        options={['ALL', ...FLOORS].map(fl => ({ value: fl, label: fl === 'ALL' ? 'All Floors' : fl }))}
+                                    />
                                 </div>
                             </div>
 
@@ -3362,10 +3598,10 @@ export default function HelpdeskDashboard() {
                     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
                             <div>
-                                <span className="text-[10px] font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-800 dark:text-slate-200 mr-2">{selectedTicketToView.token}</span>
+                                <span className="text-[12px] font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-800 dark:text-slate-200 mr-2">{selectedTicketToView.token}</span>
                                 <h3 className="font-extrabold text-slate-900 dark:text-white inline-block">Complaint Details</h3>
                             </div>
-                            <button onClick={() => setSelectedTicketToView(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
+                            <button onClick={() => setSelectedTicketToView(null)} className="bg-slate-200/50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-300 hover:scale-110">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

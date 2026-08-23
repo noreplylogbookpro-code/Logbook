@@ -10,6 +10,7 @@ router.put('/profile', authController.updateProfile);
 router.post('/users', authController.createUser);
 router.get('/users', authController.getUsers);
 router.delete('/users/:id', authController.deleteUser);
+router.patch('/users/:id/role', authController.updateUserRole);
 router.post('/reset-password', authController.resetPassword);
 
 // Config details endpoint to retrieve dynamic env credentials on login card

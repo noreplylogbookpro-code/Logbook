@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Mail, Lock, User, HelpCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
+import CustomSelect from './DropdownMenu.jsx';
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
@@ -405,17 +406,14 @@ export default function LoginView({ onNavigate }) {
 
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">{t('securityQuestion')}</label>
-              <select
+              <CustomSelect
                 value={securityQuestion}
-                onChange={(e) => setSecurityQuestion(e.target.value)}
-                className="select-unified"
-              >
-                {SECURITY_QUESTIONS.map((q, idx) => (
-                  <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">
-                    {t('securityQuestion' + (idx + 1))}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSecurityQuestion(val)}
+                options={SECURITY_QUESTIONS.map((q, idx) => ({
+                  value: q,
+                  label: t('securityQuestion' + (idx + 1))
+                }))}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -487,8 +485,8 @@ export default function LoginView({ onNavigate }) {
                     {t('securityChallenge')}
                   </span>
                   <p className="text-xs text-zinc-700 dark:text-white leading-relaxed">
-                    {SECURITY_QUESTIONS.includes(forgotQuestion) 
-                      ? t('securityQuestion' + (SECURITY_QUESTIONS.indexOf(forgotQuestion) + 1)) 
+                    {SECURITY_QUESTIONS.includes(forgotQuestion)
+                      ? t('securityQuestion' + (SECURITY_QUESTIONS.indexOf(forgotQuestion) + 1))
                       : forgotQuestion}
                   </p>
                 </div>

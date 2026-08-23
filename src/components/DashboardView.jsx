@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Shield, Server, FolderOpen, Trash2, Download, AlertTriangle, 
+import {
+  Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
+import CustomSelect from './DropdownMenu.jsx';
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
@@ -128,10 +129,10 @@ export default function DashboardView({ onNavigate }) {
 
   const renderAvatar = (sizeClass = "w-8 h-8") => {
     const defaultAvatar = AVATARS[profile.profilePicIndex % AVATARS.length] || AVATARS[0];
-    
+
     if (profile.userId && !avatarFailed) {
       return (
-        <img 
+        <img
           src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
           alt=""
           className={`${sizeClass} rounded-full object-cover border border-white/10`}
@@ -139,9 +140,9 @@ export default function DashboardView({ onNavigate }) {
         />
       );
     }
-    
+
     return (
-      <div 
+      <div
         className={`${sizeClass} rounded-full flex items-center justify-center bg-zinc-900 border border-white/10`}
         style={{ color: defaultAvatar.color }}
       >
@@ -156,7 +157,7 @@ export default function DashboardView({ onNavigate }) {
   };
 
   const handleLogout = () => {
-    fetch('/api/logout', { method: 'POST', headers: getHeaders() }).catch(() => {});
+    fetch('/api/logout', { method: 'POST', headers: getHeaders() }).catch(() => { });
     localStorage.removeItem('authToken');
     onNavigate('/app/');
   };
@@ -310,7 +311,7 @@ export default function DashboardView({ onNavigate }) {
       const nameRes = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           name: editName,
           username: editUsername,
           email: editEmail,
@@ -556,7 +557,7 @@ export default function DashboardView({ onNavigate }) {
           if (!portalTarget) return null;
           return createPortal(
             <div className="relative" ref={menuRef}>
-              <button 
+              <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/5 text-sm text-zinc-800 dark:text-white hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
               >
@@ -567,22 +568,24 @@ export default function DashboardView({ onNavigate }) {
 
               <AnimatePresence>
                 {menuOpen && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
                   >
                     {[
-                      { label: t('editProfile'), icon: User, action: () => { 
-                        setEditName(profile.name || '');
-                        setEditUsername(profile.username || '');
-                        setEditEmail(profile.email || '');
-                        setSelectedAvatarIndex(profile.profilePicIndex || 0);
-                        setSelectedAvatarFile(null);
-                        setActiveModal('profile'); 
-                        setMenuOpen(false); 
-                      } },
+                      {
+                        label: t('editProfile'), icon: User, action: () => {
+                          setEditName(profile.name || '');
+                          setEditUsername(profile.username || '');
+                          setEditEmail(profile.email || '');
+                          setSelectedAvatarIndex(profile.profilePicIndex || 0);
+                          setSelectedAvatarFile(null);
+                          setActiveModal('profile');
+                          setMenuOpen(false);
+                        }
+                      },
                       { label: t('changePassword'), icon: Key, action: () => { setActiveModal('password'); setMenuOpen(false); } },
                       { label: t('securityQuestionMenu'), icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
                       { label: t('twoFactorAuth'), icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
@@ -591,7 +594,7 @@ export default function DashboardView({ onNavigate }) {
                       <button
                         key={item.label}
                         onClick={item.action}
-                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                        className="dropdown-item"
                       >
                         <item.icon className="w-4 h-4 text-zinc-500" />
                         {item.label}
@@ -629,15 +632,15 @@ export default function DashboardView({ onNavigate }) {
         {[
           { title: t('totalBackups'), value: `${stats.totalBackups} / ${license.maxBackups || 3}`, desc: t('activeArchives') },
           { title: t('storageUsed'), value: `${stats.storageUsedMB.toFixed(2)} / ${limitQuota} MB`, desc: t('allocatedStorage') },
-          { 
-            title: t('lastBackup'), 
-            value: backups.length > 0 ? new Date(backups[0].time).toLocaleDateString() : '—', 
+          {
+            title: t('lastBackup'),
+            value: backups.length > 0 ? new Date(backups[0].time).toLocaleDateString() : '—',
             desc: backups.length > 0 ? new Date(backups[0].time).toLocaleTimeString() : t('noFilesSynced')
           },
-          { 
-            title: t('vaultSecurity'), 
-            value: profile.twoFactorEnabled ? t('twoFaSecured') : t('credentialsOnly'), 
-            desc: profile.twoFactorEnabled ? t('highSecVerification') : t('twoFaDisabled') 
+          {
+            title: t('vaultSecurity'),
+            value: profile.twoFactorEnabled ? t('twoFaSecured') : t('credentialsOnly'),
+            desc: profile.twoFactorEnabled ? t('highSecVerification') : t('twoFaDisabled')
           }
         ].map((card, idx) => (
           <div key={idx} className="p-5 rounded-2xl bg-white dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-left space-y-1.5 relative overflow-hidden shadow-sm dark:shadow-none">
@@ -651,7 +654,7 @@ export default function DashboardView({ onNavigate }) {
       {/* Vault Manager Panel */}
       <div className="card-unified space-y-6 relative overflow-hidden dark:bg-zinc-950/20">
         <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 to-transparent pointer-events-none" />
-        
+
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-accent-blue border border-blue-500/10">
@@ -749,7 +752,7 @@ export default function DashboardView({ onNavigate }) {
           <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
             {t('selfHostedRelaysDesc')}
           </p>
-          <button 
+          <button
             onClick={() => onNavigate('/documentation/')}
             className="w-full btn-secondary-unified"
           >
@@ -762,7 +765,7 @@ export default function DashboardView({ onNavigate }) {
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -778,7 +781,7 @@ export default function DashboardView({ onNavigate }) {
                   {activeModal === 'mfa' && t('modal2faSettings')}
                   {activeModal === 'billing' && t('modalBillingSettings')}
                 </h3>
-                <button 
+                <button
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
                   className="p-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
                 >
@@ -803,11 +806,11 @@ export default function DashboardView({ onNavigate }) {
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('displayName')}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder={t('yourNamePlaceholder')} 
+                      placeholder={t('yourNamePlaceholder')}
                       className="input-unified"
                       required
                     />
@@ -815,11 +818,11 @@ export default function DashboardView({ onNavigate }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('username')}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={editUsername}
                       onChange={(e) => setEditUsername(e.target.value)}
-                      placeholder={t('username')} 
+                      placeholder={t('username')}
                       className="input-unified"
                       required
                     />
@@ -830,11 +833,11 @@ export default function DashboardView({ onNavigate }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('emailAddress')}</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder={t('emailPlaceholder')} 
+                      placeholder={t('emailPlaceholder')}
                       className="input-unified"
                       required
                     />
@@ -842,16 +845,16 @@ export default function DashboardView({ onNavigate }) {
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('profilePicture')}</label>
-                    
+
                     {/* Current avatar preview and custom upload */}
                     <div className="flex items-center gap-4 p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-white/5">
                       <div className="relative">
                         {/* Preview of what will be saved */}
                         {selectedAvatarFile ? (
-                          <img 
-                            src={URL.createObjectURL(selectedAvatarFile)} 
-                            alt="Preview" 
-                            className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10" 
+                          <img
+                            src={URL.createObjectURL(selectedAvatarFile)}
+                            alt="Preview"
+                            className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
                           />
                         ) : (
                           // If they haven't selected a new custom file, show current renderAvatar or the selected preset avatar if they clicked one
@@ -862,7 +865,7 @@ export default function DashboardView({ onNavigate }) {
                             if (profile.userId && !avatarFailed && !selectedAvatarFile) {
                               // If they have a custom avatar on disk, show it
                               return (
-                                <img 
+                                <img
                                   src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
                                   alt=""
                                   className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
@@ -870,7 +873,7 @@ export default function DashboardView({ onNavigate }) {
                               );
                             }
                             return (
-                              <div 
+                              <div
                                 className="w-14 h-14 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10"
                                 style={{ color: avatar.color }}
                               >
@@ -905,8 +908,8 @@ export default function DashboardView({ onNavigate }) {
                             </button>
                           )}
                         </div>
-                        <input 
-                          type="file" 
+                        <input
+                          type="file"
                           ref={avatarInputRef}
                           onChange={(e) => {
                             if (e.target.files?.[0]) {
@@ -914,7 +917,7 @@ export default function DashboardView({ onNavigate }) {
                               setAvatarFailed(false); // Preview the custom image
                             }
                           }}
-                          className="hidden" 
+                          className="hidden"
                           accept="image/jpeg,image/png,image/gif"
                         />
                       </div>
@@ -935,11 +938,10 @@ export default function DashboardView({ onNavigate }) {
                                 setSelectedAvatarFile(null); // Clear selected custom file so it uses the preset
                                 setAvatarFailed(true); // Force preset view
                               }}
-                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${
-                                isSelected 
-                                  ? 'border-accent-blue bg-accent-blue/10 scale-110 shadow-sm' 
+                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${isSelected
+                                  ? 'border-accent-blue bg-accent-blue/10 scale-110 shadow-sm'
                                   : 'border-zinc-200 dark:border-white/5 bg-white dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                              }`}
+                                }`}
                               style={{ color: av.color }}
                             >
                               <i className={`${av.icon} text-sm`} />
@@ -950,7 +952,7 @@ export default function DashboardView({ onNavigate }) {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading}
                     className="w-full btn-primary-unified"
@@ -965,11 +967,11 @@ export default function DashboardView({ onNavigate }) {
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('currentPassword')}</label>
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       value={currPassword}
                       onChange={(e) => setCurrPassword(e.target.value)}
-                      placeholder="••••••••" 
+                      placeholder="••••••••"
                       className="input-unified"
                       required
                     />
@@ -977,17 +979,17 @@ export default function DashboardView({ onNavigate }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('newPassword')}</label>
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••" 
+                      placeholder="••••••••"
                       className="input-unified"
                       required
                     />
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading}
                     className="w-full btn-primary-unified"
@@ -1002,32 +1004,29 @@ export default function DashboardView({ onNavigate }) {
                 <form onSubmit={handleSaveSecurityQuestion} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('securityQuestion')}</label>
-                    <select 
+                    <CustomSelect
                       value={secQuestion}
-                      onChange={(e) => setSecQuestion(e.target.value)}
-                      className="select-unified"
-                    >
-                      {SECURITY_QUESTIONS.map((q, idx) => (
-                        <option key={q} value={q} className="bg-white dark:bg-zinc-950 text-zinc-800 dark:text-white">
-                          {t('securityQuestion' + (idx + 1))}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setSecQuestion(val)}
+                      options={SECURITY_QUESTIONS.map((q, idx) => ({
+                        value: q,
+                        label: t('securityQuestion' + (idx + 1))
+                      }))}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('secretAnswer')}</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={secAnswer}
                       onChange={(e) => setSecAnswer(e.target.value)}
-                      placeholder={t('secretAnswerPlaceholder')} 
+                      placeholder={t('secretAnswerPlaceholder')}
                       className="input-unified"
                       required
                     />
                   </div>
 
-                  <button 
+                  <button
                     type="submit"
                     disabled={loading}
                     className="w-full btn-primary-unified"
@@ -1049,9 +1048,9 @@ export default function DashboardView({ onNavigate }) {
 
                       {mfaQrUrl && (
                         <div className="flex flex-col items-center p-4 rounded-xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 space-y-3">
-                          <img 
-                            src={mfaQrUrl} 
-                            alt="Scan 2FA QR" 
+                          <img
+                            src={mfaQrUrl}
+                            alt="Scan 2FA QR"
                             className="w-36 h-36 rounded-lg border border-zinc-200 dark:border-white/10"
                           />
                           <p className="text-[9px] font-mono text-zinc-500 dark:text-zinc-400 select-all">{mfaSecret}</p>
@@ -1063,19 +1062,19 @@ export default function DashboardView({ onNavigate }) {
                           <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1 text-center">
                             {t('enterMfaCode')}
                           </label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={mfaSetupCode}
                             onChange={(e) => setMfaSetupCode(e.target.value)}
                             pattern="[0-9]{6}"
                             maxLength="6"
-                            placeholder="000000" 
+                            placeholder="000000"
                             className="input-unified text-sm font-bold text-center tracking-[0.2em]"
                             required
                           />
                         </div>
 
-                        <button 
+                        <button
                           type="submit"
                           disabled={loading}
                           className="w-full btn-primary-unified"
@@ -1090,14 +1089,14 @@ export default function DashboardView({ onNavigate }) {
                       <p className="text-xs text-red-400 leading-relaxed">
                         {t('mfaDisableWarning')}
                       </p>
-                      
+
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('confirmPassword')}</label>
-                        <input 
-                          type="password" 
+                        <input
+                          type="password"
                           value={mfaDisablePwd}
                           onChange={(e) => setMfaDisablePwd(e.target.value)}
-                          placeholder={t('confirmPasswordPlaceholder')} 
+                          placeholder={t('confirmPasswordPlaceholder')}
                           className="input-unified"
                           required
                         />
@@ -1105,19 +1104,19 @@ export default function DashboardView({ onNavigate }) {
 
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('authenticatorCode')}</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={mfaDisableCode}
                           onChange={(e) => setMfaDisableCode(e.target.value)}
                           pattern="[0-9]{6}"
                           maxLength="6"
-                          placeholder="000000" 
+                          placeholder="000000"
                           className="input-unified text-center tracking-[0.2em]"
                           required
                         />
                       </div>
 
-                      <button 
+                      <button
                         type="submit"
                         disabled={loading}
                         className="w-full btn-danger-unified"

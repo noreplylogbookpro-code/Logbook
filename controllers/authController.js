@@ -98,7 +98,7 @@ exports.login = async (req, res) => {
  * @desc    Admin creates a new user
  */
 exports.createUser = async (req, res) => {
-    const { fullName, username, password, role, school } = req.body;
+    const { fullName, username, password, role, roleBadge, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
     const callerRole = req.headers['x-caller-role'] || '';
 
@@ -126,6 +126,7 @@ exports.createUser = async (req, res) => {
         username: normUser,
         password: hashedPassword,
         role: (role || 'USER').toUpperCase(),
+        roleBadge: roleBadge ? roleBadge.trim() : (role === 'SUPER_ADMIN' ? 'Super Admin' : role === 'ADMIN' ? 'IT Admin' : 'School Staff'),
         createdAt: new Date().toISOString()
     };
 
@@ -138,6 +139,7 @@ exports.createUser = async (req, res) => {
         data: {
             username: newUser.username,
             role: newUser.role,
+            roleBadge: newUser.roleBadge,
             fullName: newUser.fullName,
             school: targetSchool
         }
@@ -351,5 +353,32 @@ exports.updateProfile = (req, res) => {
             fullName: user.fullName,
             school: targetSchool
         }
+    });
+};
+
+/**
+ * @route   PATCH /api/v1/auth/users/:id/role
+ * @desc    Update user role & roleBadge
+ */
+exports.updateUserRole = (req, res) => {
+    const userId = parseInt(req.params.id, 10);
+    const { role, roleBadge } = req.body;
+    const targetSchool = getSchool(req);
+
+    const usersDB = readUsers(targetSchool);
+    const user = usersDB.find(u => u.id === userId);
+    if (!user) {
+        return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    if (role) user.role = role.toUpperCase();
+    if (roleBadge) user.roleBadge = roleBadge.trim();
+
+    writeUsers(usersDB, targetSchool);
+
+    return res.status(200).json({
+        success: true,
+        message: `Updated role badge for user @${user.username}.`,
+        data: { id: user.id, role: user.role, roleBadge: user.roleBadge }
     });
 };

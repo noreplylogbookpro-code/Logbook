@@ -8,6 +8,7 @@ import {
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
   Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2
 } from 'lucide-react';
+import CustomSelect from './DropdownMenu';
 
 export default function MasterView({ onNavigate, theme, toggleTheme }) {
   // Authentication states
@@ -1556,14 +1557,14 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     </div>
                     <button
                       onClick={() => { setActiveModal('editProfile'); setProfileDropdownOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                      className="dropdown-item"
                     >
                       <User className="w-4 h-4" />
                       Edit Profile
                     </button>
                     <button
                       onClick={() => { setActiveModal('changePwd'); setProfileDropdownOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                      className="dropdown-item"
                     >
                       <Key className="w-4 h-4" />
                       Change Password
@@ -1579,7 +1580,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                         }
                         setProfileDropdownOpen(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left"
+                      className="dropdown-item"
                     >
                       <ShieldAlert className="w-4 h-4" />
                       Master 2FA Settings
@@ -1975,17 +1976,17 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Backups Retention policy</label>
-                      <div className="flex gap-2">
-                        <select
+                      <div className="flex gap-2 w-full">
+                        <CustomSelect
                           value={cleanupDays}
-                          onChange={(e) => setCleanupDays(e.target.value)}
-                          className="select-unified flex-grow py-2 text-sm bg-zinc-50 dark:bg-zinc-900"
-                        >
-                          <option value="7">7 Days old</option>
-                          <option value="15">15 Days old</option>
-                          <option value="30">30 Days old</option>
-                          <option value="90">90 Days old</option>
-                        </select>
+                          onChange={(val) => setCleanupDays(val)}
+                          options={[
+                            { value: '7', label: '7 Days old' },
+                            { value: '15', label: '15 Days old' },
+                            { value: '30', label: '30 Days old' },
+                            { value: '90', label: '90 Days old' }
+                          ]}
+                        />
                         <button
                           onClick={handleRetentionCleanup}
                           className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-xl border border-red-500/20 transition-all cursor-pointer flex items-center gap-1.5"
@@ -2079,17 +2080,17 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-[200px]">
                     <Filter className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                    <select
+                    <CustomSelect
                       value={userStatusFilter}
-                      onChange={(e) => setUserStatusFilter(e.target.value)}
-                      className="w-full py-2 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-purple cursor-pointer font-semibold"
-                    >
-                      <option value="ALL">All Statuses ({users.length})</option>
-                      <option value="ONLINE">🟢 Online Now ({users.filter(u => u.isOnline).length})</option>
-                      <option value="OFFLINE">⚪ Offline ({users.filter(u => !u.isOnline).length})</option>
-                    </select>
+                      onChange={(val) => setUserStatusFilter(val)}
+                      options={[
+                        { value: 'ALL', label: `All Statuses (${users.length})` },
+                        { value: 'ONLINE', label: `🟢 Online Now (${users.filter(u => u.isOnline).length})` },
+                        { value: 'OFFLINE', label: `⚪ Offline (${users.filter(u => !u.isOnline).length})` }
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -2244,16 +2245,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   </div>
                   <div className="space-y-1.5 w-full sm:w-44 text-left">
                     <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-1">Validity Period</label>
-                    <select
+                    <CustomSelect
                       value={licenseDuration}
-                      onChange={(e) => setLicenseDuration(e.target.value)}
-                      className="select-unified py-2 bg-zinc-50 dark:bg-zinc-900"
-                    >
-                      <option value="30">30 Days</option>
-                      <option value="90">90 Days</option>
-                      <option value="365">1 Year (365 Days)</option>
-                      <option value="3650">Lifetime (10 Years)</option>
-                    </select>
+                      onChange={(val) => setLicenseDuration(val)}
+                      options={[
+                        { value: '30', label: '30 Days' },
+                        { value: '90', label: '90 Days' },
+                        { value: '365', label: '1 Year (365 Days)' },
+                        { value: '3650', label: 'Lifetime (10 Years)' }
+                      ]}
+                    />
                   </div>
                   <button
                     type="submit"
@@ -2471,19 +2472,19 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 </div>
 
                 {/* Level Filter */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-[180px]">
                   <Filter className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                  <select
+                  <CustomSelect
                     value={logLevelFilter}
-                    onChange={(e) => setLogLevelFilter(e.target.value)}
-                    className="w-full py-2 px-3 text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-lg text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent-purple cursor-pointer"
-                  >
-                    <option value="ALL">All Levels ({logsList.length})</option>
-                    <option value="info">Info</option>
-                    <option value="warning">Warning</option>
-                    <option value="alarm">Alarm</option>
-                    <option value="critical">Critical</option>
-                  </select>
+                    onChange={(val) => setLogLevelFilter(val)}
+                    options={[
+                      { value: 'ALL', label: `All Levels (${logsList.length})` },
+                      { value: 'info', label: 'Info' },
+                      { value: 'warning', label: 'Warning' },
+                      { value: 'alarm', label: 'Alarm' },
+                      { value: 'critical', label: 'Critical' }
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -3238,16 +3239,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Extend Validity Period</label>
-                    <select
+                    <CustomSelect
                       value={extendDurationDays}
-                      onChange={(e) => setExtendDurationDays(e.target.value)}
-                      className="select-unified bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10"
-                    >
-                      <option value="30">30 Days</option>
-                      <option value="90">90 Days</option>
-                      <option value="365">1 Year (365 Days)</option>
-                      <option value="3650">Lifetime (10 Years)</option>
-                    </select>
+                      onChange={(val) => setExtendDurationDays(val)}
+                      options={[
+                        { value: '30', label: '30 Days' },
+                        { value: '90', label: '90 Days' },
+                        { value: '365', label: '1 Year (365 Days)' },
+                        { value: '3650', label: 'Lifetime (10 Years)' }
+                      ]}
+                    />
                   </div>
 
                   <div className="flex gap-3 pt-2">
@@ -3284,29 +3285,29 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Billing Plan Type</label>
-                    <select
+                    <CustomSelect
                       value={editPlanType}
-                      onChange={(e) => setEditPlanType(e.target.value)}
-                      className="select-unified"
-                    >
-                      <option value="unpaid">Unpaid / Free Trial</option>
-                      <option value="premium">Monthly Premium</option>
-                      <option value="licensed">Self-Hosted License</option>
-                    </select>
+                      onChange={(val) => setEditPlanType(val)}
+                      options={[
+                        { value: 'unpaid', label: 'Unpaid / Free Trial' },
+                        { value: 'premium', label: 'Monthly Premium' },
+                        { value: 'licensed', label: 'Self-Hosted License' }
+                      ]}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Subscription Status</label>
-                    <select
+                    <CustomSelect
                       value={editPlanStatus}
-                      onChange={(e) => setEditPlanStatus(e.target.value)}
-                      className="select-unified"
-                    >
-                      <option value="none">None / Idle</option>
-                      <option value="active">Active</option>
-                      <option value="canceled">Canceled</option>
-                      <option value="past_due">Past Due</option>
-                    </select>
+                      onChange={(val) => setEditPlanStatus(val)}
+                      options={[
+                        { value: 'none', label: 'None / Idle' },
+                        { value: 'active', label: 'Active' },
+                        { value: 'canceled', label: 'Canceled' },
+                        { value: 'past_due', label: 'Past Due' }
+                      ]}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -3347,16 +3348,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Category</label>
-                      <select
+                      <CustomSelect
                         value={blogCategory}
-                        onChange={(e) => setBlogCategory(e.target.value)}
-                        className="select-unified"
-                      >
-                        <option value="Guides">Guides</option>
-                        <option value="Product">Product Updates</option>
-                        <option value="Security">Security</option>
-                        <option value="General">General</option>
-                      </select>
+                        onChange={(val) => setBlogCategory(val)}
+                        options={[
+                          { value: 'Guides', label: 'Guides' },
+                          { value: 'Product', label: 'Product Updates' },
+                          { value: 'Security', label: 'Security' },
+                          { value: 'General', label: 'General' }
+                        ]}
+                      />
                     </div>
 
                     <div className="space-y-1.5">

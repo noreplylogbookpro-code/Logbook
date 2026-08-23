@@ -6,6 +6,7 @@ import {
   MessageSquare, Bug, Lightbulb, Activity, CheckCircle,
   Users, Briefcase, FileCode, ChevronDown, Search
 } from 'lucide-react';
+import CustomSelect from './DropdownMenu.jsx';
 
 export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const [activeDoc, setActiveDoc] = useState(initialDoc);
@@ -616,18 +617,14 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
 
       {/* Mobile Dropdown Nav */}
       <div className="md:hidden mb-6">
-        <select
+        <CustomSelect
           value={activeDoc}
-          onChange={(e) => handleDocChange(e.target.value)}
-          className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-blue cursor-pointer"
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-        >
-          {Object.keys(policies).map((key) => (
-            <option key={key} value={key} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>
-              {policies[key].title}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => handleDocChange(val)}
+          options={Object.keys(policies).map((key) => ({
+            value: key,
+            label: policies[key].title
+          }))}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start">

@@ -134,7 +134,7 @@ a {
 }
 
 ::selection {
-  background-color: #c084fc;
+  background-color: rgb(192, 132, 252);
   /* Highlight background */
   color: #ffffff;
   /* Selected text color */
@@ -287,20 +287,32 @@ a {
     filter: invert(1);
   }
 
-  .select-unified {
+
+
+  /* Centralized Custom Dropdown Item Utility Class */
+  .dropdown-item {
     width: 100%;
-    background: var(--bg-input);
-    border: 1px solid var(--border-input);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
-    color: var(--text-primary);
-    outline: none;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
     cursor: pointer;
-    transition: all 0.2s ease;
+    text-align: left;
   }
 
-  .select-unified:focus {
+  .dropdown-item:hover,
+  .dropdown-item:focus {
+    background-color: var(--dropdown-item-hover-bg) !important;
+    color: var(--dropdown-item-hover-text) !important;
+  }
+
+  .select-unified:focus,
+  select:focus {
     border-color: var(--border-focus);
     box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.2);
   }
