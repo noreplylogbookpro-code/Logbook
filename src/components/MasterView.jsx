@@ -540,11 +540,12 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     setAuthError('');
     setLoading(true);
 
+    const cleanCode = (mfaCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await fetch('/api/master/login/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mfaToken, code: mfaCode })
+        body: JSON.stringify({ mfaToken, code: cleanCode })
       });
       const data = await res.json();
 
@@ -996,10 +997,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const handleConfirm2faSetupSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const cleanCode = (setupCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await masterApiCall('/api/master/2fa/verify', {
         method: 'POST',
-        body: JSON.stringify({ code: setupCode })
+        body: JSON.stringify({ code: cleanCode })
       });
       if (res.ok) {
         alert('2FA enabled successfully!');
@@ -1019,10 +1021,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const handleDisable2faSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const cleanCode = (disableCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await masterApiCall('/api/master/2fa/disable', {
         method: 'POST',
-        body: JSON.stringify({ password: disablePwd, code: disableCode })
+        body: JSON.stringify({ password: disablePwd, code: cleanCode })
       });
       if (res.ok) {
         alert('2FA disabled successfully.');

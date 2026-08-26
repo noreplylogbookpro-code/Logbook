@@ -458,11 +458,12 @@ export default function DashboardView({ onNavigate }) {
     setActionSuccess('');
     setLoading(true);
 
+    const cleanCode = (mfaSetupCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await fetch('/api/profile/2fa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ code: mfaSetupCode })
+        body: JSON.stringify({ code: cleanCode })
       });
 
       if (res.ok) {
@@ -490,11 +491,12 @@ export default function DashboardView({ onNavigate }) {
     setActionSuccess('');
     setLoading(true);
 
+    const cleanCode = (mfaDisableCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await fetch('/api/profile/2fa/disable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ password: mfaDisablePwd, code: mfaDisableCode })
+        body: JSON.stringify({ password: mfaDisablePwd, code: cleanCode })
       });
 
       if (res.ok) {

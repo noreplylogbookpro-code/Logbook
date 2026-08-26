@@ -274,11 +274,12 @@ export default function LoginView({ onNavigate }) {
     setErrorMsg('');
     setLoading(true);
 
+    const cleanCode = (mfaCode || '').replace(/[\s\-]/g, '').trim();
     try {
       const res = await fetch('/api/login/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mfaToken, code: mfaCode })
+        body: JSON.stringify({ mfaToken, code: cleanCode })
       });
       const data = await res.json();
 

@@ -79,6 +79,7 @@ const createLimiter = (windowMins, maxRequests, errMsg) => rateLimit({
 });
 
 const loginLimiter = createLimiter(15, 10, "Too many attempts. Try again in 15 minutes.");
+const mfaLimiter = createLimiter(15, 20, "Too many 2FA verification attempts. Try again in 15 minutes.");
 const signupLimiter = createLimiter(60, 5, "Too many accounts created. Try again after an hour.");
 const forgotLimiter = createLimiter(60, 8, "Too many reset attempts. Try again after an hour.");
 
@@ -155,10 +156,10 @@ router.use('/v1/tickets', ticketRoutes);
 router.use('/v1/auth', helpdeskAuthRoutes);
 
 // File Encryption Configuration & Helpers
-const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY;
+const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || 'logbookplus_default_file_key_32b';
 const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
 
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
+const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || 'logbookplus_default_db_key_32b_';
 const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
 
 function encryptText(text) {
@@ -563,8 +564,9 @@ router.post('/subscribe', async (req, res) => {
 
 // TOTP / 2FA Utilities
 function base32Decode(base32Str) {
+    if (!base32Str) throw new Error("Base32 secret is required");
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let cleanStr = base32Str.replace(/=+$/, '').toUpperCase();
+    let cleanStr = String(base32Str).replace(/[\s\-\=]/g, '').toUpperCase();
     let length = cleanStr.length;
     let buffer = Buffer.alloc(Math.floor(length * 5 / 8));
     let bits = 0;
@@ -606,10 +608,11 @@ function generateHOTP(secretBuffer, counter) {
 function verifyTOTP(token, base32Secret, window = 1) {
     if (!token || !base32Secret) return null;
     try {
+        const cleanToken = String(token).replace(/[\s\-]/g, '').trim();
         const secretBuffer = base32Decode(base32Secret);
         const currentCounter = Math.floor(Date.now() / 30000);
         for (let i = -window; i <= window; i++) {
-            if (generateHOTP(secretBuffer, currentCounter + i) === token.trim()) {
+            if (generateHOTP(secretBuffer, currentCounter + i) === cleanToken) {
                 return currentCounter + i;
             }
         }
@@ -624,7 +627,7 @@ function verifyTOTPWithReplay(code, base32Secret, lastUsedCounter) {
     if (matchedCounter === null) {
         return { valid: false, counter: null };
     }
-    if (lastUsedCounter !== null && lastUsedCounter !== undefined && matchedCounter < lastUsedCounter) {
+    if (lastUsedCounter !== null && lastUsedCounter !== undefined && !isNaN(lastUsedCounter) && matchedCounter <= lastUsedCounter) {
         return { valid: false, counter: null };
     }
     return { valid: true, counter: matchedCounter };
@@ -673,7 +676,7 @@ router.post('/master/login', loginLimiter, async (req, res) => {
     res.status(403).json({ error: 'Invalid master credentials' });
 });
 
-router.post('/master/login/verify', loginLimiter, async (req, res) => {
+router.post('/master/login/verify', mfaLimiter, async (req, res) => {
     const { mfaToken, code } = req.body;
     if (!mfaToken || !code) return res.status(400).json({ error: "MFA token and verification code are required" });
     try {
@@ -1541,7 +1544,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 });
 
-router.post('/login/verify', loginLimiter, async (req, res) => {
+router.post('/login/verify', mfaLimiter, async (req, res) => {
     const { mfaToken, code } = req.body;
     if (!mfaToken || !code) return res.status(400).json({ error: "MFA session token and verification code are required" });
 
