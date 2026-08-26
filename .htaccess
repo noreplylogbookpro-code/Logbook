@@ -1,5 +1,8 @@
 RewriteEngine On
 
+# 🔹 API requests -> forward to Node backend
+RewriteRule ^api/(.*)$ http://localhost:8080/api/$1 [P,L]
+
 # 🔹 Block direct /master access on non-subdomain host
 RewriteCond %{HTTP_HOST} !^master\. [NC]
 RewriteRule ^master(/.*)?$ - [R=404,L]
@@ -8,48 +11,38 @@ RewriteRule ^master(/.*)?$ - [R=404,L]
 RewriteCond %{HTTP_HOST} !^helpdesk\. [NC]
 RewriteRule ^helpdesk(/.*)?$ - [R=404,L]
 
+# 🔹 Serve files directly from public/ folder if they exist in public/
+RewriteCond %{DOCUMENT_ROOT}/public/%{REQUEST_URI} -f
+RewriteRule ^(.*)$ public/$1 [L]
 
-# 🔹 Allow direct access to existing files/folders
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
+# 🔹 Allow direct access ONLY to existing files in root (e.g. assets)
+RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
-# 🔹 API requests → forward to Node backend
-RewriteRule ^api/(.*)$ http://localhost:8080/api/$1 [P,L]
-
-# 🔹 Subdomain: master.yourdomain.com -> route to master/ folder
+# 🔹 Subdomain: master.logbookplus.co.in -> route to public/master/ folder
 RewriteCond %{HTTP_HOST} ^master\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/assets/
-RewriteCond %{REQUEST_URI} !^/master/
-RewriteRule ^(.*)$ master/$1 [L]
+RewriteCond %{REQUEST_URI} !^/public/master/
+RewriteRule ^(.*)$ public/master/$1 [L]
 
-# 🔹 SPA fallback for master subdomain (if file/dir doesn't exist)
+# 🔹 SPA fallback for master subdomain
 RewriteCond %{HTTP_HOST} ^master\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
-RewriteCond %{REQUEST_URI} !^/assets/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^master/(.*)$ master/index.html [L]
+RewriteRule ^ public/master/index.html [L]
 
-# 🔹 Subdomain: helpdesk.yourdomain.com -> route to helpdesk/ folder
+# 🔹 Subdomain: helpdesk.logbookplus.co.in -> route to public/helpdesk/ folder
 RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/assets/
-RewriteCond %{REQUEST_URI} !^/helpdesk/
-RewriteRule ^(.*)$ helpdesk/$1 [L]
+RewriteCond %{REQUEST_URI} !^/public/helpdesk/
+RewriteRule ^(.*)$ public/helpdesk/$1 [L]
 
-# 🔹 SPA fallback for helpdesk subdomain (if file/dir doesn't exist)
+# 🔹 SPA fallback for helpdesk subdomain
 RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
-RewriteCond %{REQUEST_URI} !^/assets/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^helpdesk/(.*)$ helpdesk/index.html [L]
+RewriteRule ^ public/helpdesk/index.html [L]
 
-# 🔹 Remove .html from URLs (optional clean URLs)
-RewriteCond %{REQUEST_FILENAME}.html -f
-RewriteRule ^([^\.]+)$ $1.html [L]
-
-# 🔹 Force everything else to index (SPA fallback if needed)
-RewriteRule ^ index.html [L]
+# 🔹 Main SPA fallback for main domain -> route to compiled public/index.html
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteRule ^ public/index.html [L]

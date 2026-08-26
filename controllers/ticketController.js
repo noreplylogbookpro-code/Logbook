@@ -15,45 +15,52 @@ const getSchool = (req) => {
  * @desc    Create a new complaint ticket
  */
 exports.createTicket = (req, res) => {
-    const { userName, userPhone, userEmail, category, subject, description, floor, roomNumber, reportedBy, isPrefilled, adminTag } = req.body;
-    const targetSchool = getSchool(req);
+    try {
+        const { userName, userPhone, userEmail, category, subject, description, floor, roomNumber, reportedBy, isPrefilled, adminTag } = req.body || {};
+        const targetSchool = getSchool(req);
 
-    if (!userName || !subject) {
-        return res.status(400).json({ success: false, error: 'User name and subject brief are required.' });
+        const nameToUse = (userName && userName.trim()) || (reportedBy && reportedBy.trim()) || 'Anonymous User';
+
+        if (!subject || !subject.trim()) {
+            return res.status(400).json({ success: false, error: 'Subject is required.' });
+        }
+
+        const ticketsDB = readTickets(targetSchool);
+        const maxId = ticketsDB.reduce((max, t) => (t.id && typeof t.id === 'number' && t.id > max ? t.id : max), 0);
+
+        const newTicket = {
+            id: maxId + 1,
+            token: generateTicketToken(),
+            userName: nameToUse,
+            userPhone: userPhone ? String(userPhone).trim() : '',
+            userEmail: userEmail ? String(userEmail).trim() : '',
+            category: category || 'PC Hardware',
+            subject: subject.trim(),
+            description: (description && description.trim()) || subject.trim(),
+            floor: floor || 'Ground Floor',
+            roomNumber: roomNumber || 'General Area',
+            reportedBy: reportedBy || 'anonymous',
+            isPrefilled: Boolean(isPrefilled),
+            adminTag: adminTag || 'IT Support',
+            status: 'PENDING',
+            adminRemark: null,
+            createdAt: new Date().toISOString(),
+            closedAt: null,
+            resolutionTimeMinutes: null
+        };
+
+        ticketsDB.push(newTicket);
+        writeTickets(ticketsDB, targetSchool);
+
+        return res.status(201).json({
+            success: true,
+            message: `Complaint registered successfully in school ${targetSchool}.`,
+            data: { id: newTicket.id, token: newTicket.token, status: newTicket.status, createdAt: newTicket.createdAt }
+        });
+    } catch (err) {
+        console.error('Error creating ticket:', err);
+        return res.status(500).json({ success: false, error: 'Internal server error while saving complaint.' });
     }
-
-    const ticketsDB = readTickets(targetSchool);
-    const maxId = ticketsDB.reduce((max, t) => t.id > max ? t.id : max, 0);
-
-    const newTicket = {
-        id: maxId + 1,
-        token: generateTicketToken(),
-        userName,
-        userPhone: userPhone || '',
-        userEmail: userEmail || '',
-        category: category || 'PC Hardware',
-        subject: subject || 'No Subject',
-        description: description || subject || '',
-        floor: floor || 'Ground Floor',
-        roomNumber: roomNumber || 'General Area',
-        reportedBy: reportedBy || 'anonymous',
-        isPrefilled: Boolean(isPrefilled),
-        adminTag: adminTag || 'IT Support',
-        status: 'PENDING',
-        adminRemark: null,
-        createdAt: new Date().toISOString(),
-        closedAt: null,
-        resolutionTimeMinutes: null
-    };
-
-    ticketsDB.push(newTicket);
-    writeTickets(ticketsDB, targetSchool);
-
-    return res.status(201).json({
-        success: true,
-        message: `Complaint registered successfully in school ${targetSchool}.`,
-        data: { token: newTicket.token, status: newTicket.status, createdAt: newTicket.createdAt }
-    });
 };
 
 /**

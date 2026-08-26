@@ -14,6 +14,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const [contactSent, setContactSent] = useState(false);
   const [selectedBlog, setSelectedBlog] = useState(null);
   const [dynamicBlogs, setDynamicBlogs] = useState([]);
+  const [dynamicChangelogs, setDynamicChangelogs] = useState([]);
   const [faqSearch, setFaqSearch] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
@@ -35,7 +36,21 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         console.error('Failed to load dynamic blogs:', err);
       }
     };
+
+    const fetchChangelogs = async () => {
+      try {
+        const res = await fetch('/api/changelogs');
+        if (res.ok) {
+          const data = await res.json();
+          setDynamicChangelogs(data);
+        }
+      } catch (err) {
+        console.error('Failed to load dynamic changelogs:', err);
+      }
+    };
+
     fetchBlogs();
+    fetchChangelogs();
   }, []);
 
   const handleDocChange = (key) => {
@@ -226,37 +241,48 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     },
     changelog: {
       title: 'Changelog History',
-      updated: 'December 2025',
+      updated: dynamicChangelogs[0]?.date || 'Latest Releases',
       icon: History,
       content: (
         <div className="space-y-8">
-          <div className="border-l-2 border-accent-purple pl-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>v2.0.9</span>
-              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>December 2025</span>
+          {dynamicChangelogs.length > 0 ? (
+            dynamicChangelogs.map((item, idx) => (
+              <div key={item._id || idx} className={`border-l-2 pl-4 space-y-2 ${idx === 0 ? 'border-accent-purple' : ''}`} style={idx === 0 ? {} : { borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{item.version}</span>
+                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{item.date}</span>
+                  {item.isMajor && (
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-purple-500/10 text-purple-400 rounded-md border border-purple-500/20">
+                      Major Release
+                    </span>
+                  )}
+                </div>
+                {item.description && (
+                  <p className="text-xs font-medium text-slate-500 dark:text-zinc-400">{item.description}</p>
+                )}
+                {Array.isArray(item.items) && item.items.length > 0 && (
+                  <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {item.items.map((bullet, bIdx) => (
+                      <li key={bIdx}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="border-l-2 border-accent-purple pl-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>v2.0.9</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>December 2025</span>
+              </div>
+              <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <li>Added cloud backup support (WebDAV / Nextcloud)</li>
+                <li>Added self-hosted server backup sync protocols</li>
+                <li>Added Two-Factor Authentication (2FA) for admin dashboard consoles</li>
+                <li>Added security questions for local recovery verification</li>
+              </ul>
             </div>
-            <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li>Added cloud backup support (WebDAV / Nextcloud)</li>
-              <li>Added self-hosted server backup sync protocols</li>
-              <li>Added Two-Factor Authentication (2FA) for admin dashboard consoles</li>
-              <li>Added security questions for local recovery verification</li>
-              <li>Integrated Google Play Billing Client 7</li>
-              <li>Added profile picture upload and editing features</li>
-              <li>Added Hindi, Marathi, and Urdu language layouts</li>
-            </ul>
-          </div>
-
-          <div className="border-l-2 pl-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>v2.0.8</span>
-              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>October 2025</span>
-            </div>
-            <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-              <li>Optimized SQLite cache writing times (Sub-5ms paint times)</li>
-              <li>Implemented dynamic bento showcase cards</li>
-              <li>Added multi-format export indicators</li>
-            </ul>
-          </div>
+          )}
         </div>
       )
     },

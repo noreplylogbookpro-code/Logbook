@@ -951,11 +951,11 @@ export default function HelpdeskDashboard() {
         try {
             const ticketPayload = {
                 ...newTicketForm,
-                userName: newTicketForm.userName || session.fullName,
-                reportedBy: session.username
+                userName: newTicketForm.userName || (session && session.fullName) || (session && session.username) || 'Staff User',
+                reportedBy: (session && session.username) || 'anonymous'
             };
 
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const activeSchool = (session && session.role === 'SUPER_ADMIN') ? selectedSchool : ((session && session.school) || 'NHSST');
             const res = await fetch(`${API_BASE_URL}/tickets`, {
                 method: 'POST',
                 headers: {
@@ -964,9 +964,17 @@ export default function HelpdeskDashboard() {
                 },
                 body: JSON.stringify(ticketPayload)
             });
-            const result = await res.json();
-            if (result.success) {
-                alert(`Complaint Lodged Successfully! Token: ${result.data.token}`);
+
+            let result = {};
+            try {
+                result = await res.json();
+            } catch (jsonErr) {
+                console.error("Failed to parse JSON response:", jsonErr);
+            }
+
+            if (res.ok && (result.success !== false)) {
+                const token = (result.data && result.data.token) || result.token || 'HD-NEW';
+                alert(`Complaint Lodged Successfully!\n\nTracking Token: ${token}`);
                 setIsNewTicketOpen(false);
                 setTemplatePage(0);
                 setNewTicketForm({
@@ -978,12 +986,21 @@ export default function HelpdeskDashboard() {
                     roomNumber: '',
                     subject: '',
                     description: '',
-                    adminTag: tags[0] || 'IT Support'
+                    adminTag: 'IT Support'
                 });
-                fetchDashboardData();
+
+                // Safely refresh dashboard data without causing outer catch block to fire
+                try {
+                    await fetchDashboardData();
+                } catch (refreshErr) {
+                    console.error("Error refreshing dashboard stats:", refreshErr);
+                }
+            } else {
+                alert(`Error: ${result.error || result.message || 'Failed to submit complaint.'}`);
             }
         } catch (err) {
-            alert('Failed to submit complaint.');
+            console.error('Error in complaint submit:', err);
+            alert(`Failed to submit complaint: ${err.message || 'Unknown error'}`);
         }
     };
 

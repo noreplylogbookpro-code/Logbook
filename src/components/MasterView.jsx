@@ -6,7 +6,7 @@ import {
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
-  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
 
@@ -33,6 +33,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [users, setUsers] = useState([]);
   const [licenses, setLicenses] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [changelogs, setChangelogs] = useState([]);
   const [logsList, setLogsList] = useState([]);
   const [serverConfig, setServerConfig] = useState({ quotaLimit: 240 * 1024 * 1024, signupsEnabled: true });
   const [masterProfile, setMasterProfile] = useState({ name: 'Master Admin', email: 'admin@logbook', profilePicIndex: 0, twoFactorEnabled: false });
@@ -103,6 +104,14 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [blogImageUrl, setBlogImageUrl] = useState('');
   const [blogExcerpt, setBlogExcerpt] = useState('');
   const [blogContent, setBlogContent] = useState('');
+
+  // Changelog Form states
+  const [selectedChangelogId, setSelectedChangelogId] = useState('');
+  const [changelogVersion, setChangelogVersion] = useState('');
+  const [changelogDate, setChangelogDate] = useState('');
+  const [changelogDescription, setChangelogDescription] = useState('');
+  const [changelogItemsText, setChangelogItemsText] = useState('');
+  const [changelogIsMajor, setChangelogIsMajor] = useState(false);
 
   // License Form states
   const [licenseeEmail, setLicenseeEmail] = useState('');
@@ -268,6 +277,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       fetchLicensesList();
     } else if (activeTab === 'Blogs') {
       fetchBlogsList();
+    } else if (activeTab === 'Changelogs') {
+      fetchChangelogsList();
     } else if (activeTab === 'Logs') {
       fetchLiveLogs();
       const logsPoller = setInterval(fetchLiveLogs, 2500);
@@ -343,6 +354,15 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       const res = await fetch('/api/blogs');
       if (res.ok) {
         setBlogs(await res.json());
+      }
+    } catch { }
+  };
+
+  const fetchChangelogsList = async () => {
+    try {
+      const res = await fetch('/api/changelogs');
+      if (res.ok) {
+        setChangelogs(await res.json());
       }
     } catch { }
   };
@@ -791,6 +811,78 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       }
     } catch {
       alert('Failed to delete blog post.');
+    }
+  };
+
+  // Changelog Actions
+  const openChangelogEditModal = (item = null) => {
+    if (item) {
+      setSelectedChangelogId(item._id);
+      setChangelogVersion(item.version || '');
+      setChangelogDate(item.date || '');
+      setChangelogDescription(item.description || '');
+      setChangelogItemsText(Array.isArray(item.items) ? item.items.join('\n') : (item.items || ''));
+      setChangelogIsMajor(!!item.isMajor);
+    } else {
+      setSelectedChangelogId('');
+      setChangelogVersion('');
+      setChangelogDate(new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+      setChangelogDescription('');
+      setChangelogItemsText('');
+      setChangelogIsMajor(false);
+    }
+    setActiveModal('editChangelog');
+  };
+
+  const handleChangelogFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const payload = {
+      version: changelogVersion,
+      date: changelogDate,
+      description: changelogDescription,
+      items: changelogItemsText.split('\n').map(i => i.trim()).filter(Boolean),
+      isMajor: changelogIsMajor
+    };
+
+    const method = selectedChangelogId ? 'PUT' : 'POST';
+    const endpoint = selectedChangelogId ? `/api/master/changelogs/${encodeURIComponent(selectedChangelogId)}` : '/api/master/changelogs';
+
+    try {
+      const res = await masterApiCall(endpoint, {
+        method,
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setActiveModal(null);
+        fetchChangelogsList();
+      } else {
+        let errorMsg = 'Failed to save changelog entry.';
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch (e) {
+          errorMsg = `Server error (${res.status}): ${res.statusText || 'Internal Server Error'}`;
+        }
+        alert(errorMsg);
+      }
+    } catch (err) {
+      alert(err.message || 'Network request failed. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteChangelog = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this changelog entry?')) return;
+    try {
+      const res = await masterApiCall(`/api/master/changelogs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchChangelogsList();
+      }
+    } catch {
+      alert('Failed to delete changelog entry.');
     }
   };
 
@@ -1417,6 +1509,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     { name: 'Licenses', icon: Key },
                     { name: 'Subscriptions', icon: CreditCard },
                     { name: 'Blogs', icon: BookOpen },
+                    { name: 'Changelogs', icon: ScrollText },
                     { name: 'Logs', icon: Terminal },
                     { name: 'Settings', icon: Settings },
                   ].map(tab => {
@@ -1477,6 +1570,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               { name: 'Licenses', icon: Key },
               { name: 'Subscriptions', icon: CreditCard },
               { name: 'Blogs', icon: BookOpen },
+              { name: 'Changelogs', icon: ScrollText },
               { name: 'Logs', icon: Terminal },
               { name: 'Settings', icon: Settings },
             ].map(tab => {
@@ -2408,6 +2502,87 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
             </motion.div>
           )}
 
+          {activeTab === 'Changelogs' && (
+            <motion.div
+              key="Changelogs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 space-y-4 text-left"
+            >
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Manage Release Changelogs</h3>
+                  <p className="text-xs text-zinc-500">Publish product updates, bug fixes, and release notes</p>
+                </div>
+                <button
+                  onClick={() => openChangelogEditModal(null)}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Release Note
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="text-zinc-500 border-b border-zinc-200 dark:border-white/5 pb-2">
+                      <th className="py-2.5">Version & Date</th>
+                      <th className="py-2.5">Release Notes</th>
+                      <th className="py-2.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {changelogs.map((item) => (
+                      <tr key={item._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
+                        <td className="py-3 text-left w-48 align-top">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-zinc-800 dark:text-white text-lg">{item.version}</span>
+                            {item.isMajor && (
+                              <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-purple-500/10 text-purple-400 rounded border border-purple-500/20">
+                                Major
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500 font-mono mt-0.5">{item.date}</p>
+                        </td>
+                        <td className="py-3 align-top">
+                          {item.description && (
+                            <p className="font-semibold text-zinc-700 dark:text-zinc-300 text-sm mb-1">{item.description}</p>
+                          )}
+                          {Array.isArray(item.items) && (
+                            <ul className="list-disc pl-4 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                              {item.items.map((bullet, bIdx) => (
+                                <li key={bIdx}>{bullet}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                        <td className="py-3 text-right align-top">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => openChangelogEditModal(item)}
+                              className="px-2.5 py-1.5 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue font-semibold rounded-lg border border-accent-blue/20 transition-all cursor-pointer flex items-center gap-1 text-xs"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteChangelog(item._id)}
+                              className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition-all cursor-pointer flex items-center gap-1 text-xs"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'Logs' && (
             <motion.div
               key="Logs"
@@ -2854,7 +3029,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-white/5">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-zinc-500">Backup created: <strong className="text-zinc-700 dark:text-zinc-300">{new Date(importPreview.createdAt).toLocaleString()}</strong></span>
-                          <span className="text-zinc-500">{importPreview.fileCount} files</span>
+                          <span className="text-zinc-500">{importPreview.fileCount || importPreview.totalFiles || (importPreview.files ? importPreview.files.length : 0)} files</span>
                         </div>
                       </div>
 
@@ -2863,20 +3038,23 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <input
                             type="checkbox"
-                            checked={selectedImportFiles.size === importPreview.files.length && importPreview.files.length > 0}
+                            checked={selectedImportFiles.size === (importPreview.files || []).length && (importPreview.files || []).length > 0}
                             onChange={toggleSelectAllImport}
                             className="w-3.5 h-3.5 rounded accent-purple-500 cursor-pointer"
                           />
                           <span className="text-[15px] font-semibold text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-white transition-colors">Select All</span>
                         </label>
                         <span className="text-[15px] text-zinc-500">
-                          {selectedImportFiles.size} of {importPreview.files.length} selected
+                          {selectedImportFiles.size} of {(importPreview.files || []).length} selected
                         </span>
                       </div>
 
                       {/* File list from manifest */}
                       <div className="border border-zinc-200 dark:border-white/5 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
-                        {(importPreview.categories || []).map(cat => {
+                        {((importPreview.categories && importPreview.categories.length > 0)
+                          ? importPreview.categories
+                          : (importPreview.files ? [{ id: 'all', label: 'All Files', icon: 'FolderOpen', files: importPreview.files }] : [])
+                        ).map(cat => {
                           const CatIcon = BACKUP_ICON_MAP[cat.icon] || FolderOpen;
                           const catSelected = cat.files.filter(f => selectedImportFiles.has(f.path)).length;
                           const isExpanded = expandedImportCategories.has(cat.id);
@@ -3186,6 +3364,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
                   {activeModal === 'editPlan' && 'Edit User Plan'}
                   {activeModal === 'editBlog' && (selectedBlogId ? 'Edit Blog Post' : 'Create Blog Post')}
+                  {activeModal === 'editChangelog' && (selectedChangelogId ? 'Edit Release Note' : 'Create Release Note')}
                   {activeModal === 'editProfile' && 'Edit Master Profile'}
                   {activeModal === 'changePwd' && 'Change Master Password'}
                   {activeModal === 'mfaSetup' && 'Configure 2FA Authenticator'}
@@ -3327,6 +3506,90 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   >
                     Save Plan Changes
                   </button>
+                </form>
+              )}
+
+              {/* EDIT CHANGELOG MODAL CONTENT */}
+              {activeModal === 'editChangelog' && (
+                <form onSubmit={handleChangelogFormSubmit} className="space-y-4 overflow-y-auto max-h-[75vh] pr-1 text-left">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Version tag *</label>
+                      <input
+                        type="text"
+                        value={changelogVersion}
+                        onChange={(e) => setChangelogVersion(e.target.value)}
+                        placeholder="v2.1.0"
+                        className="input-unified"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Date / Label *</label>
+                      <input
+                        type="text"
+                        value={changelogDate}
+                        onChange={(e) => setChangelogDate(e.target.value)}
+                        placeholder="December 2025"
+                        className="input-unified"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Summary</label>
+                    <input
+                      type="text"
+                      value={changelogDescription}
+                      onChange={(e) => setChangelogDescription(e.target.value)}
+                      placeholder="Major Cloud Sync & Security Release"
+                      className="input-unified"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Bullet Points (One per line)</label>
+                    <textarea
+                      value={changelogItemsText}
+                      onChange={(e) => setChangelogItemsText(e.target.value)}
+                      rows={5}
+                      placeholder={"Added cloud backup support\nAdded 2FA authentication\nFixed UI alignment issue"}
+                      className="input-unified font-mono text-xs"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
+                    <div className="text-left">
+                      <span className="text-sm font-semibold text-zinc-800 dark:text-white block">Mark as Major Release</span>
+                      <span className="text-xs text-zinc-500">Highlight this release with special badge styling</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={changelogIsMajor}
+                      onChange={(e) => setChangelogIsMajor(e.target.checked)}
+                      className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="w-1/2 btn-secondary-unified py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5"
+                    >
+                      {selectedChangelogId ? 'Update Release' : 'Publish Release'}
+                    </button>
+                  </div>
                 </form>
               )}
 

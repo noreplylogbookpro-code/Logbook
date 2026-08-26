@@ -44,14 +44,30 @@ const ALLOWED_SECURITY_QUESTIONS = [
 ];
 
 // --- Security / Limiter Configurations ---
+// keyGenerator extracts the real client IP from X-Forwarded-For (set by Apache/Nginx reverse proxy)
+// This ensures rate limiting is PER-CLIENT-IP, not global for the whole server.
+const getClientIp = (req) => {
+    // Cloudflare Tunnel (cloudflared) sets CF-Connecting-IP for the real client
+    const cfIp = req.headers['cf-connecting-ip'];
+    if (cfIp) return cfIp.trim();
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+        // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+        return forwarded.split(',')[0].trim();
+    }
+    return req.ip || req.connection?.remoteAddress || 'unknown';
+};
+
 const createLimiter = (windowMins, maxRequests, errMsg) => rateLimit({
     windowMs: windowMins * 60 * 1000,
     max: maxRequests,
+    keyGenerator: getClientIp,
     message: { error: errMsg },
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res, next, options) => {
-        logServerEvent('alarm', `Rate limit hit on endpoint: ${req.originalUrl || req.url} from IP: ${req.ip}`);
+        const clientIp = getClientIp(req);
+        logServerEvent('alarm', `Rate limit hit on endpoint: ${req.originalUrl || req.url} from IP: ${clientIp}`);
         res.status(options.statusCode).send(options.message);
     }
 });
@@ -133,10 +149,10 @@ router.use('/v1/tickets', ticketRoutes);
 router.use('/v1/auth', helpdeskAuthRoutes);
 
 // File Encryption Configuration & Helpers
-const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-master-fallback-key-2026';
+const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY;
 const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
 
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-db-fallback-key-2026';
+const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
 const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
 
 function encryptText(text) {
@@ -1262,6 +1278,108 @@ router.get('/blogs', async (req, res) => {
     }
 });
 
+// --- CHANGELOG MANAGEMENT SYSTEM ---
+const DEFAULT_CHANGELOGS = [
+    {
+        type: 'changelog_item',
+        version: 'v2.0.9',
+        date: 'December 2025',
+        description: 'Major Cloud Sync & Security Release',
+        isMajor: true,
+        items: [
+            'Added cloud backup support (WebDAV / Nextcloud)',
+            'Added self-hosted server backup sync protocols',
+            'Added Two-Factor Authentication (2FA) for admin dashboard consoles',
+            'Added security questions for local recovery verification',
+            'Integrated Google Play Billing Client 7',
+            'Added profile picture upload and editing features',
+            'Added Hindi, Marathi, and Urdu language layouts'
+        ],
+        createdAt: Date.now() - 100000
+    },
+    {
+        type: 'changelog_item',
+        version: 'v2.0.8',
+        date: 'October 2025',
+        description: 'Performance Optimization & Export Enhancements',
+        isMajor: false,
+        items: [
+            'Optimized SQLite cache writing times (Sub-5ms paint times)',
+            'Implemented dynamic bento showcase cards',
+            'Added multi-format export indicators'
+        ],
+        createdAt: Date.now() - 200000
+    }
+];
+
+router.get('/changelogs', async (req, res) => {
+    try {
+        let logs = await db.find({ type: 'changelog_item' });
+        if (!logs || logs.length === 0) {
+            for (const item of DEFAULT_CHANGELOGS) {
+                await db.insert(item);
+            }
+            db.compactDatafile();
+            logs = await db.find({ type: 'changelog_item' });
+        }
+        logs.sort((a, b) => b.createdAt - a.createdAt);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch changelogs" });
+    }
+});
+
+router.post('/master/changelogs', isMasterAuth, async (req, res) => {
+    const { version, date, description, items, isMajor } = req.body;
+    if (!version || !date) return res.status(400).json({ error: "Version and date are required." });
+
+    const changelogDoc = {
+        type: 'changelog_item',
+        version,
+        date,
+        description: description || '',
+        items: Array.isArray(items) ? items : (items ? items.split('\n').map(i => i.trim()).filter(Boolean) : []),
+        isMajor: !!isMajor,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    };
+
+    try {
+        const inserted = await db.insert(changelogDoc);
+        db.compactDatafile();
+        logServerEvent('info', `Master published new changelog: '${version}'`);
+        res.json({ success: true, changelog: inserted });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to save changelog entry" });
+    }
+});
+
+router.put('/master/changelogs/:id', isMasterAuth, async (req, res) => {
+    const { version, date, description, items, isMajor } = req.body;
+    try {
+        const parsedItems = Array.isArray(items) ? items : (items ? items.split('\n').map(i => i.trim()).filter(Boolean) : []);
+        await db.update({ _id: req.params.id, type: 'changelog_item' }, {
+            $set: { version, date, description, items: parsedItems, isMajor: !!isMajor, updatedAt: Date.now() }
+        });
+        db.compactDatafile();
+        logServerEvent('info', `Master updated changelog ID: '${req.params.id}'`);
+        res.json({ success: true, message: "Changelog updated successfully" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to update changelog entry" });
+    }
+});
+
+router.delete('/master/changelogs/:id', isMasterAuth, async (req, res) => {
+    try {
+        await db.remove({ _id: req.params.id, type: 'changelog_item' }, {});
+        db.compactDatafile();
+        logServerEvent('warning', `Master deleted changelog ID: '${req.params.id}'`);
+        res.json({ success: true, message: "Changelog entry deleted" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to delete changelog entry" });
+    }
+});
+
 router.post('/check-email', signupLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email is required" });
@@ -1541,10 +1659,14 @@ router.get('/info', isAuthenticated, isSubscribed, async (req, res) => {
                 size += (await fs.stat(path.join(userDir, f))).size;
             }
         }
+        const sizeMBVal = (size / (1024 * 1024)).toFixed(2);
         res.json({
             count,
-            sizeMB: (size / (1024 * 1024)).toFixed(2),
-            quotaMB: 240
+            totalBackups: count,
+            sizeMB: sizeMBVal,
+            storageUsedMB: sizeMBVal,
+            quotaMB: 240,
+            quotaLimitMB: 240
         });
     } catch (e) {
         res.status(500).json({ error: "Failed to calculate storage info" });
@@ -1560,10 +1682,13 @@ router.get('/backups', isAuthenticated, isSubscribed, async (req, res) => {
         const fileStats = await Promise.all(
             backupFiles.map(async f => {
                 const stat = await fs.stat(path.join(userDir, f));
+                const mb = (stat.size / (1024 * 1024)).toFixed(2);
                 return {
                     name: f,
-                    sizeMB: (stat.size / (1024 * 1024)).toFixed(2),
-                    mtime: stat.mtime
+                    sizeMB: mb,
+                    size: `${mb} MB`,
+                    mtime: stat.mtime,
+                    time: stat.mtime
                 };
             })
         );
@@ -2209,7 +2334,7 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
         manifest.totalFiles = manifest.files.length;
         const manifestJson = Buffer.from(JSON.stringify(manifest), 'utf8');
 
-        const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(process.env.FILE_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-master-fallback-key-2026').digest();
+        const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(process.env.FILE_ENCRYPTION_KEY).digest();
 
         const manifestIv = crypto.randomBytes(16);
         const manifestCipher = crypto.createCipheriv('aes-256-cbc', fileEncryptionKeyBuffer, manifestIv);
@@ -2292,7 +2417,7 @@ router.post('/master/backup/import', isMasterAuth, backupUpload.single('backup')
         const manifestLen = data.readUInt32BE(28);
         const encryptedManifest = data.subarray(32, 32 + manifestLen);
 
-        const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(process.env.FILE_ENCRYPTION_KEY || process.env.JWT_SECRET || 'logbook-plus-master-fallback-key-2026').digest();
+        const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(process.env.FILE_ENCRYPTION_KEY).digest();
 
         let manifest;
         try {
@@ -2304,14 +2429,32 @@ router.post('/master/backup/import', isMasterAuth, backupUpload.single('backup')
         }
 
         if (isPreview) {
+            const categoryMap = {};
+            for (const cat of BACKUP_CATEGORIES) {
+                categoryMap[cat.id] = { id: cat.id, label: cat.label, icon: cat.icon, files: [] };
+            }
+
+            const manifestFiles = manifest.files || [];
+            for (const file of manifestFiles) {
+                const catId = categorizeFile(file.path);
+                if (catId && categoryMap[catId]) {
+                    categoryMap[catId].files.push(file);
+                }
+            }
+
+            const categories = Object.values(categoryMap).filter(c => c.files.length > 0);
+            const totalCount = manifest.totalFiles || manifestFiles.length;
+
             return res.json({
                 success: true,
                 preview: true,
                 manifest: {
                     version: manifest.version,
                     createdAt: manifest.createdAt,
-                    totalFiles: manifest.totalFiles,
-                    files: manifest.files
+                    totalFiles: totalCount,
+                    fileCount: totalCount,
+                    files: manifestFiles,
+                    categories
                 }
             });
         }

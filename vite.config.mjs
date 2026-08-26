@@ -1,11 +1,9 @@
-const { defineConfig } = require('vite');
-const react = require('@vitejs/plugin-react');
-const fs = require('fs');
-const path = require('path');
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
 
-// Plugin: after every build, copy public/index.html → public/master/index.html
-// so the master.* subdomain always has the correct asset hashes.
-
+// Plugin: after every build, copy public/index.html → public/master/index.html & helpdesk/index.html
 function copyMasterHtml() {
   return {
     name: 'copy-master-html',
@@ -33,7 +31,7 @@ function copyMasterHtml() {
   };
 }
 
-module.exports = defineConfig({
+export default defineConfig({
   publicDir: false,
   plugins: [react(), copyMasterHtml()],
   server: {
@@ -50,8 +48,8 @@ module.exports = defineConfig({
   },
   build: {
     outDir: 'public',
-    emptyOutDir: false, // Do not wipe out static about, pricing, careers, etc. folders in public
-    assetsDir: 'dist-assets', // Save CSS and JS bundles here
+    emptyOutDir: false,
+    assetsDir: 'dist-assets',
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {

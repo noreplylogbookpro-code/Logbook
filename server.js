@@ -4,6 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const crypto = require('crypto');
 require('dotenv').config();
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 // Custom encapsulated modules
 const { db } = require('./config/db');
@@ -159,11 +160,21 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// Helpdesk Subscription Suspension Guard Middleware
+// Helpdesk Subscription Suspension Guard Middleware (Applies only to Helpdesk subdomain & routes)
 app.use((req, res, next) => {
     const raw = req.headers['x-forwarded-host'] || req.headers.host || '';
     const host = raw.split(':')[0].toLowerCase();
     const url = req.url;
+
+    // Skip guard for main domain, master console, assets, health, and standard SaaS routes
+    if (
+        !host.startsWith('helpdesk.') &&
+        !url.startsWith('/helpdesk') &&
+        !url.startsWith('/api/v1/tickets') &&
+        !url.startsWith('/api/v1/auth')
+    ) {
+        return next();
+    }
 
     if (
         host.startsWith('master.') ||
@@ -205,7 +216,10 @@ app.use((req, res, next) => {
 app.use('/api', apiRouter);
 
 // SPA Wildcard Route Fallback for React paths
-app.get('*any', (req, res, next) => {
+app.use((req, res, next) => {
+    if (req.method !== 'GET') {
+        return next();
+    }
     if (req.path.startsWith('/api') || req.path.includes('.')) {
         return next();
     }
@@ -219,7 +233,7 @@ app.get('*any', (req, res, next) => {
 });
 
 // --- Database Migration Utility ---
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || process.env.JWT_SECRET;
+const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
 const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
 
 function encryptText(text) {

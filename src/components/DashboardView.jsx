@@ -207,8 +207,8 @@ export default function DashboardView({ onNavigate }) {
       if (infoRes.ok) {
         const infoData = await infoRes.json();
         setStats({
-          totalBackups: infoData.totalBackups || 0,
-          storageUsedMB: parseFloat(infoData.storageUsedMB) || 0
+          totalBackups: infoData.totalBackups !== undefined ? infoData.totalBackups : (infoData.count || 0),
+          storageUsedMB: parseFloat(infoData.storageUsedMB !== undefined ? infoData.storageUsedMB : (infoData.sizeMB || 0)) || 0
         });
       }
 
@@ -634,8 +634,8 @@ export default function DashboardView({ onNavigate }) {
           { title: t('storageUsed'), value: `${stats.storageUsedMB.toFixed(2)} / ${limitQuota} MB`, desc: t('allocatedStorage') },
           {
             title: t('lastBackup'),
-            value: backups.length > 0 ? new Date(backups[0].time).toLocaleDateString() : '—',
-            desc: backups.length > 0 ? new Date(backups[0].time).toLocaleTimeString() : t('noFilesSynced')
+            value: backups.length > 0 ? new Date(backups[0].time || backups[0].mtime).toLocaleDateString() : '—',
+            desc: backups.length > 0 ? new Date(backups[0].time || backups[0].mtime).toLocaleTimeString() : t('noFilesSynced')
           },
           {
             title: t('vaultSecurity'),
@@ -698,7 +698,7 @@ export default function DashboardView({ onNavigate }) {
                   <div>
                     <h5 className="text-sm font-bold text-zinc-800 dark:text-white break-all max-w-sm">{b.name}</h5>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5 block">
-                      {t('size')} {b.size} • {t('synced')} {new Date(b.time).toLocaleString()}
+                      {t('size')} {b.size || (b.sizeMB ? `${b.sizeMB} MB` : '')} • {t('synced')} {new Date(b.time || b.mtime).toLocaleString()}
                     </span>
                   </div>
                 </div>
