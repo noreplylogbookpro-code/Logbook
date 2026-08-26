@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs-extra');
 const path = require('path');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { google } = require('googleapis');
 require('dotenv').config();
 
@@ -49,13 +49,19 @@ const ALLOWED_SECURITY_QUESTIONS = [
 const getClientIp = (req) => {
     // Cloudflare Tunnel (cloudflared) sets CF-Connecting-IP for the real client
     const cfIp = req.headers['cf-connecting-ip'];
-    if (cfIp) return cfIp.trim();
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-        // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-        return forwarded.split(',')[0].trim();
+    let rawIp = 'unknown';
+    if (cfIp) {
+        rawIp = cfIp.trim();
+    } else {
+        const forwarded = req.headers['x-forwarded-for'];
+        if (forwarded) {
+            // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+            rawIp = forwarded.split(',')[0].trim();
+        } else {
+            rawIp = req.ip || req.connection?.remoteAddress || 'unknown';
+        }
     }
-    return req.ip || req.connection?.remoteAddress || 'unknown';
+    return ipKeyGenerator(rawIp);
 };
 
 const createLimiter = (windowMins, maxRequests, errMsg) => rateLimit({
