@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const DB_DIR = path.join(__dirname, '../database');
 const SCHOOLS = (process.env.VITE_SCHOOLS || 'NHSST,NHISR,NHSSR,NHITM,NHSSVL,NHSSA,NHPSASEC19,NHPSASEC3,DMCE,NHPSP').split(',').map(s => s.trim().toUpperCase());

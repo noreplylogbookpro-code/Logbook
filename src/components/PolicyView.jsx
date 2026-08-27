@@ -534,7 +534,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           <p>Interact with other developers, request feature patches, and help review code packages.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { name: 'Discord Server', label: 'Join Chat', desc: 'Interact live with core builders.', link: 'https://discord.gg/bKgS6ERyZ' },
+              { name: 'Discord Server', label: 'Join Chat', desc: 'Interact live with core builders.', link: 'https://discord.gg/dRtT67ehK' },
               { name: 'GitHub Repositories', label: 'Contribute', desc: 'Review open-source client sync plugins.', link: 'https://github.com/noreplylogbookpro-code/Logbook' },
             ].map((node) => (
               <div key={node.name} className="p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-accent-purple/20 transition-all" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>

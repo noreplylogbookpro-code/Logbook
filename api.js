@@ -9,10 +9,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { google } = require('googleapis');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 // Custom encapsulated modules
-const { db, logsDb } = require('./config/db');
+const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb } = require('./config/db');
 const { JWT_SECRET, isAuthenticated, isMasterAuth } = require('./middleware/auth');
 const { logServerEvent } = require('./utils/logger');
 const {
@@ -320,13 +320,15 @@ const avatarStorage = multer.diskStorage({
 
 const uploadAvatar = multer({
     storage: avatarStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (ext === '.jpg' || ext === '.jpeg' || ext === '.png' || ext === '.webp') {
+        const mimeOk = file.mimetype && file.mimetype.startsWith('image/');
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const extOk = !ext || ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'].includes(ext);
+        if (mimeOk || extOk) {
             return cb(null, true);
         }
-        cb(new Error('Only images (.jpg, .jpeg, .png, .webp) are allowed'));
+        cb(new Error('Only image files are allowed (.jpg, .jpeg, .png, .webp, .gif)'));
     }
 });
 
@@ -657,10 +659,11 @@ router.post('/master/login', loginLimiter, async (req, res) => {
 
     try {
         const masterProfile = await db.findOne({ _id: 'master_profile' });
+        const master2FA = await twoFactorDb.findOne({ _id: 'master_profile' });
         const isMatch = masterProfile?.password ? await bcrypt.compare(password, masterProfile.password) : (password === MASTER_PASS);
 
         if (isMatch) {
-            if (masterProfile && masterProfile.twoFactorEnabled) {
+            if (master2FA && master2FA.twoFactorEnabled && master2FA.twoFactorSecret) {
                 const mfaToken = jwt.sign({ isMasterTemp: true }, JWT_SECRET, { expiresIn: '5m' });
                 return res.json({ requires2FA: true, mfaToken });
             }
@@ -684,15 +687,15 @@ router.post('/master/login/verify', mfaLimiter, async (req, res) => {
         if (!decoded.isMasterTemp) {
             return res.status(401).json({ error: "Invalid MFA session" });
         }
-        const masterProfile = await db.findOne({ _id: 'master_profile' });
-        if (!masterProfile || !masterProfile.twoFactorEnabled || !masterProfile.twoFactorSecret) {
+        const master2FA = await twoFactorDb.findOne({ _id: 'master_profile' });
+        if (!master2FA || !master2FA.twoFactorEnabled || !master2FA.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not enabled on master account" });
         }
-        const decryptedCounter = decryptText(masterProfile.lastUsedTOTPCounter);
+        const decryptedCounter = decryptText(master2FA.lastUsedTOTPCounter);
         const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
-        const mfaResult = verifyTOTPWithReplay(code, decryptText(masterProfile.twoFactorSecret), lastUsedTOTPCounter);
+        const mfaResult = verifyTOTPWithReplay(code, decryptText(master2FA.twoFactorSecret), lastUsedTOTPCounter);
         if (mfaResult.valid) {
-            await db.update({ _id: 'master_profile' }, { $set: { lastUsedTOTPCounter: encryptText(String(mfaResult.counter)) } }, { upsert: true });
+            await twoFactorDb.update({ _id: 'master_profile' }, { $set: { lastUsedTOTPCounter: encryptText(String(mfaResult.counter)) } }, { upsert: true });
             logServerEvent('info', `Master admin logged in via 2FA successfully from IP: ${req.ip}`);
             const token = jwt.sign({ isMaster: true }, JWT_SECRET, { expiresIn: '1h' });
             res.json({ success: true, token });
@@ -708,8 +711,7 @@ router.post('/master/login/verify', mfaLimiter, async (req, res) => {
 router.post('/master/2fa/setup', isMasterAuth, async (req, res) => {
     try {
         const secret = generateBase32Secret();
-        await db.update({ _id: 'master_profile' }, { $set: { tempTwoFactorSecret: encryptText(secret) } }, { upsert: true });
-        db.compactDatafile();
+        await twoFactorDb.update({ _id: 'master_profile' }, { $set: { tempTwoFactorSecret: encryptText(secret) } }, { upsert: true });
         const label = encodeURIComponent('LogbookPlus:MasterAdmin');
         const issuer = encodeURIComponent('LogbookPlus');
         const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}`;
@@ -723,16 +725,15 @@ router.post('/master/2fa/verify', isMasterAuth, async (req, res) => {
     const { code } = req.body;
     if (!code || code.length !== 6) return res.status(400).json({ error: "Invalid code format" });
     try {
-        const profile = await db.findOne({ _id: 'master_profile' });
-        if (!profile || !profile.tempTwoFactorSecret) {
+        const twoFactor = await twoFactorDb.findOne({ _id: 'master_profile' });
+        if (!twoFactor || !twoFactor.tempTwoFactorSecret) {
             return res.status(400).json({ error: "2FA setup is not initialized" });
         }
-        const matchedCounter = verifyTOTP(code, decryptText(profile.tempTwoFactorSecret));
+        const matchedCounter = verifyTOTP(code, decryptText(twoFactor.tempTwoFactorSecret));
         if (matchedCounter !== null) {
-            await db.update({ _id: 'master_profile' }, {
-                $set: { twoFactorEnabled: true, twoFactorSecret: profile.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: encryptText(String(matchedCounter)) }
+            await twoFactorDb.update({ _id: 'master_profile' }, {
+                $set: { twoFactorEnabled: true, twoFactorSecret: twoFactor.tempTwoFactorSecret, tempTwoFactorSecret: null, lastUsedTOTPCounter: encryptText(String(matchedCounter)) }
             }, { upsert: true });
-            db.compactDatafile();
             logServerEvent('info', 'Master admin successfully enabled 2FA');
             res.json({ success: true, message: "Two-factor authentication enabled successfully!" });
         } else {
@@ -748,21 +749,21 @@ router.post('/master/2fa/disable', isMasterAuth, async (req, res) => {
     if (!password || !code) return res.status(400).json({ error: "Password and verification code are required" });
     try {
         const masterProfile = await db.findOne({ _id: 'master_profile' });
+        const master2FA = await twoFactorDb.findOne({ _id: 'master_profile' });
         const isMatch = masterProfile?.password ? await bcrypt.compare(password, masterProfile.password) : (password === MASTER_PASS);
         if (!isMatch) {
             return res.status(400).json({ error: "Incorrect password" });
         }
-        if (!masterProfile || !masterProfile.twoFactorEnabled || !masterProfile.twoFactorSecret) {
+        if (!master2FA || !master2FA.twoFactorEnabled || !master2FA.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not active" });
         }
-        const decryptedCounter = decryptText(masterProfile.lastUsedTOTPCounter);
+        const decryptedCounter = decryptText(master2FA.lastUsedTOTPCounter);
         const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
-        const disableResult = verifyTOTPWithReplay(code, decryptText(masterProfile.twoFactorSecret), lastUsedTOTPCounter);
+        const disableResult = verifyTOTPWithReplay(code, decryptText(master2FA.twoFactorSecret), lastUsedTOTPCounter);
         if (disableResult.valid) {
-            await db.update({ _id: 'master_profile' }, {
+            await twoFactorDb.update({ _id: 'master_profile' }, {
                 $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
             }, { upsert: true });
-            db.compactDatafile();
             logServerEvent('warning', 'Master admin disabled 2FA');
             res.json({ success: true, message: "2FA has been disabled." });
         } else {
@@ -791,7 +792,13 @@ router.post('/master/config', isMasterAuth, (req, res) => {
 
 router.get('/master/profile', isMasterAuth, async (req, res) => {
     const profile = (await db.findOne({ _id: 'master_profile' })) || { name: 'Master Admin', email: 'admin@logbook', profilePicIndex: 0 };
-    res.json({ name: profile.name, email: profile.email, profilePicIndex: profile.profilePicIndex || 0, twoFactorEnabled: !!profile.twoFactorEnabled });
+    const master2FA = await twoFactorDb.findOne({ _id: 'master_profile' });
+    res.json({
+        name: profile.name,
+        email: profile.email,
+        profilePicIndex: profile.profilePicIndex || 0,
+        twoFactorEnabled: !!master2FA?.twoFactorEnabled
+    });
 });
 
 router.post('/master/profile', isMasterAuth, async (req, res) => {
@@ -1323,13 +1330,12 @@ const DEFAULT_CHANGELOGS = [
 
 router.get('/changelogs', async (req, res) => {
     try {
-        let logs = await db.find({ type: 'changelog_item' });
+        let logs = await changelogDb.find({});
         if (!logs || logs.length === 0) {
             for (const item of DEFAULT_CHANGELOGS) {
-                await db.insert(item);
+                await changelogDb.insert(item);
             }
-            db.compactDatafile();
-            logs = await db.find({ type: 'changelog_item' });
+            logs = await changelogDb.find({});
         }
         logs.sort((a, b) => b.createdAt - a.createdAt);
         res.json(logs);
@@ -1354,8 +1360,7 @@ router.post('/master/changelogs', isMasterAuth, async (req, res) => {
     };
 
     try {
-        const inserted = await db.insert(changelogDoc);
-        db.compactDatafile();
+        const inserted = await changelogDb.insert(changelogDoc);
         logServerEvent('info', `Master published new changelog: '${version}'`);
         res.json({ success: true, changelog: inserted });
     } catch (e) {
@@ -1367,10 +1372,9 @@ router.put('/master/changelogs/:id', isMasterAuth, async (req, res) => {
     const { version, date, description, items, isMajor } = req.body;
     try {
         const parsedItems = Array.isArray(items) ? items : (items ? items.split('\n').map(i => i.trim()).filter(Boolean) : []);
-        await db.update({ _id: req.params.id, type: 'changelog_item' }, {
+        await changelogDb.update({ _id: req.params.id }, {
             $set: { version, date, description, items: parsedItems, isMajor: !!isMajor, updatedAt: Date.now() }
         });
-        db.compactDatafile();
         logServerEvent('info', `Master updated changelog ID: '${req.params.id}'`);
         res.json({ success: true, message: "Changelog updated successfully" });
     } catch (e) {
@@ -1380,8 +1384,7 @@ router.put('/master/changelogs/:id', isMasterAuth, async (req, res) => {
 
 router.delete('/master/changelogs/:id', isMasterAuth, async (req, res) => {
     try {
-        await db.remove({ _id: req.params.id, type: 'changelog_item' }, {});
-        db.compactDatafile();
+        await changelogDb.remove({ _id: req.params.id }, {});
         logServerEvent('warning', `Master deleted changelog ID: '${req.params.id}'`);
         res.json({ success: true, message: "Changelog entry deleted" });
     } catch (e) {
@@ -1514,13 +1517,13 @@ router.post('/login', loginLimiter, async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        if (user.twoFactorEnabled && user.twoFactorSecret) {
+        const twoFactor = await twoFactorDb.findOne({ _id: user._id });
+        if (twoFactor && twoFactor.twoFactorEnabled && twoFactor.twoFactorSecret) {
             const mfaToken = jwt.sign({ userId: user._id, isTempMFA: true }, JWT_SECRET, { expiresIn: '5m' });
             return res.json({ requires2FA: true, mfaToken });
         }
 
         await db.update({ _id: user._id }, { $set: { lastActiveAt: Date.now(), lastIp: req.ip } });
-        db.compactDatafile();
 
         recordUserActivity(user.username, 'USER', 'LOGBOOK', req.ip);
         logServerEvent('info', `User logged in successfully: '${user.username}' from IP: ${req.ip}`);
@@ -1553,17 +1556,18 @@ router.post('/login/verify', mfaLimiter, async (req, res) => {
         if (!decoded.isTempMFA) return res.status(401).json({ error: "Invalid MFA session" });
 
         const user = await db.findOne({ _id: decoded.userId });
-        if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+        const twoFactor = await twoFactorDb.findOne({ _id: decoded.userId });
+        if (!user || !twoFactor || !twoFactor.twoFactorEnabled || !twoFactor.twoFactorSecret) {
             return res.status(400).json({ error: "2FA is not enabled on this account" });
         }
 
-        const decryptedCounter = decryptText(user.lastUsedTOTPCounter);
+        const decryptedCounter = decryptText(twoFactor.lastUsedTOTPCounter);
         const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
-        const mfaResult = verifyTOTPWithReplay(code, decryptText(user.twoFactorSecret), lastUsedTOTPCounter);
+        const mfaResult = verifyTOTPWithReplay(code, decryptText(twoFactor.twoFactorSecret), lastUsedTOTPCounter);
 
         if (mfaResult.valid) {
-            await db.update({ _id: user._id }, { $set: { lastActiveAt: Date.now(), lastIp: req.ip, lastUsedTOTPCounter: encryptText(String(mfaResult.counter)) } });
-            db.compactDatafile();
+            await db.update({ _id: user._id }, { $set: { lastActiveAt: Date.now(), lastIp: req.ip } });
+            await twoFactorDb.update({ _id: user._id }, { $set: { lastUsedTOTPCounter: encryptText(String(mfaResult.counter)) } }, { upsert: true });
 
             recordUserActivity(user.username, 'USER', 'LOGBOOK', req.ip);
             logServerEvent('info', `User logged in via 2FA successfully: '${user.username}' from IP: ${req.ip}`);
@@ -1595,10 +1599,14 @@ router.post('/logout', (req, res) => {
 });
 
 router.post('/forgot/question', forgotLimiter, async (req, res) => {
-    const { usernameOrEmail } = req.body;
-    if (!usernameOrEmail) return res.status(400).json({ error: "Username or email is required" });
+    let body = req.body || {};
+    if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (e) {}
+    }
+    const input = body.usernameOrEmail || body.username || body.email;
+    if (!input) return res.status(400).json({ error: "Username or email is required" });
 
-    const cleanInput = usernameOrEmail.trim().toLowerCase();
+    const cleanInput = String(input).trim().toLowerCase();
     const user = await db.findOne({ $or: [{ username: cleanInput }, { email: cleanInput }] });
     if (!user || !user.securityQuestion) {
         return res.status(404).json({ error: "No security question configured for this account." });
@@ -1609,14 +1617,15 @@ router.post('/forgot/question', forgotLimiter, async (req, res) => {
 
 router.post('/forgot/reset', forgotLimiter, async (req, res) => {
     const { usernameOrEmail, answer, newPassword } = req.body;
-    if (!usernameOrEmail || !answer || !newPassword) {
+    const input = usernameOrEmail || req.body.username || req.body.email;
+    if (!input || !answer || !newPassword) {
         return res.status(400).json({ error: "All fields are required." });
     }
     if (newPassword.length < 8) {
         return res.status(400).json({ error: "New password must be at least 8 characters long." });
     }
 
-    const cleanInput = usernameOrEmail.trim().toLowerCase();
+    const cleanInput = input.trim().toLowerCase();
     const user = await db.findOne({ $or: [{ username: cleanInput }, { email: cleanInput }] });
 
     if (!user || !user.securityAnswer) {
@@ -1631,10 +1640,42 @@ router.post('/forgot/reset', forgotLimiter, async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await db.update({ _id: user._id }, { $set: { password: hashedPassword } });
-    db.compactDatafile();
 
-    logServerEvent('warning', `Password reset successfully via security question for user '${user.username}' from IP: ${req.ip}`);
-    res.json({ success: true, message: "Password updated successfully! You can now log in with your new password." });
+    // Automatically disable 2FA on security question recovery so user is not locked out
+    await twoFactorDb.update({ _id: user._id }, {
+        $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
+    }, { upsert: true });
+
+    logServerEvent('warning', `Password and 2FA reset successfully via security question for user '${user.username}' from IP: ${req.ip}`);
+    res.json({ success: true, message: "Password updated and 2FA disabled successfully! You can now log in with your new password." });
+});
+
+router.post('/forgot/reset-2fa', forgotLimiter, async (req, res) => {
+    const { usernameOrEmail, answer } = req.body;
+    const input = usernameOrEmail || req.body.username || req.body.email;
+    if (!input || !answer) {
+        return res.status(400).json({ error: "Username/email and security answer are required." });
+    }
+
+    const cleanInput = input.trim().toLowerCase();
+    const user = await db.findOne({ $or: [{ username: cleanInput }, { email: cleanInput }] });
+
+    if (!user || !user.securityAnswer) {
+        return res.status(400).json({ error: "Invalid request or security answer not set." });
+    }
+
+    const isMatch = await bcrypt.compare(answer.trim().toLowerCase(), user.securityAnswer);
+    if (!isMatch) {
+        logServerEvent('alarm', `Failed 2FA reset attempt for '${user.username}': incorrect security answer from IP: ${req.ip}`);
+        return res.status(400).json({ error: "Incorrect security answer." });
+    }
+
+    await twoFactorDb.update({ _id: user._id }, {
+        $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
+    }, { upsert: true });
+
+    logServerEvent('warning', `2FA disabled via security question for user '${user.username}' from IP: ${req.ip}`);
+    res.json({ success: true, message: "2FA has been disabled successfully. You can now log in with your password." });
 });
 
 router.post('/backup', isAuthenticated, isSubscribed, checkQuota, upload.single('file'), async (req, res, next) => {
@@ -1745,10 +1786,14 @@ router.get('/profile', isAuthenticated, async (req, res) => {
         const avatarPath = path.join(userDir, 'avatar.jpg');
         const hasAvatar = await fs.pathExists(avatarPath);
 
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId });
+
         res.json({
             ...user,
+            userId: user._id,
+            hasAvatar: !!hasAvatar,
             avatarUrl: hasAvatar ? `/api/profile/avatar/${user._id}?t=${Date.now()}` : null,
-            twoFactorEnabled: !!user.twoFactorEnabled
+            twoFactorEnabled: !!twoFactor?.twoFactorEnabled
         });
     } catch (e) {
         res.status(500).json({ error: "Failed to fetch user profile" });
@@ -1757,8 +1802,27 @@ router.get('/profile', isAuthenticated, async (req, res) => {
 
 router.post('/profile/avatar', isAuthenticated, uploadAvatar.single('avatar'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No image file uploaded" });
-    logServerEvent('info', `Profile avatar updated for user ID: ${req.userId}`);
-    res.json({ success: true, avatarUrl: `/api/profile/avatar/${req.userId}?t=${Date.now()}` });
+    try {
+        await db.update({ _id: req.userId }, { $set: { hasAvatar: true, updatedAt: Date.now() } });
+        logServerEvent('info', `Profile avatar updated for user ID: ${req.userId}`);
+        res.json({ success: true, avatarUrl: `/api/profile/avatar/${req.userId}?t=${Date.now()}` });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to save profile picture" });
+    }
+});
+
+router.delete('/profile/avatar', isAuthenticated, async (req, res) => {
+    try {
+        const avatarPath = path.join(__dirname, 'uploads', req.userId, 'avatar.jpg');
+        if (await fs.pathExists(avatarPath)) {
+            await fs.remove(avatarPath);
+        }
+        await db.update({ _id: req.userId }, { $set: { hasAvatar: false, updatedAt: Date.now() } });
+        logServerEvent('info', `Profile avatar deleted for user ID: ${req.userId}`);
+        res.json({ success: true, message: "Avatar deleted successfully" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to delete avatar" });
+    }
 });
 
 router.get('/profile/avatar', isAuthenticated, async (req, res) => {
@@ -1820,16 +1884,22 @@ router.get('/profile/security-question', isAuthenticated, async (req, res) => {
 });
 
 router.post('/profile/security', isAuthenticated, async (req, res) => {
-    const { question, answer } = req.body;
+    let body = req.body || {};
+    if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (e) {}
+    }
+
+    const question = body.question || body.securityQuestion || body.secQuestion || body.security_question;
+    const answer = body.answer || body.securityAnswer || body.secAnswer || body.security_answer;
+
     if (!question || !answer) return res.status(400).json({ error: "Question and answer are required." });
     if (!ALLOWED_SECURITY_QUESTIONS.includes(question)) {
         return res.status(400).json({ error: "Selected security question is not valid." });
     }
 
     try {
-        const hashedAnswer = await bcrypt.hash(answer.trim().toLowerCase(), 10);
+        const hashedAnswer = await bcrypt.hash(String(answer).trim().toLowerCase(), 10);
         await db.update({ _id: req.userId }, { $set: { securityQuestion: question, securityAnswer: hashedAnswer } });
-        db.compactDatafile();
 
         logServerEvent('info', `Security question configured for user ID: ${req.userId}`);
         res.json({ success: true, message: "Security question configured successfully." });
@@ -1842,8 +1912,7 @@ router.post('/profile/2fa/setup', isAuthenticated, async (req, res) => {
     try {
         const user = await db.findOne({ _id: req.userId });
         const secret = generateBase32Secret();
-        await db.update({ _id: req.userId }, { $set: { tempTwoFactorSecret: encryptText(secret) } });
-        db.compactDatafile();
+        await twoFactorDb.update({ _id: req.userId }, { $set: { tempTwoFactorSecret: encryptText(secret) } }, { upsert: true });
 
         const label = encodeURIComponent(`LogbookPlus:${user.username}`);
         const issuer = encodeURIComponent('LogbookPlus');
@@ -1860,21 +1929,21 @@ router.post('/profile/2fa/verify', isAuthenticated, async (req, res) => {
 
     try {
         const user = await db.findOne({ _id: req.userId });
-        if (!user || !user.tempTwoFactorSecret) {
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId });
+        if (!user || !twoFactor || !twoFactor.tempTwoFactorSecret) {
             return res.status(400).json({ error: "2FA setup is not initialized" });
         }
 
-        const matchedCounter = verifyTOTP(code, decryptText(user.tempTwoFactorSecret));
+        const matchedCounter = verifyTOTP(code, decryptText(twoFactor.tempTwoFactorSecret));
         if (matchedCounter !== null) {
-            await db.update({ _id: req.userId }, {
+            await twoFactorDb.update({ _id: req.userId }, {
                 $set: {
                     twoFactorEnabled: true,
-                    twoFactorSecret: user.tempTwoFactorSecret,
+                    twoFactorSecret: twoFactor.tempTwoFactorSecret,
                     tempTwoFactorSecret: null,
                     lastUsedTOTPCounter: encryptText(String(matchedCounter))
                 }
-            });
-            db.compactDatafile();
+            }, { upsert: true });
             logServerEvent('info', `2FA enabled successfully for user '${user.username}'`);
             res.json({ success: true, message: "2FA enabled successfully!" });
         } else {
@@ -1891,18 +1960,22 @@ router.post('/profile/2fa/disable', isAuthenticated, async (req, res) => {
 
     try {
         const user = await db.findOne({ _id: req.userId });
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId });
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: "Incorrect password" });
 
-        const decryptedCounter = decryptText(user.lastUsedTOTPCounter);
+        if (!twoFactor || !twoFactor.twoFactorEnabled || !twoFactor.twoFactorSecret) {
+            return res.status(400).json({ error: "2FA is not active" });
+        }
+
+        const decryptedCounter = decryptText(twoFactor.lastUsedTOTPCounter);
         const lastUsedTOTPCounter = decryptedCounter ? parseInt(decryptedCounter) : null;
-        const disableResult = verifyTOTPWithReplay(code, decryptText(user.twoFactorSecret), lastUsedTOTPCounter);
+        const disableResult = verifyTOTPWithReplay(code, decryptText(twoFactor.twoFactorSecret), lastUsedTOTPCounter);
 
         if (disableResult.valid) {
-            await db.update({ _id: req.userId }, {
+            await twoFactorDb.update({ _id: req.userId }, {
                 $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
-            });
-            db.compactDatafile();
+            }, { upsert: true });
             logServerEvent('warning', `2FA disabled for user '${user.username}'`);
             res.json({ success: true, message: "2FA disabled successfully" });
         } else {
@@ -2289,8 +2362,6 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 'quary.csv',
                 'README.md',
                 'server.js',
-                'server_logs.db',
-                'server_users.db',
                 'subscribers.csv',
                 'tailwind.config.js',
                 'vite.config.js'

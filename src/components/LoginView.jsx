@@ -269,6 +269,36 @@ export default function LoginView({ onNavigate }) {
     }
   };
 
+  const handleReset2FAOnly = async () => {
+    if (!forgotAnswer.trim()) {
+      setErrorMsg('Please enter your security answer first.');
+      return;
+    }
+    setErrorMsg('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/forgot/reset-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, answer: forgotAnswer })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccessMsg(data.message || '2FA disabled successfully! Sign in with your password.');
+        setMode('login');
+        setForgotAnswer('');
+      } else {
+        setErrorMsg(data.error || 'Failed to reset 2FA');
+      }
+    } catch {
+      setErrorMsg('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleMfaVerify = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -634,15 +664,25 @@ export default function LoginView({ onNavigate }) {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-                  ) : t('resetPassword')}
-                </button>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
+                  >
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                    ) : t('resetPassword')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset2FAOnly}
+                    disabled={loading}
+                    className="px-3 py-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-500/20 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    Reset 2FA Only
+                  </button>
+                </div>
               </form>
             )}
 
@@ -681,13 +721,22 @@ export default function LoginView({ onNavigate }) {
               <ShieldCheck className="w-4 h-4" />
               {t('verify')}
             </button>
-            <button
-              type="button"
-              onClick={() => setMode('login')}
-              className="w-full text-center text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
-            >
-              {t('cancel')}
-            </button>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setForgotQuestion(''); setMfaCode(''); }}
+                className="text-center text-xs font-semibold text-amber-500 hover:text-amber-400 transition-colors"
+              >
+                Lost 2FA device? Reset via Security Question
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="w-full text-center text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
+              >
+                {t('cancel')}
+              </button>
+            </div>
           </form>
         )}
 

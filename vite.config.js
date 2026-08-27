@@ -39,7 +39,7 @@ module.exports = defineConfig({
   server: {
     port: 3000,
     watch: {
-      ignored: ['**/server_logs.db*', '**/server_users.db*', '**/*.db*']
+      ignored: ['**/server_users.json*', '**/server_2fa.json*', '**/server_changelog.json*', '**/server_licenses.json*', '**/server_logs.json*', '**/*.db*']
     },
     proxy: {
       '/api': {

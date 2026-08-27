@@ -3795,8 +3795,20 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     />
                     <div className="text-center">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase">Secret Setup Key:</p>
-                      <p className="text-xs font-mono font-bold text-white tracking-widest mt-0.5">{temp2faSecret}</p>
+                      <p className="text-xs font-mono font-bold text-zinc-900 dark:text-white tracking-widest mt-1 flex items-center justify-center gap-2">
+                        {temp2faSecret}
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(temp2faSecret)}
+                          className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-sans font-semibold rounded-md border border-zinc-200 dark:border-white/10 transition-all cursor-pointer flex items-center gap-1 text-zinc-700 dark:text-zinc-200"
+                        >
+                          {copiedKey === temp2faSecret ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedKey === temp2faSecret ? 'Copied!' : 'Copy Key'}
+                        </button>
+                      </p>
+
                     </div>
+
                   </div>
 
                   <form onSubmit={handleConfirm2faSetupSubmit} className="space-y-3.5 border-t border-white/5 pt-3">

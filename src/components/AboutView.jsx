@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Cloud, Server, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Shield, Cloud, Server, CheckCircle2, ArrowLeft, Code2, Terminal, ExternalLink, Sparkles, Cpu, Users } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 
 export default function AboutView({ onNavigate }) {
@@ -148,6 +148,187 @@ export default function AboutView({ onNavigate }) {
             </div>
           </motion.div>
         </motion.div>
+      </div>
+
+      {/* MODERN FOUNDER & CORE TEAM SECTION */}
+      <div className="space-y-6 mb-20">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+            Founder & Core Team
+          </h2>
+          <p className="text-sm md:text-base max-w-xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+            Driven by a mission for zero-knowledge data privacy, open standards, and complete user data sovereignty.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Founder Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-3xl p-6 relative overflow-hidden border shadow-xl flex flex-col justify-between space-y-5 hover:border-amber-500/40 transition-all group text-left"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(217,119,6,0.03) 50%, rgba(108,92,231,0.02) 100%)',
+              borderColor: 'var(--border)'
+            }}
+          >
+            <div className="flex items-start gap-4">
+              {/* Tech Badge Graphic Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-orange-500/15 to-amber-400/10 border border-amber-500/30 text-amber-400 flex flex-col items-center justify-center shadow-lg group-hover:scale-105 transition-transform relative overflow-hidden">
+                  <Sparkles className="w-6 h-6 text-amber-400 animate-pulse" />
+                  <span className="text-[8px] font-mono font-bold text-amber-300/90 tracking-widest mt-0.5 uppercase">FOUNDER</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3" /> Founder & Product Vision
+                </div>
+                <h3 className="text-lg font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                  Logbook Plus Founder
+                </h3>
+                <p className="text-[11px] font-mono text-amber-400/90 uppercase tracking-wider font-semibold">
+                  Privacy Sovereignty & Strategy
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Founded with the commitment to provide individuals, schools, and self-hosted server administrators complete control over their operational logs and data archives, free from tracking or vendor lock-in.
+            </p>
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {['Data Sovereignty', 'Zero-Tracking', 'Privacy First', 'Self-Hosted Standard'].map((pill) => (
+                <span
+                  key={pill}
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium border"
+                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                >
+                  {pill}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Lead Systems Architect & Dev Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl p-6 relative overflow-hidden border shadow-xl flex flex-col justify-between space-y-5 hover:border-accent-purple/30 transition-all group text-left"
+            style={{
+              background: 'linear-gradient(135deg, rgba(108,92,231,0.06) 0%, rgba(9,132,227,0.03) 100%)',
+              borderColor: 'var(--border)'
+            }}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-accent-purple/10 border border-accent-purple/20 text-accent-purple flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <Code2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-[9px] font-bold uppercase tracking-wider">
+                  <Terminal className="w-3 h-3" /> Systems Architect
+                </div>
+                <h3 className="text-lg font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                  Core Dev
+                </h3>
+                <p className="text-[11px] font-mono text-accent-purple/80 uppercase tracking-wider">
+                  Full-Stack & Mobile Sync
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Architected high-speed JSON datastores, end-to-end AES encryption, and Kotlin Ktor client pipelines across desktop, Android, and Termux environments.
+            </p>
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {['React 18', 'Express.js', 'Kotlin / Ktor', 'AES-256'].map((tech) => (
+                <span
+                  key={tech}
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium border"
+                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Core Team & Community Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="rounded-3xl p-6 relative overflow-hidden border shadow-xl flex flex-col justify-between space-y-5 hover:border-accent-blue/30 transition-all group text-left"
+            style={{
+              background: 'linear-gradient(135deg, rgba(9,132,227,0.06) 0%, rgba(108,92,231,0.03) 100%)',
+              borderColor: 'var(--border)'
+            }}
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-accent-blue flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-accent-blue text-[9px] font-bold uppercase tracking-wider">
+                  Core Team
+                </div>
+                <h3 className="text-lg font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                  Community & Support
+                </h3>
+                <p className="text-[11px] font-mono text-accent-blue/80 uppercase tracking-wider">
+                  Open Source & Maintenance
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Supported by open-source contributors and community developers reviewing security patches, client plugins, and automated node server deployments.
+            </p>
+
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <div className="flex flex-wrap gap-1.5">
+                {['Open-Source', 'Community', 'DevOps'].map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium border"
+                    style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <a
+                  href="https://github.com/noreplylogbookpro-code/Logbook"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl border transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-semibold"
+                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  title="GitHub Repository"
+                >
+                  <Code2 className="w-3.5 h-3.5" /> GitHub
+                </a>
+                <a
+                  href="https://discord.gg/dRtT67ehK"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl border transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-semibold"
+                  style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  title="Discord Community"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-accent-blue" /> Discord
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Philosophy creed */}

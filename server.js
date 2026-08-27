@@ -7,7 +7,7 @@ require('dotenv').config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 // Custom encapsulated modules
-const { db } = require('./config/db');
+const { db, twoFactorDb } = require('./config/db');
 const { logServerEvent } = require('./utils/logger');
 const {
     activeUserSessions,
@@ -252,7 +252,14 @@ function encryptText(text) {
 
 async function migrateTwoFactorSecrets() {
     try {
-        const allDocs = await db.find({});
+        if (process.env.DISABLE_MASTER_2FA === 'true') {
+            await twoFactorDb.update({ _id: 'master_profile' }, {
+                $set: { twoFactorEnabled: false, twoFactorSecret: null, tempTwoFactorSecret: null, lastUsedTOTPCounter: null }
+            }, { upsert: true });
+            logServerEvent('warning', 'Master 2FA Emergency Reset: Master Admin 2FA disabled via environment variable setting.');
+        }
+
+        const allDocs = await twoFactorDb.find({});
         let updatedCount = 0;
         for (const doc of allDocs) {
             let updated = false;
@@ -270,12 +277,12 @@ async function migrateTwoFactorSecrets() {
                 updated = true;
             }
             if (updated) {
-                await db.update({ _id: doc._id }, { $set });
+                await twoFactorDb.update({ _id: doc._id }, { $set });
                 updatedCount++;
             }
         }
         if (updatedCount > 0) {
-            db.compactDatafile();
+            twoFactorDb.compactDatafile();
             logServerEvent('warning', `2FA Secrets Migration: Encrypted ${updatedCount} plain-text 2FA secrets/counters in the database.`);
         }
     } catch (e) {

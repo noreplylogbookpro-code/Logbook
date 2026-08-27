@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
-  User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity
+  User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity,
+  Copy, Check
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 import CustomSelect from './DropdownMenu.jsx';
@@ -67,6 +68,14 @@ export default function DashboardView({ onNavigate }) {
   const [mfaSetupCode, setMfaSetupCode] = useState('');
   const [mfaDisablePwd, setMfaDisablePwd] = useState('');
   const [mfaDisableCode, setMfaDisableCode] = useState('');
+  const [copiedSecret, setCopiedSecret] = useState(false);
+
+  const copyMfaSecret = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedSecret(true);
+    setTimeout(() => setCopiedSecret(false), 2000);
+  };
 
   const menuRef = useRef(null);
 
@@ -129,11 +138,12 @@ export default function DashboardView({ onNavigate }) {
 
   const renderAvatar = (sizeClass = "w-8 h-8") => {
     const defaultAvatar = AVATARS[profile.profilePicIndex % AVATARS.length] || AVATARS[0];
+    const userId = profile.userId || profile._id || profile.id;
 
-    if (profile.userId && !avatarFailed) {
+    if (userId && (profile.hasAvatar || profile.avatarUrl || !avatarFailed)) {
       return (
         <img
-          src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
+          src={profile.avatarUrl || `/api/profile/avatar/${userId}?_t=${Date.now()}`}
           alt=""
           className={`${sizeClass} rounded-full object-cover border border-white/10`}
           onError={() => setAvatarFailed(true)}
@@ -174,7 +184,9 @@ export default function DashboardView({ onNavigate }) {
         return;
       }
       const profData = await profRes.json();
-      setProfile(profData);
+      const userId = profData.userId || profData._id || profData.id;
+      const normalizedProf = { ...profData, userId };
+      setProfile(normalizedProf);
       setEditName(profData.name || '');
       setEditUsername(profData.username || '');
       setEditEmail(profData.email || '');
@@ -419,7 +431,8 @@ export default function DashboardView({ onNavigate }) {
         setSecAnswer('');
         setTimeout(() => setActiveModal(null), 1500);
       } else {
-        setActionError('Failed to configure questions.');
+        const data = await res.json().catch(() => ({}));
+        setActionError(data.error || 'Failed to configure questions.');
       }
     } catch {
       setActionError('Network error');
@@ -863,14 +876,16 @@ export default function DashboardView({ onNavigate }) {
                           (() => {
                             // If they clicked a preset avatar, and we are not uploading a custom file, show preset preview
                             const avatar = AVATARS[selectedAvatarIndex % AVATARS.length] || AVATARS[0];
+                            const userId = profile.userId || profile._id || profile.id;
                             // Show preset avatar icon or current custom image
-                            if (profile.userId && !avatarFailed && !selectedAvatarFile) {
+                            if (userId && (profile.hasAvatar || profile.avatarUrl || !avatarFailed) && !selectedAvatarFile) {
                               // If they have a custom avatar on disk, show it
                               return (
                                 <img
-                                  src={`/api/profile/avatar/${profile.userId}?_t=${Date.now()}`}
+                                  src={profile.avatarUrl || `/api/profile/avatar/${userId}?_t=${Date.now()}`}
                                   alt=""
                                   className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
+                                  onError={() => setAvatarFailed(true)}
                                 />
                               );
                             }
@@ -1053,9 +1068,22 @@ export default function DashboardView({ onNavigate }) {
                           <img
                             src={mfaQrUrl}
                             alt="Scan 2FA QR"
-                            className="w-36 h-36 rounded-lg border border-zinc-200 dark:border-white/10"
+                            className="w-36 h-36 rounded-lg border border-zinc-200 dark:border-white/10 bg-white p-2"
                           />
-                          <p className="text-[9px] font-mono text-zinc-500 dark:text-zinc-400 select-all">{mfaSecret}</p>
+                          <div className="flex flex-col items-center gap-1.5 text-center">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase">Secret Setup Key:</span>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-mono font-bold text-zinc-900 dark:text-white tracking-widest">{mfaSecret}</p>
+                              <button
+                                type="button"
+                                onClick={() => copyMfaSecret(mfaSecret)}
+                                className="px-2 py-1 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-xs font-sans font-semibold rounded-md border border-zinc-300 dark:border-white/10 transition-all cursor-pointer flex items-center gap-1 text-zinc-700 dark:text-zinc-200"
+                              >
+                                {copiedSecret ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedSecret ? 'Copied!' : 'Copy Key'}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
 

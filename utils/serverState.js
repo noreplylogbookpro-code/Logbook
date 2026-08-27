@@ -1,5 +1,5 @@
 const os = require('os');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 function parseQuotaLimit(val) {
     if (!val) return 240 * 1024 * 1024; // 240 MB default
