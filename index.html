@@ -10,6 +10,19 @@
     href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script>
+    (function() {
+      try {
+        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        console.log('🌈 Theme Debug (index.html): pre-React OS check. prefers-color-scheme: dark is ' + isDark);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
 <body class="bg-[#020617] text-zinc-100 overflow-x-hidden font-sans antialiased">

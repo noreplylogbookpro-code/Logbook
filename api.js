@@ -1695,8 +1695,35 @@ router.post('/backup', isAuthenticated, isSubscribed, checkQuota, upload.single(
     }
 });
 
-router.get('/info', isAuthenticated, isSubscribed, async (req, res) => {
-    const userDir = path.join(__dirname, 'uploads', req.userId);
+async function getUserBackupDir(req) {
+    const primaryDir = path.join(__dirname, 'uploads', req.userId);
+    if (await fs.pathExists(primaryDir)) {
+        return primaryDir;
+    }
+    try {
+        const user = await db.findOne({ _id: req.userId });
+        if (user) {
+            if (user.username) {
+                const usernameDir = path.join(__dirname, 'uploads', user.username);
+                if (await fs.pathExists(usernameDir)) {
+                    await fs.copy(usernameDir, primaryDir);
+                    return primaryDir;
+                }
+            }
+            if (user.email) {
+                const emailDir = path.join(__dirname, 'uploads', user.email);
+                if (await fs.pathExists(emailDir)) {
+                    await fs.copy(emailDir, primaryDir);
+                    return primaryDir;
+                }
+            }
+        }
+    } catch (_) {}
+    return primaryDir;
+}
+
+router.get('/info', isAuthenticated, async (req, res) => {
+    const userDir = await getUserBackupDir(req);
     let size = 0;
     let count = 0;
 
@@ -1723,8 +1750,8 @@ router.get('/info', isAuthenticated, isSubscribed, async (req, res) => {
     }
 });
 
-router.get('/backups', isAuthenticated, isSubscribed, async (req, res) => {
-    const userDir = path.join(__dirname, 'uploads', req.userId);
+router.get('/backups', isAuthenticated, async (req, res) => {
+    const userDir = await getUserBackupDir(req);
     try {
         if (!await fs.pathExists(userDir)) return res.json([]);
         const files = await fs.readdir(userDir);
@@ -1749,9 +1776,10 @@ router.get('/backups', isAuthenticated, isSubscribed, async (req, res) => {
     }
 });
 
-router.get('/restore/:filename', isAuthenticated, isSubscribed, async (req, res) => {
+router.get('/restore/:filename', isAuthenticated, async (req, res) => {
     const safeFilename = path.basename(req.params.filename);
-    const filePath = path.join(__dirname, 'uploads', req.userId, safeFilename);
+    const userDir = await getUserBackupDir(req);
+    const filePath = path.join(userDir, safeFilename);
 
     if (!await fs.pathExists(filePath)) {
         return res.status(404).json({ error: "File not found" });
@@ -1759,9 +1787,10 @@ router.get('/restore/:filename', isAuthenticated, isSubscribed, async (req, res)
     await sendOrDecryptFile(filePath, safeFilename, res);
 });
 
-router.delete('/backup/:filename', isAuthenticated, isSubscribed, async (req, res) => {
+router.delete('/backup/:filename', isAuthenticated, async (req, res) => {
     const safeFilename = path.basename(req.params.filename);
-    const filePath = path.join(__dirname, 'uploads', req.userId, safeFilename);
+    const userDir = await getUserBackupDir(req);
+    const filePath = path.join(userDir, safeFilename);
 
     try {
         if (await fs.pathExists(filePath)) {

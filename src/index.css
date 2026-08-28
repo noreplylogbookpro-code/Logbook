@@ -48,11 +48,18 @@
   --card-hover-shadow: 0 0 30px rgba(96, 165, 250, 0.12);
   --glass-hover-shadow: 0 0 25px rgba(96, 165, 250, 0.10);
 
+  /* Dropdown Hover */
+  --dropdown-item-hover-bg: #e2e8f0;
+  --dropdown-item-hover-text: #0f172a;
+
   /* Body transition */
   color-scheme: light;
 }
 
 .dark {
+  /* Dropdown Hover */
+  --dropdown-item-hover-bg: rgba(255, 255, 255, 0.10);
+  --dropdown-item-hover-text: #ffffff;
   /* Backgrounds */
   --bg-base: #020617;
   /* slate-950 */

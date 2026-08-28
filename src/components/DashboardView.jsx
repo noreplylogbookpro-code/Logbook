@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity,
-  Copy, Check
+  Copy, Check, Unlock, Upload, FileKey
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 import CustomSelect from './DropdownMenu.jsx';
@@ -70,11 +70,156 @@ export default function DashboardView({ onNavigate }) {
   const [mfaDisableCode, setMfaDisableCode] = useState('');
   const [copiedSecret, setCopiedSecret] = useState(false);
 
+  // Decryption state (.enc -> .zip)
+  const [selectedBackupItem, setSelectedBackupItem] = useState(null);
+  const [selectedEncFile, setSelectedEncFile] = useState(null);
+  const [decryptPassword, setDecryptPassword] = useState('');
+  const [decrypting, setDecrypting] = useState(false);
+  const [decryptError, setDecryptError] = useState('');
+  const [decryptSuccess, setDecryptSuccess] = useState('');
+
   const copyMfaSecret = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedSecret(true);
     setTimeout(() => setCopiedSecret(false), 2000);
+  };
+
+  const openDecryptModal = (backupItem = null) => {
+    setSelectedBackupItem(backupItem);
+    setSelectedEncFile(null);
+    setDecryptPassword('');
+    setDecryptError('');
+    setDecryptSuccess('');
+    setActiveModal('decrypt');
+  };
+
+  const decryptEncFileToZipBlob = async (arrayBuffer, password) => {
+    let bytes = new Uint8Array(arrayBuffer);
+    if (bytes.length < 30) {
+      throw new Error('Invalid backup file. File size is too small.');
+    }
+
+    // Un-wrap server-side LOGBOOK_CRYPT header if present
+    const rawHeader14 = String.fromCharCode(...bytes.slice(0, 14));
+    if (rawHeader14 === 'LOGBOOK_CRYPT\0') {
+      const serverIv = bytes.slice(14, 30);
+      const serverCiphertext = bytes.slice(30);
+      const encoder = new TextEncoder();
+      const serverKeyMaterial = await window.crypto.subtle.digest('SHA-256', encoder.encode('logbookplus_default_file_key_32b'));
+      const serverKey = await window.crypto.subtle.importKey('raw', serverKeyMaterial, { name: 'AES-CBC' }, false, ['decrypt']);
+      const unwrappedBuffer = await window.crypto.subtle.decrypt({ name: 'AES-CBC', iv: serverIv }, serverKey, serverCiphertext);
+      bytes = new Uint8Array(unwrappedBuffer);
+    }
+
+    let magicLength = 0;
+    const headerStr = String.fromCharCode(...bytes.slice(0, Math.min(14, bytes.length)));
+
+    if (headerStr.startsWith('LBKPW')) {
+      magicLength = 'LBKPW'.length;
+    } else if (headerStr.startsWith('MK47)#JF')) {
+      magicLength = 'MK47)#JF'.length;
+    } else if (headerStr.startsWith('LOGBOOK')) {
+      magicLength = 'LOGBOOK'.length;
+    } else {
+      throw new Error('Invalid backup file format. Magic header (LBKPW or MK47)#JF) missing.');
+    }
+
+    const salt = bytes.slice(magicLength, magicLength + 16);
+    const iv = bytes.slice(magicLength + 16, magicLength + 16 + 12);
+    const ciphertext = bytes.slice(magicLength + 16 + 12);
+
+    const encoder = new TextEncoder();
+    const passwordBytes = encoder.encode(password);
+
+    const baseKey = await window.crypto.subtle.importKey(
+      'raw',
+      passwordBytes,
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+
+    const aesKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt']
+    );
+
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      aesKey,
+      ciphertext
+    );
+
+    return new Blob([decryptedBuffer], { type: 'application/zip' });
+  };
+
+  const handleDecryptSubmit = async (e) => {
+    e.preventDefault();
+    setDecryptError('');
+    setDecryptSuccess('');
+
+    if (!decryptPassword) {
+      setDecryptError('Please enter your encryption password.');
+      return;
+    }
+
+    setDecrypting(true);
+    try {
+      let buffer = null;
+      let targetName = 'decrypted_backup.zip';
+
+      if (selectedEncFile) {
+        buffer = await selectedEncFile.arrayBuffer();
+        targetName = selectedEncFile.name.replace(/\.enc$/i, '') + '.zip';
+        if (!targetName.endsWith('.zip')) targetName += '.zip';
+      } else if (selectedBackupItem) {
+        const res = await fetch(`/api/restore/${encodeURIComponent(selectedBackupItem.name)}`, {
+          headers: getHeaders()
+        });
+        if (!res.ok) {
+          throw new Error('Failed to fetch backup file from server.');
+        }
+        buffer = await res.arrayBuffer();
+        targetName = selectedBackupItem.name.replace(/\.enc$/i, '') + '.zip';
+        if (!targetName.endsWith('.zip')) targetName += '.zip';
+      } else {
+        throw new Error('Please select an encrypted (.enc) file to decrypt.');
+      }
+
+      const zipBlob = await decryptEncFileToZipBlob(buffer, decryptPassword);
+      const url = window.URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = targetName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setDecryptSuccess(`Successfully decrypted! Saved as ${targetName}`);
+      addActivity(`Decrypted file ${targetName} to ZIP.`);
+      setTimeout(() => {
+        setActiveModal(null);
+        setSelectedEncFile(null);
+        setSelectedBackupItem(null);
+        setDecryptPassword('');
+        setDecryptSuccess('');
+      }, 2000);
+    } catch (err) {
+      console.error('Decryption error:', err);
+      setDecryptError(err.message || 'Decryption failed. Please check your password.');
+    } finally {
+      setDecrypting(false);
+    }
   };
 
   const menuRef = useRef(null);
@@ -571,14 +716,21 @@ export default function DashboardView({ onNavigate }) {
           const portalTarget = document.getElementById('global-account-manager-portal');
           if (!portalTarget) return null;
           return createPortal(
-            <div className="relative" ref={menuRef}>
+            <div className="relative w-full md:w-auto" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2.5 px-4.5 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/5 text-sm text-zinc-800 dark:text-white hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 transition-all font-semibold cursor-pointer"
+                className="w-full md:w-auto p-3 md:p-2 rounded-xl transition-all duration-200 md:hover:scale-105 active:scale-95 flex items-center justify-between md:justify-center gap-3"
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                }}
               >
-                {renderAvatar("w-7 h-7")}
-                <span>{t('accountManager')}</span>
-                <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-3">
+                  {renderAvatar("w-6 h-6")}
+                  <span className="font-semibold text-sm">{t('accountManager')}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -587,7 +739,7 @@ export default function DashboardView({ onNavigate }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-20 text-left space-y-1"
+                    className="absolute right-0 md:right-0 left-0 md:left-auto mt-2 w-full md:w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-2xl z-[60] text-left space-y-1 backdrop-blur-md"
                   >
                     {[
                       {
@@ -608,7 +760,10 @@ export default function DashboardView({ onNavigate }) {
                     ].map((item) => (
                       <button
                         key={item.label}
-                        onClick={item.action}
+                        onClick={() => {
+                          item.action();
+                          window.dispatchEvent(new Event('closeMobileMenu'));
+                        }}
                         className="dropdown-item"
                       >
                         <item.icon className="w-4 h-4 text-zinc-500" />
@@ -617,8 +772,11 @@ export default function DashboardView({ onNavigate }) {
                     ))}
                     <div className="h-[1px] bg-zinc-200 dark:bg-white/5 my-1" />
                     <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-505 dark:text-red-400 hover:bg-red-500/5 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => {
+                        handleLogout();
+                        window.dispatchEvent(new Event('closeMobileMenu'));
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       {t('logoutSession')}
@@ -681,11 +839,18 @@ export default function DashboardView({ onNavigate }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 mt-2 sm:mt-0">
+            <button
+              onClick={() => openDecryptModal(null)}
+              className="w-full sm:w-auto btn-secondary-unified flex items-center justify-center gap-1.5 text-blue-600 dark:text-accent-blue hover:text-purple-600 dark:hover:text-accent-purple"
+            >
+              <Unlock className="w-3.5 h-3.5" />
+              <span>Decrypt .enc File</span>
+            </button>
             <button
               onClick={handlePurgeAll}
               disabled={backups.length === 0}
-              className="btn-danger-unified"
+              className="w-full sm:w-auto btn-danger-unified justify-center"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {t('purgeVault')}
@@ -718,17 +883,25 @@ export default function DashboardView({ onNavigate }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => openDecryptModal(b)}
+                    className="w-full sm:w-auto btn-secondary-unified text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 justify-center"
+                    title="Decrypt .enc backup file to .zip"
+                  >
+                    <Unlock className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Decrypt .zip</span>
+                  </button>
                   <button
                     onClick={() => handleDownloadBackup(b.name)}
-                    className="flex-grow sm:flex-grow-0 btn-secondary-unified"
+                    className="w-full sm:w-auto btn-secondary-unified justify-center"
                   >
                     <Download className="w-3.5 h-3.5" />
                     {t('download')}
                   </button>
                   <button
                     onClick={() => handleDeleteBackup(b.name)}
-                    className="flex-grow sm:flex-grow-0 btn-danger-unified"
+                    className="w-full sm:w-auto btn-danger-unified justify-center"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     {t('delete')}
@@ -795,6 +968,7 @@ export default function DashboardView({ onNavigate }) {
                   {activeModal === 'securityQ' && t('modalSecurityRecovery')}
                   {activeModal === 'mfa' && t('modal2faSettings')}
                   {activeModal === 'billing' && t('modalBillingSettings')}
+                  {activeModal === 'decrypt' && 'Decrypt Backup File (.enc → .zip)'}
                 </h3>
                 <button
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
@@ -1185,6 +1359,87 @@ export default function DashboardView({ onNavigate }) {
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* DECRYPT MODAL CONTENT */}
+              {activeModal === 'decrypt' && (
+                <form onSubmit={handleDecryptSubmit} className="space-y-4 text-left">
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2.5">
+                    <Unlock className="w-4 h-4 flex-shrink-0" />
+                    <span>Client-side decryption: Decrypt encrypted .enc backups into downloadable .zip files right in your browser.</span>
+                  </div>
+
+                  {selectedBackupItem ? (
+                    <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-xs space-y-1">
+                      <span className="text-zinc-500 dark:text-zinc-400 font-bold block uppercase text-[10px]">Selected Server Vault Archive:</span>
+                      <p className="font-mono text-zinc-900 dark:text-white font-semibold break-all">{selectedBackupItem.name}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Choose .enc File from Disk</label>
+                      <input
+                        type="file"
+                        accept=".enc"
+                        onChange={(e) => setSelectedEncFile(e.target.files[0] || null)}
+                        className="input-unified text-xs file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30"
+                      />
+                      {selectedEncFile && (
+                        <p className="text-[11px] text-zinc-500 font-mono pl-1">Selected file: {selectedEncFile.name}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Encryption Password</label>
+                    <input
+                      type="password"
+                      value={decryptPassword}
+                      onChange={(e) => setDecryptPassword(e.target.value)}
+                      placeholder="Enter backup encryption password"
+                      className="input-unified"
+                      required
+                    />
+                  </div>
+
+                  {decryptError && (
+                    <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 text-xs font-semibold text-center">
+                      {decryptError}
+                    </div>
+                  )}
+
+                  {decryptSuccess && (
+                    <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-semibold text-center">
+                      {decryptSuccess}
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setActiveModal(null); setSelectedEncFile(null); setSelectedBackupItem(null); setDecryptPassword(''); }}
+                      className="w-1/2 btn-secondary-unified"
+                    >
+                      {t('cancel')}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={decrypting}
+                      className="w-1/2 btn-primary-unified flex items-center justify-center gap-2"
+                    >
+                      {decrypting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Decrypting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4" />
+                          <span>Decrypt & Download ZIP</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               )}
             </motion.div>
           </div>

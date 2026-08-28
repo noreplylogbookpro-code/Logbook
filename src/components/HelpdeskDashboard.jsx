@@ -33,7 +33,7 @@ import {
     Sun,
     Moon
 } from 'lucide-react';
-import { useTheme } from '../useTheme';
+import { useSystemTheme } from '../hooks/useSystemTheme';
 import CustomSelect from './DropdownMenu';
 
 const API_BASE_URL = '/api/v1';
@@ -159,7 +159,7 @@ const FLOORS = [
 
 export default function HelpdeskDashboard() {
     const SCHOOLS = (import.meta.env.VITE_SCHOOLS || 'nhsst,nhisr,nhssr,nhitm,nhssvl,nhssa,nhpsasec19,nhpsasec3,dmce,nhpsp').split(',').map(s => s.trim().toUpperCase());
-    const { theme, toggleTheme } = useTheme();
+    const theme = useSystemTheme();
 
     // Auth Session State
     const [session, setSession] = useState(null);

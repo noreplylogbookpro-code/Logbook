@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Hero from './components/Hero.jsx';
 import BentoFeatures from './components/BentoFeatures.jsx';
 import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
-import { useTheme } from './useTheme.js';
+import { useSystemTheme } from './hooks/useSystemTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
 
 const AboutView = lazy(() => import('./components/AboutView.jsx'));
@@ -19,10 +19,37 @@ function AppContent() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const theme = useSystemTheme();
   const [subscribed, setSubscribed] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+
+  // Sync .dark class on <html> element and update browser theme-color
+  useEffect(() => {
+    console.log(`🌈 Theme Debug: Applying theme '${theme}' to document.documentElement`);
+    const root = document.documentElement;
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      metaThemeColor.setAttribute('content', '#020617'); // dark background
+    } else {
+      root.classList.remove('dark');
+      metaThemeColor.setAttribute('content', '#f1f5f9'); // light background
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    const handleCloseMenu = () => setIsMobileMenuOpen(false);
+    window.addEventListener('closeMobileMenu', handleCloseMenu);
+    return () => window.removeEventListener('closeMobileMenu', handleCloseMenu);
+  }, []);
 
   useEffect(() => {
     if (!isLanguageDropdownOpen) return;
@@ -204,13 +231,13 @@ function AppContent() {
     >
       {view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (
         <header
-          className="w-full py-6 px-6 md:px-12 border-b sticky top-0 z-50 backdrop-blur-md"
+          className={`w-full py-6 px-6 md:px-12 border-b sticky top-0 z-50 ${isMobileMenuOpen ? 'md:backdrop-blur-md' : 'backdrop-blur-md'}`}
           style={{
             backgroundColor: 'var(--bg-header)',
             borderColor: 'var(--border)',
           }}
         >
-          <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto flex items-center justify-between">
+          <div className="w-full max-w-[90%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto flex items-center justify-between">
             <a href="/" className="flex items-center gap-3">
               <img
                 src="/assets/images/app_logo.webp"
@@ -224,75 +251,9 @@ function AppContent() {
               </span>
             </a>
 
-            <div className="flex items-center gap-2">
-              {/* Language Selector */}
-              <div className="relative">
-                <button
-                  id="language-selector"
-                  onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                  className="p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
-                  style={{
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  <Globe className="w-4 h-4" />
-                </button>
-                {isLanguageDropdownOpen && (
-                  <div
-                    id="language-dropdown"
-                    className="absolute right-0 top-full mt-2 w-48 border rounded-xl shadow-lg p-1.5 z-[60] max-h-60 overflow-y-auto backdrop-blur-md"
-                    style={{
-                      background: 'var(--bg-input)',
-                      borderColor: 'var(--border)',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {languages.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => {
-                          setLanguage(lang.code);
-                          setIsLanguageDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-between ${language === lang.code ? 'font-bold' : ''
-                          }`}
-                        style={{
-                          background: language === lang.code ? 'var(--border)' : 'transparent',
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        <span>{lang.name}</span>
-                        {language === lang.code && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent-blue to-accent-purple" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Theme Toggle */}
+            <div className="flex items-center gap-2 md:hidden">
               <button
-                id="theme-toggle"
-                onClick={toggleTheme}
-                aria-label="Toggle theme"
-                className="p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95"
-                style={{
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {theme === 'dark'
-                  ? <Sun className="w-4 h-4" />
-                  : <Moon className="w-4 h-4" />
-                }
-              </button>
-
-              <button
-                className="md:hidden p-2"
+                className="p-2"
                 style={{ color: 'var(--text-primary)' }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
@@ -300,16 +261,110 @@ function AppContent() {
               </button>
             </div>
 
+            {/* Backdrop for Mobile Drawer */}
+            {isMobileMenuOpen && (
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
+            )}
+
             <div
-              className={`absolute md:static top-full left-0 w-full md:w-auto border-b md:border-none p-6 md:p-0 flex flex-col md:flex-row items-center gap-4 ${isMobileMenuOpen ? 'flex' : 'hidden md:flex'}`}
+              className={`
+                fixed inset-y-0 top-0 right-0 h-[100dvh] md:h-auto w-[50vw] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
+                flex flex-col gap-6 overflow-y-auto overflow-x-hidden backdrop-blur-xl bg-white/90 dark:bg-zinc-950/80
+                ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
+                md:static md:w-auto md:p-0 md:shadow-none md:transform-none md:flex md:flex-row md:items-center md:gap-4 md:translate-x-0 md:overflow-visible md:bg-transparent md:backdrop-blur-none
+              `}
               style={{
-                backgroundColor: isMobileMenuOpen ? 'var(--bg-header)' : undefined,
                 borderColor: 'var(--border)',
               }}
             >
+              {/* Drawer Header (Mobile Only) */}
+              <div className="flex items-center justify-between md:hidden">
+                <span className="text-lg font-bold tracking-tight">Menu</span>
+                <button
+                  className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+                {/* Language Selector */}
+                <div className="relative w-full md:w-auto">
+                  <button
+                    id="language-selector"
+                    onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                    className="w-full md:w-auto p-3 md:p-2 rounded-xl transition-all duration-200 md:hover:scale-110 active:scale-95 flex items-center justify-between md:justify-center"
+                    style={{
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3 md:gap-0">
+                      <Globe className="w-5 h-5 md:w-4 md:h-4 text-zinc-500" />
+                      <span className="md:hidden font-semibold text-sm">Language</span>
+                    </div>
+                  </button>
+                  {isLanguageDropdownOpen && (
+                    <div
+                      id="language-dropdown"
+                      className="absolute right-0 md:right-0 left-0 md:left-auto top-full mt-2 w-full md:w-48 border rounded-xl shadow-lg p-1.5 z-[60] max-h-60 overflow-y-auto backdrop-blur-md"
+                      style={{
+                        background: 'var(--bg-input)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {languages.map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => {
+                            setLanguage(lang.code);
+                            setIsLanguageDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-between ${language === lang.code ? 'font-bold' : ''
+                            }`}
+                          style={{
+                            background: language === lang.code ? 'var(--border)' : 'transparent',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          <span>{lang.name}</span>
+                          {language === lang.code && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent-blue to-accent-purple" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Theme Indicator (System Mode) */}
+                <div
+                  className="w-full md:w-auto p-3 md:p-2 rounded-xl flex items-center justify-between md:justify-center cursor-default opacity-80"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  title="Theme syncs automatically with OS"
+                >
+                  <div className="flex items-center gap-3 md:gap-0">
+                    {theme === 'dark'
+                      ? <Moon className="w-5 h-5 md:w-4 md:h-4 text-zinc-500" />
+                      : <Sun className="w-5 h-5 md:w-4 md:h-4 text-zinc-500" />
+                    }
+                    <span className="md:hidden font-semibold text-sm">{theme === 'dark' ? 'System (Dark)' : 'System (Light)'}</span>
+                  </div>
+                </div>
+              </div>
               {isLoggedIn ? (
                 cleanPath === 'app/dashboard' ? (
-                  <div id="global-account-manager-portal"></div>
+                  <div id="global-account-manager-portal" className="w-full md:w-auto"></div>
                 ) : (
                   <>
                     <a
