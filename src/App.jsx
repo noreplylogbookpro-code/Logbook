@@ -414,7 +414,7 @@ function AppContent() {
           {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
           {view === 'login' && <LoginView onNavigate={navigate} />}
           {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
-          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} />}
           {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
           {view === 'helpdesk' && <HelpdeskDashboard />}
         </Suspense>

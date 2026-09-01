@@ -340,13 +340,13 @@ export default function DashboardView({ onNavigate }) {
       const licRes = await fetch('/api/licenses/check', { headers });
       if (licRes.ok) {
         const licData = await licRes.json();
-        if (licData.hasLicense) {
+        if (licData.hasLicense || normalizedProf.plan === 'licensed' || normalizedProf.plan === 'premium') {
           setLicense({
-            licenseType: 'Premium License',
+            licenseType: normalizedProf.plan === 'licensed' ? 'Self-Hosted License' : 'Premium License',
             maxBackups: 3,
             storageLimitMB: 240,
-            licenseKey: licData.licenseKey,
-            expiresAt: licData.expiresAt,
+            licenseKey: licData.licenseKey || null,
+            expiresAt: licData.expiresAt || null,
             hasLicense: true
           });
         } else {
