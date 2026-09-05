@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity,
-  Copy, Check, Unlock, Upload, FileKey
+  Copy, Check, Unlock, Upload, FileKey, Eye, EyeOff
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 import CustomSelect from './DropdownMenu.jsx';
@@ -31,8 +31,23 @@ const AVATARS = [
   { icon: "fas fa-music", color: "#e84393" }
 ];
 
-export default function DashboardView({ onNavigate }) {
+export default function DashboardView({ onNavigate, theme: propTheme, toggleTheme: propToggleTheme }) {
   const { t } = useLanguage();
+
+  const handleToggleTheme = () => {
+    if (typeof propToggleTheme === 'function') {
+      propToggleTheme();
+    } else {
+      const root = document.documentElement;
+      if (root.classList.contains('dark')) {
+        root.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      } else {
+        root.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+  };
   // Stats states
   const [profile, setProfile] = useState({ name: 'User', username: '', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
   const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 240 });
@@ -73,6 +88,10 @@ export default function DashboardView({ onNavigate }) {
   // Decryption state (.enc -> .zip)
   const [selectedBackupItem, setSelectedBackupItem] = useState(null);
   const [selectedEncFile, setSelectedEncFile] = useState(null);
+  const [showCurrPassword, setShowCurrPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showMfaDisablePwd, setShowMfaDisablePwd] = useState(false);
+  const [showDecryptPassword, setShowDecryptPassword] = useState(false);
   const [decryptPassword, setDecryptPassword] = useState('');
   const [decrypting, setDecrypting] = useState(false);
   const [decryptError, setDecryptError] = useState('');
@@ -739,7 +758,7 @@ export default function DashboardView({ onNavigate }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 md:right-0 left-0 md:left-auto mt-2 w-full md:w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-2xl z-[60] text-left space-y-1 backdrop-blur-md"
+                    className="relative md:absolute right-0 md:right-0 left-0 md:left-auto mt-2 w-full md:w-56 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 p-2 shadow-2xl z-[60] text-left space-y-1 backdrop-blur-md"
                   >
                     {[
                       {
@@ -1158,26 +1177,50 @@ export default function DashboardView({ onNavigate }) {
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('currentPassword')}</label>
-                    <input
-                      type="password"
-                      value={currPassword}
-                      onChange={(e) => setCurrPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showCurrPassword ? "text" : "password"}
+                        value={currPassword}
+                        onChange={(e) => setCurrPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {currPassword ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrPassword(!showCurrPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showCurrPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('newPassword')}</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {newPassword ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <button
@@ -1296,14 +1339,26 @@ export default function DashboardView({ onNavigate }) {
 
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">{t('confirmPassword')}</label>
-                        <input
-                          type="password"
-                          value={mfaDisablePwd}
-                          onChange={(e) => setMfaDisablePwd(e.target.value)}
-                          placeholder={t('confirmPasswordPlaceholder')}
-                          className="input-unified"
-                          required
-                        />
+                        <div className="relative">
+                          <input
+                            type={showMfaDisablePwd ? "text" : "password"}
+                            value={mfaDisablePwd}
+                            onChange={(e) => setMfaDisablePwd(e.target.value)}
+                            placeholder={t('confirmPasswordPlaceholder')}
+                            className="input-unified pr-10"
+                            required
+                          />
+                          {mfaDisablePwd ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowMfaDisablePwd(!showMfaDisablePwd)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                              tabIndex={-1}
+                            >
+                              {showMfaDisablePwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="space-y-1.5">
@@ -1391,14 +1446,26 @@ export default function DashboardView({ onNavigate }) {
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Encryption Password</label>
-                    <input
-                      type="password"
-                      value={decryptPassword}
-                      onChange={(e) => setDecryptPassword(e.target.value)}
-                      placeholder="Enter backup encryption password"
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showDecryptPassword ? "text" : "password"}
+                        value={decryptPassword}
+                        onChange={(e) => setDecryptPassword(e.target.value)}
+                        placeholder="Enter backup encryption password"
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {decryptPassword ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowDecryptPassword(!showDecryptPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showDecryptPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   {decryptError && (

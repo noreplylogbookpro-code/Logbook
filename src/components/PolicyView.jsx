@@ -7,6 +7,8 @@ import {
   Users, Briefcase, FileCode, ChevronDown, Search
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu.jsx';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const [activeDoc, setActiveDoc] = useState(initialDoc);
@@ -19,10 +21,23 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const [expandedFaq, setExpandedFaq] = useState(null);
 
   useEffect(() => {
-    // Map URL endpoints dynamically to state
+    if (initialDoc) {
+      setActiveDoc(initialDoc);
+      setSelectedBlog(null);
+    }
+  }, [initialDoc]);
+
+  useEffect(() => {
     const cleanPath = window.location.pathname.replace(/^\/|\/$/g, '');
-    if (policies[cleanPath]) {
-      setActiveDoc(cleanPath);
+    if (cleanPath) {
+      const validKeys = [
+        'security', 'terms', 'privacy', 'refund', 'cloud-backup-policy',
+        'paid-terms', 'changelog', 'status', 'careers', 'blog',
+        'help-center', 'documentation', 'community', 'contact'
+      ];
+      if (validKeys.includes(cleanPath)) {
+        setActiveDoc(cleanPath);
+      }
     }
 
     const fetchBlogs = async () => {
@@ -30,7 +45,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         const res = await fetch('/api/blogs');
         if (res.ok) {
           const data = await res.json();
-          setDynamicBlogs(data);
+          setDynamicBlogs(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error('Failed to load dynamic blogs:', err);
@@ -42,7 +57,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         const res = await fetch('/api/changelogs');
         if (res.ok) {
           const data = await res.json();
-          setDynamicChangelogs(data);
+          setDynamicChangelogs(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error('Failed to load dynamic changelogs:', err);
@@ -58,8 +73,11 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     setSelectedBlog(null);
     setFaqSearch('');
     setExpandedFaq(null);
-    // Silent URL path rewrite without page refreshes
-    window.history.pushState(null, '', `/${key}/`);
+    if (typeof onNavigate === 'function') {
+      onNavigate(`/${key}/`);
+    } else {
+      window.history.pushState(null, '', `/${key}/`);
+    }
   };
 
   const handleContactSubmit = (e) => {
@@ -70,43 +88,14 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     }, 4000);
   };
 
-  const fallbackBlogs = [
-    {
-      title: 'Why Local-First Database Design Matters',
-      category: 'Database',
-      date: 'July 2, 2026',
-      excerpt: 'Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets.',
-      content: `At Logbook Plus, we believe that your financial logs should be completely under your control. Standard modern software architecture relies heavily on third-party cloud hosting, which makes your apps dependent on active internet connections, introduces latency, and exposes your telemetry data to server breaches.
-      
-      Local-first design turns this model on its head. By hosting database read and write instances directly on the client sandbox (e.g. SQLite or NeDB), database write paint speeds average less than 5 milliseconds. Additionally, since all calculations run client-side, the app remains fully functional in offline scenarios (such as flights or remote zones). 
-      
-      When backups are required, the client encrypts the database locally using military-grade AES-256 before transmitting the payload to the server. The server acts purely as an opaque storage repository, meaning even we cannot decrypt your records. This ensures absolute security and total ownership.`
-    },
-    {
-      title: 'Passphrase Key Derivation on Mobile Devices',
-      category: 'Security',
-      date: 'June 18, 2026',
-      excerpt: 'How we stretch key passwords using cryptographic salts and SHA-256 iterations to ensure secure offline vaults before sync.',
-      content: `Passwords by themselves are typically vulnerable to brute-force dictionaries. When you create a password for your encrypted database, standard hashing is not enough. We implement key stretching algorithms to convert standard credentials into mathematically complex encryption keys.
-      
-      Using client-side cryptographically secure salts combined with iterated SHA-256 rounds, we derive a 256-bit key that is used as the AES encryption vector. This stretching process makes automated GPU-accelerated dictionary attacks computationally expensive and unfeasible.
-      
-      All key-derivation processes execute locally in sandboxed environment spaces. Your plain-text password is never cached in memory variables and is never transmitted over any network routes. This ensures that even if your device backup is intercepted, the attacker cannot decrypt it without guessing the master password.`
-    },
-    {
-      title: 'Optimizing Node Builds in Unix Subshells',
-      category: 'DevOps',
-      date: 'May 24, 2026',
-      excerpt: 'Guide to running lightweight developer targets and background backup endpoints inside native Unix subshells like Termux.',
-      content: `Running local servers on mobile devices or tiny micro-controllers (like Raspberry Pi) requires extreme efficiency. Standard enterprise setups require substantial RAM allocations and daemon configurations that are not available in sandboxed environments.
-      
-      By optimization of Node.js threads, using lightweight dependencies (such as NeDB instead of MongoDB), and tuning subshell garbage collectors, you can easily host active backup systems with less than 50MB of RAM.
-      
-      This article guides you through configuring subshell scripts, setting up environment parameters, and establishing clean database compaction routines to keep performance running optimally on low-power devices.`
-    }
-  ];
+  const blogs = dynamicBlogs;
 
-  const allBlogs = dynamicBlogs.length > 0 ? dynamicBlogs : fallbackBlogs;
+  const getDefaultBlogImage = (category) => {
+    const cat = (category || '').toLowerCase();
+    if (cat.includes('sec') || cat.includes('crypto')) return '/assets/images/Security.png';
+    if (cat.includes('guide') || cat.includes('tutorial') || cat.includes('doc')) return '/assets/images/Guides.png';
+    return '/assets/images/General.png';
+  };
 
   const policies = {
     security: {
@@ -358,29 +347,43 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
             Back to Articles
           </button>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-accent-blue text-xs font-semibold uppercase tracking-wider">
               {selectedBlog.category || 'Guides'}
             </span>
             <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2" style={{ color: 'var(--text-primary)' }}>
               {selectedBlog.title}
             </h2>
-            <div className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-              Published on {selectedBlog.date || (selectedBlog.createdAt ? new Date(selectedBlog.createdAt).toLocaleDateString() : 'July 2026')}
+            <div className="flex items-center gap-3 pt-2">
+              <img
+                src={selectedBlog.authorAvatar || '/assets/images/app_logo.webp'}
+                alt={selectedBlog.author || 'Logbook Team'}
+                className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-white/10 shadow-sm shrink-0"
+                onError={(e) => { e.target.src = '/assets/images/app_logo.webp'; }}
+              />
+              <div>
+                <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+                  {selectedBlog.author || 'Logbook Team'}
+                </p>
+                <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                  Published on {selectedBlog.date || (selectedBlog.createdAt ? new Date(selectedBlog.createdAt).toLocaleDateString() : 'July 2026')}
+                </p>
+              </div>
             </div>
           </div>
 
-          {selectedBlog.imageUrl && !selectedBlog.imageUrl.includes('blog_hero.webp') && (
-            <div className="w-full h-48 md:h-64 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--bg-input)' }}>
+          {(selectedBlog.imageUrl || selectedBlog.category) && (
+            <div className="w-48 h-48 sm:w-60 sm:h-60 aspect-square rounded-2xl overflow-hidden mx-auto my-4 shadow-md flex items-center justify-center border border-zinc-200 dark:border-white/10" style={{ background: 'var(--bg-input)' }}>
               <img
-                src={selectedBlog.imageUrl}
+                src={selectedBlog.imageUrl || getDefaultBlogImage(selectedBlog.category)}
                 alt={selectedBlog.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-2xl"
+                onError={(e) => { e.target.src = getDefaultBlogImage(selectedBlog.category); }}
               />
             </div>
           )}
 
-          <div className="space-y-4 text-sm md:text-base leading-relaxed border-t pt-6" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
+          <div className="space-y-4 text-sm md:text-base leading-relaxed border-t pt-6 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {selectedBlog.content || ''}
             </ReactMarkdown>
@@ -389,25 +392,55 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
       ) : (
         <div className="space-y-6">
           <div className="space-y-4">
-            {allBlogs.map((post) => (
-              <div
-                key={post.slug || post.title}
-                onClick={() => setSelectedBlog(post)}
-                className="p-5 rounded-2xl text-left space-y-2 hover:border-accent-blue/30 transition-all cursor-pointer group" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '')}</span>
-                  <span className="text-[10px] font-bold text-accent-blue bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{post.category || 'Guides'}</span>
-                </div>
-                <h4 className="text-base font-bold group-hover:text-accent-blue transition-colors" style={{ color: 'var(--text-primary)' }}>
-                  {post.title}
-                </h4>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{post.excerpt || (post.content ? post.content.slice(0, 120) + '...' : '')}</p>
-                <div className="text-xs font-semibold text-accent-blue flex items-center gap-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Read full article →
-                </div>
+            {blogs.length === 0 ? (
+              <div className="p-8 rounded-2xl text-center space-y-2" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>No blog posts available</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Check back soon for new articles and engineering updates.</p>
               </div>
-            ))}
+            ) : (
+              blogs.map((post) => (
+                <div
+                  key={post._id || post.id || post.slug || post.title}
+                  onClick={() => setSelectedBlog(post)}
+                  className="p-5 rounded-2xl text-left hover:border-accent-blue/30 transition-all cursor-pointer group flex flex-col sm:flex-row gap-4 items-start" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}
+                >
+                  <div className="w-18 h-18 sm:w-20 sm:h-20 aspect-square rounded-xl overflow-hidden shrink-0 border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-zinc-800">
+                    <img
+                      src={post.imageUrl || getDefaultBlogImage(post.category)}
+                      alt={post.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.src = getDefaultBlogImage(post.category); }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex justify-between items-start gap-4">
+                      <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '')}</span>
+                      <span className="text-[10px] font-bold text-accent-blue bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{post.category || 'Guides'}</span>
+                    </div>
+                    <h4 className="text-base font-bold group-hover:text-accent-blue transition-colors" style={{ color: 'var(--text-primary)' }}>
+                      {post.title}
+                    </h4>
+                    <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--text-muted)' }}>{post.excerpt || (post.content ? post.content.slice(0, 120) + '...' : '')}</p>
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={post.authorAvatar || '/assets/images/app_logo.webp'}
+                          alt={post.author || 'Logbook Team'}
+                          className="w-5 h-5 rounded-full object-cover border border-zinc-200 dark:border-white/10 shrink-0"
+                          onError={(e) => { e.target.src = '/assets/images/app_logo.webp'; }}
+                        />
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                          {post.author || 'Logbook Team'}
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-accent-blue flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Read full article →
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )
@@ -635,8 +668,8 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     }
   };
 
-  const DocInfo = policies[activeDoc] || policies.security;
-  const ActiveIcon = DocInfo.icon;
+  const DocInfo = policies[activeDoc] || policies[initialDoc] || policies.security || Object.values(policies)[0];
+  const ActiveIcon = DocInfo?.icon || ShieldAlert;
 
   return (
     <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 md:px-20 relative">

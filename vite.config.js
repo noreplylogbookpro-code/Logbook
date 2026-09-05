@@ -6,6 +6,29 @@ const path = require('path');
 // Plugin: after every build, copy public/index.html → public/master/index.html
 // so the master.* subdomain always has the correct asset hashes.
 
+// Plugin: clean old build artifacts before each build (preserves 404.html)
+function cleanDistAssets() {
+  return {
+    name: 'clean-dist-assets',
+    buildStart() {
+      const distAssetsDir = path.resolve('public', 'dist-assets');
+      if (fs.existsSync(distAssetsDir)) {
+        fs.rmSync(distAssetsDir, { recursive: true, force: true });
+        console.log('[clean-dist-assets] Cleared old dist-assets/');
+      }
+      // Remove generated HTML files (but NOT 404.html)
+      const generatedHtmlFiles = [
+        path.resolve('public', 'index.html'),
+        path.resolve('public', 'master', 'index.html'),
+        path.resolve('public', 'helpdesk', 'index.html'),
+      ];
+      generatedHtmlFiles.forEach((f) => {
+        if (fs.existsSync(f)) fs.unlinkSync(f);
+      });
+    }
+  };
+}
+
 function copyMasterHtml() {
   return {
     name: 'copy-master-html',
@@ -33,9 +56,35 @@ function copyMasterHtml() {
   };
 }
 
+function serveAssetsPlugin() {
+  return {
+    name: 'serve-assets',
+    configureServer(server) {
+      server.middlewares.use('/assets', (req, res, next) => {
+        const reqPath = (req.url || '').split('?')[0].replace(/^\//, '');
+        const filePath = path.resolve('assets', reqPath);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes = {
+            '.webp': 'image/webp',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.gif': 'image/gif'
+          };
+          res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+          return fs.createReadStream(filePath).pipe(res);
+        }
+        next();
+      });
+    }
+  };
+}
+
 module.exports = defineConfig({
   publicDir: false,
-  plugins: [react(), copyMasterHtml()],
+  plugins: [react(), cleanDistAssets(), copyMasterHtml(), serveAssetsPlugin()],
   server: {
     port: 3000,
     watch: {
@@ -43,7 +92,7 @@ module.exports = defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },

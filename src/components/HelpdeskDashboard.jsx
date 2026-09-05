@@ -157,9 +157,26 @@ const FLOORS = [
     'NIL'
 ];
 
-export default function HelpdeskDashboard() {
+export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggleTheme: propToggleTheme } = {}) {
     const SCHOOLS = (import.meta.env.VITE_SCHOOLS || 'nhsst,nhisr,nhssr,nhitm,nhssvl,nhssa,nhpsasec19,nhpsasec3,dmce,nhpsp').split(',').map(s => s.trim().toUpperCase());
-    const theme = useSystemTheme();
+    const systemThemeObj = useSystemTheme();
+    const theme = propTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.theme : systemThemeObj);
+    const toggleTheme = propToggleTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.toggleTheme : () => {});
+
+    const handleToggleTheme = () => {
+        if (typeof toggleTheme === 'function') {
+            toggleTheme();
+        } else {
+            const root = document.documentElement;
+            if (root.classList.contains('dark')) {
+                root.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                root.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+    };
 
     // Auth Session State
     const [session, setSession] = useState(null);
@@ -1514,7 +1531,7 @@ export default function HelpdeskDashboard() {
 
                         <div className="flex items-center justify-between gap-2 pt-1">
                             <button
-                                onClick={toggleTheme}
+                                onClick={handleToggleTheme}
                                 className="flex-1 py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                             >
                                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -1639,7 +1656,7 @@ export default function HelpdeskDashboard() {
                             </button>
                         )}
                         <button
-                            onClick={toggleTheme}
+                            onClick={handleToggleTheme}
                             className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
                         >
                             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

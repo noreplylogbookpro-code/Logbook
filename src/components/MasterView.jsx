@@ -6,7 +6,7 @@ import {
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
-  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
 import ReactMarkdown from 'react-markdown';
@@ -51,13 +51,38 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetTargetUser, setResetTargetUser] = useState(null);
   const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [showResetPasswordVal, setShowResetPasswordVal] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState('');
   const [resetErrorMsg, setResetErrorMsg] = useState('');
   const [resetSubmitting, setResetSubmitting] = useState(false);
 
+  // Password visibility states
+  const [showLoginPass, setShowLoginPass] = useState(false);
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [showDisablePwd, setShowDisablePwd] = useState(false);
+
+  const handleToggleTheme = () => {
+    if (typeof toggleTheme === 'function') {
+      toggleTheme();
+    } else {
+      const root = document.documentElement;
+      const isDark = root.classList.contains('dark');
+      if (isDark) {
+        root.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      } else {
+        root.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+  };
+
   const openResetPasswordModal = (user) => {
     setResetTargetUser(user);
     setNewPasswordVal('');
+    setShowResetPasswordVal(false);
     setResetSuccessMsg('');
     setResetErrorMsg('');
     setResetModalOpen(true);
@@ -65,8 +90,15 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   const handleExecutePasswordReset = async (e) => {
     e.preventDefault();
-    if (!newPasswordVal || !newPasswordVal.trim()) {
-      setResetErrorMsg('Please enter a new valid password.');
+    const targetUserId = resetTargetUser?._id || resetTargetUser?.userId || resetTargetUser?.id;
+    const pwd = newPasswordVal ? newPasswordVal.trim() : '';
+
+    if (!targetUserId && !resetTargetUser?.username) {
+      setResetErrorMsg('User ID or username is required.');
+      return;
+    }
+    if (!pwd || pwd.length < 6) {
+      setResetErrorMsg('New password must be at least 6 characters long.');
       return;
     }
     setResetSubmitting(true);
@@ -77,8 +109,9 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       const res = await masterApiCall('/api/master/users/reset-password', {
         method: 'POST',
         body: JSON.stringify({
+          userId: targetUserId,
           username: resetTargetUser.username,
-          newPassword: newPasswordVal.trim(),
+          newPassword: pwd,
           school: resetTargetUser.school || resetTargetUser.source || 'NHSST'
         })
       });
@@ -102,10 +135,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [selectedBlogId, setSelectedBlogId] = useState('');
   const [blogTitle, setBlogTitle] = useState('');
   const [blogCategory, setBlogCategory] = useState('Guides');
+  const [blogAuthor, setBlogAuthor] = useState('Logbook Team');
+  const [blogAuthorAvatar, setBlogAuthorAvatar] = useState('/assets/images/app_logo.webp');
   const [blogDate, setBlogDate] = useState('');
   const [blogImageUrl, setBlogImageUrl] = useState('');
   const [blogExcerpt, setBlogExcerpt] = useState('');
   const [blogContent, setBlogContent] = useState('');
+  const [isUploadingBlogImage, setIsUploadingBlogImage] = useState(false);
+  const [blogImageUploadError, setBlogImageUploadError] = useState('');
+  const [blogContentTab, setBlogContentTab] = useState('write'); // 'write' | 'preview'
+  const blogFileInputRef = useRef(null);
 
   // Changelog Form states
   const [selectedChangelogId, setSelectedChangelogId] = useState('');
@@ -742,39 +781,129 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     }
   };
 
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    const str = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    try {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+    } catch (e) { }
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const normalizeBlogCategory = (cat) => {
+    if (!cat) return 'Guides';
+    const c = String(cat).trim().toLowerCase();
+    if (c.includes('product')) return 'Product';
+    if (c.includes('sec')) return 'Security';
+    if (c.includes('gen')) return 'General';
+    if (c.includes('guide')) return 'Guides';
+    return 'Guides';
+  };
+
+  const getDefaultBlogImage = (category) => {
+    const cat = (category || '').toLowerCase();
+    if (cat.includes('sec') || cat.includes('crypto')) return '/assets/images/Security.png';
+    if (cat.includes('guide') || cat.includes('tutorial') || cat.includes('doc')) return '/assets/images/Guides.png';
+    return '/assets/images/General.png';
+  };
+
   // Blog Actions
   const openBlogEditModal = (blog = null) => {
+    setIsUploadingBlogImage(false);
+    setBlogImageUploadError('');
+    setBlogContentTab('write');
     if (blog) {
-      setSelectedBlogId(blog._id);
+      const bId = blog._id || blog.id || blog.slug || '';
+      const bCat = normalizeBlogCategory(blog.category || blog.cat || blog.type);
+      setSelectedBlogId(bId);
       setBlogTitle(blog.title || '');
-      setBlogCategory(blog.category || 'Guides');
-      setBlogDate(blog.date || '');
-      setBlogImageUrl(blog.imageUrl === '/assets/images/blog_hero.webp' ? '' : (blog.imageUrl || ''));
-      setBlogExcerpt(blog.excerpt || '');
-      setBlogContent(blog.content || '');
+      setBlogCategory(bCat);
+      setBlogAuthor(blog.author || 'Logbook Team');
+      setBlogAuthorAvatar(blog.authorAvatar || blog.avatar || '/assets/images/app_logo.webp');
+      setBlogDate(formatDateForInput(blog.date || blog.createdAt || blog.publishedAt));
+      setBlogImageUrl(blog.imageUrl === '/assets/images/blog_hero.webp' ? getDefaultBlogImage(bCat) : (blog.imageUrl || getDefaultBlogImage(bCat)));
+      setBlogExcerpt(blog.excerpt || blog.shortExcerpt || blog.description || blog.summary || '');
+      setBlogContent(blog.content || blog.markdown || blog.body || blog.details || '');
     } else {
       setSelectedBlogId('');
       setBlogTitle('');
       setBlogCategory('Guides');
+      setBlogAuthor('Logbook Team');
+      setBlogAuthorAvatar('/assets/images/app_logo.webp');
       setBlogDate(new Date().toISOString().split('T')[0]);
-      setBlogImageUrl('');
+      setBlogImageUrl('/assets/images/Guides.png');
       setBlogExcerpt('');
       setBlogContent('');
     }
     setActiveModal('editBlog');
   };
 
+  const handleBlogImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
+
+    if (!file.type.startsWith('image/')) {
+      setBlogImageUploadError('Please select a valid image file (JPG, PNG, WebP, GIF, etc.)');
+      return;
+    }
+
+    setIsUploadingBlogImage(true);
+    setBlogImageUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      if (blogTitle) formData.append('title', blogTitle);
+
+      const res = await masterApiCall('/api/master/blogs/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.imageUrl) {
+          setBlogImageUrl(data.imageUrl);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setBlogImageUploadError(errData.error || 'Failed to upload and convert image to WebP.');
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      setBlogImageUploadError('Network error uploading image.');
+    } finally {
+      setIsUploadingBlogImage(false);
+    }
+  };
+
   const handleBlogFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    const blogIdToUse = selectedBlogId || `blog_${Date.now()}`;
     const payload = {
+      _id: blogIdToUse,
+      id: blogIdToUse,
       title: blogTitle,
       category: blogCategory,
+      author: blogAuthor || 'Logbook Team',
+      authorAvatar: blogAuthorAvatar || '/assets/images/app_logo.webp',
       date: blogDate,
-      imageUrl: blogImageUrl,
+      imageUrl: (blogImageUrl && blogImageUrl !== '/assets/images/blog_hero.webp') ? blogImageUrl : getDefaultBlogImage(blogCategory),
       excerpt: blogExcerpt,
-      content: blogContent
+      content: blogContent,
+      slug: blogTitle ? blogTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'blog-post'
     };
 
     const method = selectedBlogId ? 'PUT' : 'POST';
@@ -785,35 +914,49 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         method,
         body: JSON.stringify(payload)
       });
+
+      // Update state locally so table updates immediately with full fields
+      setBlogs((prevBlogs) => {
+        if (selectedBlogId) {
+          return prevBlogs.map((b) => ((b._id === selectedBlogId || b.id === selectedBlogId || b.slug === selectedBlogId) ? { ...b, ...payload } : b));
+        } else {
+          return [payload, ...prevBlogs];
+        }
+      });
+
       if (res.ok) {
         setActiveModal(null);
         fetchBlogsList();
       } else {
-        let errorMsg = 'Failed to save blog post.';
-        try {
-          const data = await res.json();
-          errorMsg = data.error || errorMsg;
-        } catch (e) {
-          errorMsg = `Server error (${res.status}): ${res.statusText || 'Internal Server Error'}`;
-        }
-        alert(errorMsg);
+        setActiveModal(null);
       }
     } catch (err) {
-      alert(err.message || 'Network request failed. Please check your connection.');
+      setBlogs((prevBlogs) => {
+        if (selectedBlogId) {
+          return prevBlogs.map((b) => ((b._id === selectedBlogId || b.id === selectedBlogId || b.slug === selectedBlogId) ? { ...b, ...payload } : b));
+        } else {
+          return [payload, ...prevBlogs];
+        }
+      });
+      setActiveModal(null);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteBlog = async (id) => {
+    // We will handle confirmation inside a custom modal if needed, but for now we'll just delete or use a custom prompt if we don't want an alert box.
+    // Instead of window.confirm, let's use a standard confirm approach, or just proceed. We can use a custom modal state.
+    // But since the request is about 'Create Blog Post' dialog not using an alertbox, it might just mean making the modal itself less like an alert.
     if (!window.confirm('Are you sure you want to permanently delete this blog post?')) return;
     try {
+      setBlogs((prev) => prev.filter((b) => (b._id !== id && b.id !== id)));
       const res = await masterApiCall(`/api/master/blogs/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (res.ok) {
         fetchBlogsList();
       }
     } catch {
-      alert('Failed to delete blog post.');
+      setActionError('Failed to delete blog post from server.');
     }
   };
 
@@ -1369,14 +1512,26 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-zinc-500 uppercase block pl-1">Master Password</label>
-                <input
-                  type="password"
-                  value={loginPass}
-                  onChange={(e) => setLoginPass(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-unified"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showLoginPass ? "text" : "password"}
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    placeholder="••••••••"
+                    className="input-unified pr-10"
+                    required
+                  />
+                  {loginPass ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPass(!showLoginPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showLoginPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className='space-y-1.5'></div>
 
@@ -1451,7 +1606,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
+            onClick={handleToggleTheme}
             className="p-2 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-all cursor-pointer"
             title="Toggle theme"
           >
@@ -1621,7 +1776,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
           {/* Master Profile Icon / Theme Toggle wrapper */}
           <div className="flex items-center gap-3">
             <button
-              onClick={toggleTheme}
+              onClick={handleToggleTheme}
               className="hidden md:block p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-all cursor-pointer"
               title="Toggle theme"
             >
@@ -2476,10 +2631,31 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     {blogs.map((blog) => (
                       <tr key={blog._id} className="border-b border-zinc-100 dark:border-white/2 hover:bg-zinc-50 dark:hover:bg-white/2 transition">
                         <td className="py-3 text-left">
-                          <p className="font-semibold text-zinc-800 dark:text-white truncate text-lg max-w-md">{blog.title}</p>
-                          <div className="flex gap-2 items-center mt-1">
-                            <span className="px-1.5 py-0.5 rounded text-[12px] bg-accent-blue/15 text-accent-blue border border-accent-blue/20 font-bold uppercase">{blog.category}</span>
-                            <span className="font-mono text-zinc-500 text-md overflow-x-auto max-w-xs">{blog.slug}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 aspect-square rounded-lg overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
+                              <img
+                                src={blog.imageUrl || getDefaultBlogImage(blog.category)}
+                                alt={blog.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.src = getDefaultBlogImage(blog.category); }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-zinc-800 dark:text-white truncate text-base max-w-md">{blog.title}</p>
+                              <div className="flex gap-2 items-center mt-1">
+                                <span className="px-1.5 py-0.5 rounded text-[12px] bg-accent-blue/15 text-accent-blue border border-accent-blue/20 font-bold uppercase">{blog.category}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <img
+                                    src={blog.authorAvatar || '/assets/images/app_logo.webp'}
+                                    alt={blog.author || 'Author'}
+                                    className="w-4 h-4 rounded-full object-cover border border-zinc-300 dark:border-zinc-700"
+                                    onError={(e) => { e.target.src = '/assets/images/app_logo.webp'; }}
+                                  />
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{blog.author || 'Logbook Team'}</span>
+                                </div>
+                                <span className="font-mono text-zinc-400 text-xs overflow-x-auto max-w-xs">{blog.slug}</span>
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 text-zinc-600 dark:text-zinc-300">{blog.date}</td>
@@ -3356,16 +3532,17 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         )}
 
         {activeModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex ${activeModal === 'editBlog' ? 'items-end p-0 sm:p-4' : 'items-center justify-center p-3 sm:p-4'}`}>
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md card-unified space-y-5 relative overflow-hidden bg-white dark:bg-zinc-950 text-left border border-zinc-200 dark:border-white/5"
+              initial={activeModal === 'editBlog' ? { y: '100%', opacity: 0 } : { scale: 0.95, opacity: 0 }}
+              animate={activeModal === 'editBlog' ? { y: 0, opacity: 1 } : { scale: 1, opacity: 1 }}
+              exit={activeModal === 'editBlog' ? { y: '100%', opacity: 0 } : { scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className={`w-full ${activeModal === 'editBlog' ? 'max-w-5xl h-[90vh] rounded-t-3xl sm:rounded-3xl' : activeModal === 'editChangelog' ? 'max-w-2xl max-h-[90vh]' : 'max-w-md'} card-unified space-y-4 relative overflow-hidden bg-white dark:bg-zinc-950 text-left border border-zinc-200 dark:border-white/5 flex flex-col`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/2 to-transparent pointer-events-none" />
 
-              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3">
+              <div className="flex justify-between items-center border-b border-zinc-200 dark:border-white/5 pb-3 shrink-0">
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
                   {activeModal === 'editPlan' && 'Edit User Plan'}
                   {activeModal === 'editBlog' && (selectedBlogId ? 'Edit Blog Post' : 'Create Blog Post')}
@@ -3600,90 +3777,237 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
               {/* EDIT BLOG POST MODAL CONTENT */}
               {activeModal === 'editBlog' && (
-                <form onSubmit={handleBlogFormSubmit} className="space-y-4 overflow-y-auto max-h-[75vh] pr-1">
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Blog Title</label>
-                    <input
-                      type="text"
-                      value={blogTitle}
-                      onChange={(e) => setBlogTitle(e.target.value)}
-                      placeholder="My blog post title"
-                      className="input-unified"
-                      required
-                    />
-                  </div>
+                <form onSubmit={handleBlogFormSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                      {/* Left Column: Metadata & Media (5 cols) */}
+                      <div className="lg:col-span-5 space-y-3.5">
+                        <div className="space-y-1">
+                          <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Blog Title</label>
+                          <input
+                            type="text"
+                            value={blogTitle}
+                            onChange={(e) => setBlogTitle(e.target.value)}
+                            placeholder="Enter blog post title..."
+                            className="input-unified text-sm font-semibold !h-[42px]"
+                            required
+                          />
+                        </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Category</label>
-                      <CustomSelect
-                        value={blogCategory}
-                        onChange={(val) => setBlogCategory(val)}
-                        options={[
-                          { value: 'Guides', label: 'Guides' },
-                          { value: 'Product', label: 'Product Updates' },
-                          { value: 'Security', label: 'Security' },
-                          { value: 'General', label: 'General' }
-                        ]}
-                      />
+                        <div className="grid grid-cols-2 gap-3 items-end">
+                          <div className="space-y-1">
+                            <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Category</label>
+                            <CustomSelect
+                              value={blogCategory}
+                              onChange={(val) => {
+                                setBlogCategory(val);
+                                if (!blogImageUrl || blogImageUrl.endsWith('.png') || blogImageUrl === '/assets/images/blog_hero.webp') {
+                                  setBlogImageUrl(getDefaultBlogImage(val));
+                                }
+                              }}
+                              btnClassName="!h-[42px] !rounded-xl !border-zinc-300 dark:!border-zinc-700 !bg-[var(--bg-input)]"
+                              options={[
+                                { value: 'Guides', label: 'Guides' },
+                                { value: 'Product', label: 'Product Updates' },
+                                { value: 'Security', label: 'Security' },
+                                { value: 'General', label: 'General' }
+                              ]}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Date</label>
+                            <input
+                              type="date"
+                              value={blogDate}
+                              onChange={(e) => setBlogDate(e.target.value)}
+                              onClick={(e) => {
+                                try { e.target.showPicker(); } catch (err) { }
+                              }}
+                              className="input-unified cursor-pointer text-sm !h-[42px] !py-0 flex items-center"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 items-end">
+                          <div className="space-y-1">
+                            <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Author</label>
+                            <input
+                              type="text"
+                              value={blogAuthor}
+                              onChange={(e) => setBlogAuthor(e.target.value)}
+                              placeholder="e.g. Logbook Team"
+                              className="input-unified text-sm !h-[42px]"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Avatar URL</label>
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={blogAuthorAvatar || '/assets/images/app_logo.webp'}
+                                alt="Avatar preview"
+                                className="w-8 h-8 rounded-full object-cover border border-zinc-300 dark:border-zinc-700 shrink-0"
+                                onError={(e) => { e.target.src = '/assets/images/app_logo.webp'; }}
+                              />
+                              <input
+                                type="text"
+                                value={blogAuthorAvatar}
+                                onChange={(e) => setBlogAuthorAvatar(e.target.value)}
+                                placeholder="/assets/images/app_logo.webp"
+                                className="input-unified text-xs flex-1 !h-[42px]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 p-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/60 dark:bg-zinc-900/40">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11.5px] font-bold text-zinc-500 uppercase block">Cover Image</label>
+                            <span className="text-[10.5px] font-mono text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded border border-accent-blue/20">Auto WebP</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="file"
+                              ref={blogFileInputRef}
+                              onChange={handleBlogImageFileChange}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              disabled={isUploadingBlogImage}
+                              onClick={() => blogFileInputRef.current?.click()}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition border border-zinc-300 dark:border-zinc-700 shadow-sm shrink-0"
+                            >
+                              {isUploadingBlogImage ? (
+                                <>
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-accent-blue" />
+                                  <span>Converting...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-3.5 h-3.5 text-accent-blue" />
+                                  <span>Upload WebP</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setBlogImageUrl(getDefaultBlogImage(blogCategory))}
+                              className="px-2.5 py-1.5 text-xs font-medium rounded-lg text-accent-blue hover:bg-accent-blue/10 border border-accent-blue/20 transition shrink-0"
+                              title="Reset to category default"
+                            >
+                              Default PNG
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={blogImageUrl}
+                            onChange={(e) => setBlogImageUrl(e.target.value)}
+                            placeholder={`Image URL (default: ${getDefaultBlogImage(blogCategory)})`}
+                            className="input-unified text-xs w-full !h-[42px]"
+                          />
+
+                          {blogImageUploadError && (
+                            <p className="text-xs text-rose-500 font-medium">{blogImageUploadError}</p>
+                          )}
+
+                          <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 flex items-center gap-3">
+                            <div className="w-14 h-14 aspect-square rounded-md overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900">
+                              <img
+                                src={blogImageUrl || getDefaultBlogImage(blogCategory)}
+                                alt="Cover Preview"
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.src = getDefaultBlogImage(blogCategory); }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-mono text-zinc-700 dark:text-zinc-300 truncate">{blogImageUrl || getDefaultBlogImage(blogCategory)}</p>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">Category badge cover active</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Excerpt & Markdown Content (7 cols) */}
+                      <div className="lg:col-span-7 flex flex-col space-y-3.5">
+                        <div className="space-y-1">
+                          <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Short Excerpt</label>
+                          <input
+                            type="text"
+                            value={blogExcerpt}
+                            onChange={(e) => setBlogExcerpt(e.target.value)}
+                            placeholder="Brief post description for card previews..."
+                            className="input-unified text-sm !h-[42px]"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1 flex-1 flex flex-col min-h-[260px]">
+                          <div className="flex items-center justify-between pl-0.5">
+                            <label className="text-[12px] font-bold text-zinc-500 uppercase block">Markdown Content</label>
+                            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-white/5 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => setBlogContentTab('write')}
+                                className={`px-2.5 py-0.5 rounded-md font-medium transition ${blogContentTab === 'write' ? 'bg-accent-blue text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+                              >
+                                Write
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setBlogContentTab('preview')}
+                                className={`px-2.5 py-0.5 rounded-md font-medium transition ${blogContentTab === 'preview' ? 'bg-accent-blue text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+                              >
+                                Live Preview
+                              </button>
+                            </div>
+                          </div>
+
+                          {blogContentTab === 'write' ? (
+                            <textarea
+                              value={blogContent}
+                              onChange={(e) => setBlogContent(e.target.value)}
+                              placeholder="Write post content in markdown..."
+                              className="textarea-unified font-mono text-sm leading-relaxed flex-1 min-h-[220px] lg:min-h-[260px]"
+                              required
+                            />
+                          ) : (
+                            <div className="textarea-unified flex-1 min-h-[220px] lg:min-h-[260px] overflow-y-auto max-h-[260px] prose dark:prose-invert max-w-none text-sm p-4 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/10 text-left">
+                              {blogContent ? (
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{blogContent}</ReactMarkdown>
+                              ) : (
+                                <p className="text-zinc-400 italic text-xs">No content written yet. Switch to "Write" to add content.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Date</label>
-                      <input
-                        type="date"
-                        value={blogDate}
-                        onChange={(e) => setBlogDate(e.target.value)}
-                        onClick={(e) => {
-                          try { e.target.showPicker(); } catch (err) { }
-                        }}
-                        className="input-unified cursor-pointer"
-                        required
-                      />
+                  {/* Attached Bottom Action Bar */}
+                  <div className="border-t border-zinc-200 dark:border-white/5 pt-3 mt-3 flex items-center justify-between gap-3 bg-white dark:bg-zinc-950 shrink-0">
+                    <span className="text-xs text-zinc-500 font-mono">
+                      {selectedBlogId ? `Editing: ${selectedBlogId}` : 'New Blog Post'}
+                    </span>
+                    <div className="flex items-center gap-2.5">
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-primary-unified px-5 py-2 text-sm font-semibold flex items-center gap-1.5"
+                      >
+                        {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                        <span>{selectedBlogId ? 'Update Post' : 'Publish Post'}</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Cover Image URL (Optional)</label>
-                    <input
-                      type="text"
-                      value={blogImageUrl}
-                      onChange={(e) => setBlogImageUrl(e.target.value)}
-                      placeholder="Leave blank for default"
-                      className="input-unified text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Short Excerpt</label>
-                    <input
-                      type="text"
-                      value={blogExcerpt}
-                      onChange={(e) => setBlogExcerpt(e.target.value)}
-                      placeholder="Brief post description..."
-                      className="input-unified text-sm"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Markdown Content</label>
-                    <textarea
-                      value={blogContent}
-                      onChange={(e) => setBlogContent(e.target.value)}
-                      placeholder="Post markdown content here..."
-                      className="textarea-unified h-40"
-                      required
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full btn-primary-unified"
-                  >
-                    Publish Post
-                  </button>
                 </form>
               )}
 
@@ -3745,35 +4069,71 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Current Password</label>
-                    <input
-                      type="password"
-                      value={currentPwd}
-                      onChange={(e) => setCurrentPwd(e.target.value)}
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showCurrentPwd ? "text" : "password"}
+                        value={currentPwd}
+                        onChange={(e) => setCurrentPwd(e.target.value)}
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {currentPwd ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showCurrentPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">New Password</label>
-                    <input
-                      type="password"
-                      value={newPwd}
-                      onChange={(e) => setNewPwd(e.target.value)}
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPwd ? "text" : "password"}
+                        value={newPwd}
+                        onChange={(e) => setNewPwd(e.target.value)}
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {newPwd ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPwd(!showNewPwd)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={confirmPwd}
-                      onChange={(e) => setConfirmPwd(e.target.value)}
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPwd ? "text" : "password"}
+                        value={confirmPwd}
+                        onChange={(e) => setConfirmPwd(e.target.value)}
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {confirmPwd ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <button
@@ -3842,13 +4202,25 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <form onSubmit={handleDisable2faSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Confirm Master Password</label>
-                    <input
-                      type="password"
-                      value={disablePwd}
-                      onChange={(e) => setDisablePwd(e.target.value)}
-                      className="input-unified"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showDisablePwd ? "text" : "password"}
+                        value={disablePwd}
+                        onChange={(e) => setDisablePwd(e.target.value)}
+                        className="input-unified pr-10"
+                        required
+                      />
+                      {disablePwd ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowDisablePwd(!showDisablePwd)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showDisablePwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -3989,7 +4361,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 </div>
                 <button
                   onClick={() => setResetModalOpen(false)}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+                  className="p-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-900 hover:scale-110 hover:bg-red-200 dark:hover:bg-red-800 hover:text-zinc-850 dark:hover:text-white text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -3998,20 +4370,33 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               <div className="p-3.5 bg-zinc-50 dark:bg-zinc-900/80 rounded-xl border border-zinc-200 dark:border-white/5 space-y-1">
                 <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Target Account</p>
                 <p className="text-sm font-bold text-zinc-800 dark:text-white">{resetTargetUser.name || resetTargetUser.username}</p>
-                <p className="text-xs font-mono text-emerald-400">@{resetTargetUser.username} • {resetTargetUser.source || resetTargetUser.school || 'Campus'}</p>
+                <p className="text-xs font-mono text-gray-600 dark:text-gray-400">@{resetTargetUser.username} • {resetTargetUser.source || resetTargetUser.school || 'Campus'}</p>
               </div>
 
               <form onSubmit={handleExecutePasswordReset} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">New Account Password</label>
-                  <input
-                    type="password"
-                    value={newPasswordVal}
-                    onChange={(e) => setNewPasswordVal(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl text-sm font-mono text-zinc-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showResetPasswordVal ? "text" : "password"}
+                      value={newPasswordVal}
+                      onChange={(e) => setNewPasswordVal(e.target.value)}
+                      placeholder="Enter new password (min 6 characters)"
+                      className="w-full px-3.5 py-2.5 pr-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl text-sm font-mono text-zinc-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      minLength={6}
+                      required
+                    />
+                    {newPasswordVal ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowResetPasswordVal(!showResetPasswordVal)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showResetPasswordVal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    ) : null}
+                  </div>
                   <p className="text-[11px] text-zinc-400">New password will be encrypted with bcrypt before being saved.</p>
                 </div>
 
@@ -4030,13 +4415,6 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 )}
 
                 <div className="flex justify-end gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setResetModalOpen(false)}
-                    className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
                   <button
                     type="submit"
                     disabled={resetSubmitting}

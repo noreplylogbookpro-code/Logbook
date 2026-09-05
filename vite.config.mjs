@@ -31,9 +31,35 @@ function copyMasterHtml() {
   };
 }
 
+function serveAssetsPlugin() {
+  return {
+    name: 'serve-assets',
+    configureServer(server) {
+      server.middlewares.use('/assets', (req, res, next) => {
+        const reqPath = (req.url || '').split('?')[0].replace(/^\//, '');
+        const filePath = path.resolve('assets', reqPath);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes = {
+            '.webp': 'image/webp',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.gif': 'image/gif'
+          };
+          res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+          return fs.createReadStream(filePath).pipe(res);
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
   publicDir: false,
-  plugins: [react(), copyMasterHtml()],
+  plugins: [react(), copyMasterHtml(), serveAssetsPlugin()],
   server: {
     port: 3000,
     watch: {
@@ -41,7 +67,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },

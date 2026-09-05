@@ -3,15 +3,20 @@ import { useState, useEffect } from 'react';
 export function useSystemTheme() {
   const getSystemTheme = () => {
     if (typeof window === 'undefined') {
-      return 'light';
+      return 'dark';
     }
 
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      return savedTheme;
+    }
+
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light';
   };
 
-  // Read the actual system theme immediately
+  // Read the initial theme (from localStorage or OS)
   const [theme, setTheme] = useState(getSystemTheme);
 
   useEffect(() => {
@@ -20,33 +25,34 @@ export function useSystemTheme() {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleChange = (event) => {
-      console.log('🚨 CHROME MEDIA QUERY CHANGED', {
-        oldTheme: theme,
-        newTheme: event.matches ? 'dark' : 'light',
-        matches: event.matches,
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
-        devToolsOpen: true,
-        time: new Date().toISOString()
-      });
-
-      setTheme(event.matches ? 'dark' : 'light');
+      // Only auto-switch if user hasn't set a manual override in localStorage
+      if (!localStorage.getItem('theme')) {
+        setTheme(event.matches ? 'dark' : 'light');
+      }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleChange);
+    }
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else if (mediaQuery.removeListener) {
+        mediaQuery.removeListener(handleChange);
+      }
     };
-
-    console.log(
-      'INITIAL THEME:',
-      mediaQuery.matches,
-      'SIZE:',
-      window.innerWidth,
-      window.innerHeight
-    );
   }, []);
 
-  return theme;
+  const toggleTheme = () => {
+    setTheme((prevTheme) => {
+      const nextTheme = prevTheme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', nextTheme);
+      return nextTheme;
+    });
+  };
+
+  return { theme, toggleTheme };
 }

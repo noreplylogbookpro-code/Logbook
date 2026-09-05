@@ -19,7 +19,7 @@ function AppContent() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const theme = useSystemTheme();
+  const { theme, toggleTheme } = useSystemTheme();
   const [subscribed, setSubscribed] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -271,7 +271,7 @@ function AppContent() {
 
             <div
               className={`
-                fixed inset-y-0 top-0 right-0 h-[100dvh] md:h-auto w-[50vw] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
+                fixed inset-y-0 top-0 right-0 h-[100dvh] md:h-auto w-[85vw] max-w-[340px] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
                 flex flex-col gap-6 overflow-y-auto overflow-x-hidden backdrop-blur-xl bg-white/90 dark:bg-zinc-950/80
                 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
                 md:static md:w-auto md:p-0 md:shadow-none md:transform-none md:flex md:flex-row md:items-center md:gap-4 md:translate-x-0 md:overflow-visible md:bg-transparent md:backdrop-blur-none
@@ -343,24 +343,25 @@ function AppContent() {
                   )}
                 </div>
 
-                {/* Theme Indicator (System Mode) */}
-                <div
-                  className="w-full md:w-auto p-3 md:p-2 rounded-xl flex items-center justify-between md:justify-center cursor-default opacity-80"
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  className="w-full md:w-auto p-3 md:p-2 rounded-xl flex items-center justify-between md:justify-center cursor-pointer hover:scale-105 transition-all"
                   style={{
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border)',
                     color: 'var(--text-primary)',
                   }}
-                  title="Theme syncs automatically with OS"
+                  title="Click to toggle light / dark theme"
                 >
                   <div className="flex items-center gap-3 md:gap-0">
                     {theme === 'dark'
-                      ? <Moon className="w-5 h-5 md:w-4 md:h-4 text-zinc-500" />
-                      : <Sun className="w-5 h-5 md:w-4 md:h-4 text-zinc-500" />
+                      ? <Moon className="w-5 h-5 md:w-4 md:h-4 text-indigo-400" />
+                      : <Sun className="w-5 h-5 md:w-4 md:h-4 text-amber-500" />
                     }
-                    <span className="md:hidden font-semibold text-sm">{theme === 'dark' ? 'System (Dark)' : 'System (Light)'}</span>
+                    <span className="md:hidden font-semibold text-sm">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
                   </div>
-                </div>
+                </button>
               </div>
               {isLoggedIn ? (
                 cleanPath === 'app/dashboard' ? (
@@ -413,10 +414,10 @@ function AppContent() {
           {view === 'pricing' && <PricingView onNavigate={navigate} />}
           {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
           {view === 'login' && <LoginView onNavigate={navigate} />}
-          {view === 'dashboard' && <DashboardView onNavigate={navigate} />}
-          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} />}
+          {view === 'dashboard' && <DashboardView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
           {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
-          {view === 'helpdesk' && <HelpdeskDashboard />}
+          {view === 'helpdesk' && <HelpdeskDashboard onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
         </Suspense>
       </main>
 

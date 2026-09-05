@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
-export default function CustomSelect({ value, onChange, options = [], placeholder, className = "" }) {
+export default function CustomSelect({ value, onChange, options = [], placeholder, className = "", btnClassName = "" }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -23,7 +23,7 @@ export default function CustomSelect({ value, onChange, options = [], placeholde
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between border border-slate-300 dark:border-slate-700 rounded-lg text-sm px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer transition shadow-2xs font-medium"
+                className={`w-full flex items-center justify-between border border-slate-300 dark:border-slate-700 rounded-lg text-sm px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer transition shadow-2xs font-medium ${btnClassName}`}
             >
                 <span className="truncate">{selectedLabel}</span>
                 <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200 flex-shrink-0 ml-1 ${open ? 'rotate-180' : ''}`} />

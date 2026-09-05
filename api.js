@@ -3,6 +3,7 @@ const router = express.Router();
 const os = require('os');
 const crypto = require('crypto');
 const multer = require('multer');
+const sharp = require('sharp');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs-extra');
@@ -12,7 +13,7 @@ const { google } = require('googleapis');
 require('dotenv').config({ quiet: true });
 
 // Custom encapsulated modules
-const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb } = require('./config/db');
+const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb } = require('./config/db');
 const { JWT_SECRET, isAuthenticated, isMasterAuth } = require('./middleware/auth');
 const { logServerEvent } = require('./utils/logger');
 const {
@@ -329,6 +330,20 @@ const uploadAvatar = multer({
             return cb(null, true);
         }
         cb(new Error('Only image files are allowed (.jpg, .jpeg, .png, .webp, .gif)'));
+    }
+});
+
+const uploadBlogImage = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const mimeOk = file.mimetype && file.mimetype.startsWith('image/');
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const extOk = !ext || ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tiff', '.avif', '.svg'].includes(ext);
+        if (mimeOk || extOk) {
+            return cb(null, true);
+        }
+        cb(new Error('Only image files are allowed (.jpg, .jpeg, .png, .webp, .gif, .avif, .bmp)'));
     }
 });
 
@@ -1092,18 +1107,25 @@ const handleGetMasterStats = async (req, res) => {
 
 router.get('/master/stats', isMasterAuth, handleGetMasterStats);
 router.all('/master/users/reset-password', isMasterAuth, async (req, res) => {
-    const { userId, newPassword } = req.body;
-    if (!userId || !newPassword || newPassword.length < 6) {
+    const { userId, username, newPassword } = req.body;
+    const targetId = userId || username;
+    if (!targetId || !newPassword || newPassword.length < 6) {
         return res.status(400).json({ error: "User ID and a new password (min 6 chars) are required." });
     }
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await db.update({ _id: userId }, { $set: { password: hashedPassword } });
+        let updatedCount = 0;
+        if (userId) {
+            updatedCount = await db.update({ _id: userId }, { $set: { password: hashedPassword } });
+        }
+        if (!updatedCount && username) {
+            updatedCount = await db.update({ username: username }, { $set: { password: hashedPassword } });
+        }
         db.compactDatafile();
-        logServerEvent('warning', `Master forcibly reset password for user ID: '${userId}'`);
+        logServerEvent('warning', `Master forcibly reset password for user: '${targetId}'`);
         res.json({ success: true, message: "User password reset successfully." });
     } catch (e) {
-        logServerEvent('critical', `Master failed to reset password for user ID '${userId}': ${e.message}`);
+        logServerEvent('critical', `Master failed to reset password for user '${targetId}': ${e.message}`);
         res.status(500).json({ error: "Failed to reset password" });
     }
 });
@@ -1125,6 +1147,115 @@ router.post('/master/cleanup', isMasterAuth, async (req, res) => {
     } catch (e) {
         logServerEvent('critical', `Master cleanup failed: ${e.message}`);
         res.status(500).json({ error: "Failed to run system cleanup." });
+    }
+});
+
+// --- Blog Management Endpoints ---
+router.get('/blogs', async (req, res) => {
+    try {
+        const blogs = await blogsDb.find({});
+        if (blogs && blogs.length > 0) {
+            return res.json(blogs);
+        }
+    } catch (e) {
+        logServerEvent('critical', `Failed to fetch blogs from database: ${e.message}`);
+    }
+    res.json([]);
+});
+
+const getDefaultBlogImage = (category) => {
+    const cat = String(category || '').toLowerCase();
+    if (cat.includes('sec') || cat.includes('crypto')) return '/assets/images/Security.png';
+    if (cat.includes('guide') || cat.includes('tutorial') || cat.includes('doc')) return '/assets/images/Guides.png';
+    return '/assets/images/General.png';
+};
+
+const handleMasterBlogMutation = async (req, res) => {
+    const blogId = req.params.id || req.body?._id || req.body?.id;
+    if (req.method === 'DELETE') {
+        if (!blogId) return res.status(400).json({ error: "Blog ID is required" });
+        await blogsDb.remove({ $or: [{ _id: blogId }, { id: blogId }] }, {});
+        blogsDb.compactDatafile();
+        logServerEvent('warning', `Master deleted blog ID: ${blogId}`);
+        return res.json({ success: true, message: "Blog post deleted successfully" });
+    }
+    
+    if (req.method === 'POST' || req.method === 'PUT') {
+        const { title, category, tag, author, authorAvatar, date, imageUrl, excerpt, summary, content, slug } = req.body;
+        const targetId = blogId || `blog_${Date.now()}`;
+        const finalCategory = category || tag || 'Guides';
+        const doc = {
+            _id: targetId,
+            id: targetId,
+            type: 'blog',
+            title: title || 'Untitled Post',
+            category: finalCategory,
+            author: author || 'Logbook Team',
+            authorAvatar: authorAvatar || '/assets/images/app_logo.webp',
+            date: date || new Date().toISOString().split('T')[0],
+            imageUrl: (imageUrl && imageUrl !== '/assets/images/blog_hero.webp') ? imageUrl : getDefaultBlogImage(finalCategory),
+            excerpt: excerpt || summary || '',
+            content: content || '',
+            slug: slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'blog-post'),
+            updatedAt: Date.now()
+        };
+
+        const existing = await blogsDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        if (existing) {
+            doc.createdAt = existing.createdAt || Date.now();
+            await blogsDb.update({ $or: [{ _id: targetId }, { id: targetId }] }, { $set: doc }, { upsert: true });
+        } else {
+            doc.createdAt = Date.now();
+            await blogsDb.insert(doc);
+        }
+        blogsDb.compactDatafile();
+        logServerEvent('info', `Master saved blog ID '${targetId}': title='${doc.title}'`);
+        return res.json({ success: true, message: "Blog post saved successfully", blog: doc });
+    }
+
+    res.status(405).json({ error: "Method not allowed" });
+};
+
+router.all('/master/blogs', isMasterAuth, handleMasterBlogMutation);
+router.all('/master/blogs/:id', isMasterAuth, handleMasterBlogMutation);
+
+router.post('/master/blogs/upload-image', isMasterAuth, uploadBlogImage.single('image'), async (req, res) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            return res.status(400).json({ error: "No image file provided." });
+        }
+
+        const blogDir = path.join(__dirname, 'assets', 'images', 'blogs');
+        await fs.ensureDir(blogDir);
+
+        const safePrefix = (req.body.title || 'blog')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '')
+            .slice(0, 30);
+        const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+        const filename = `${safePrefix || 'blog'}_${uniqueSuffix}.webp`;
+        const destPath = path.join(blogDir, filename);
+
+        // Convert image to WebP using sharp with 1:1 square aspect ratio (800x800) and high efficiency compression
+        await sharp(req.file.buffer)
+            .resize(800, 800, { fit: 'cover', position: 'center' })
+            .webp({ quality: 85, effort: 4 })
+            .toFile(destPath);
+
+        // Keep public directory in sync if present
+        const publicBlogDir = path.join(__dirname, 'public', 'assets', 'images', 'blogs');
+        try {
+            await fs.ensureDir(publicBlogDir);
+            await fs.copy(destPath, path.join(publicBlogDir, filename));
+        } catch { }
+
+        const imageUrl = `/assets/images/blogs/${filename}`;
+        logServerEvent('info', `Master uploaded & converted blog image to WebP: ${imageUrl}`);
+        res.json({ success: true, imageUrl, filename });
+    } catch (e) {
+        logServerEvent('critical', `Failed to convert blog image to WebP: ${e.message}`);
+        res.status(500).json({ error: `Failed to process image: ${e.message}` });
     }
 });
 
@@ -1229,68 +1360,6 @@ router.patch('/master/licenses/:id/extend', isMasterAuth, async (req, res) => {
         res.json({ success: true, license: lic });
     } catch (e) {
         res.status(500).json({ error: "Failed to extend license" });
-    }
-});
-
-router.post('/master/blogs', isMasterAuth, async (req, res) => {
-    const { title, slug, summary, content, author, tag, readTime } = req.body;
-    if (!title || !content) return res.status(400).json({ error: "Title and content are required." });
-
-    const blogDoc = {
-        type: 'blog_post',
-        title,
-        slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        summary: summary || content.slice(0, 150) + '...',
-        content,
-        author: author || 'Logbook Team',
-        tag: tag || 'Updates',
-        readTime: readTime || '3 min read',
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-    };
-
-    try {
-        const inserted = await db.insert(blogDoc);
-        db.compactDatafile();
-        logServerEvent('info', `Master published new blog post: '${title}'`);
-        res.json({ success: true, blog: inserted });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to save blog post" });
-    }
-});
-
-router.put('/master/blogs/:id', isMasterAuth, async (req, res) => {
-    const { title, slug, summary, content, author, tag, readTime } = req.body;
-    try {
-        await db.update({ _id: req.params.id, type: 'blog_post' }, {
-            $set: { title, slug, summary, content, author, tag, readTime, updatedAt: Date.now() }
-        });
-        db.compactDatafile();
-        logServerEvent('info', `Master updated blog post ID: '${req.params.id}'`);
-        res.json({ success: true, message: "Blog post updated successfully" });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to update blog post" });
-    }
-});
-
-router.delete('/master/blogs/:id', isMasterAuth, async (req, res) => {
-    try {
-        await db.remove({ _id: req.params.id, type: 'blog_post' }, {});
-        db.compactDatafile();
-        logServerEvent('warning', `Master deleted blog post ID: '${req.params.id}'`);
-        res.json({ success: true, message: "Blog post deleted" });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to delete blog post" });
-    }
-});
-
-router.get('/blogs', async (req, res) => {
-    try {
-        const posts = await db.find({ type: 'blog_post' });
-        posts.sort((a, b) => b.createdAt - a.createdAt);
-        res.json(posts);
-    } catch (e) {
-        res.status(500).json({ error: "Failed to fetch blog posts" });
     }
 });
 

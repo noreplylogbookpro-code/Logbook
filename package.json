@@ -1,8 +1,10 @@
 {
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "server": "node server.js",
+    "client": "vite --host",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "vite build && node scripts/post-build.js",
-    "deploy": "concurrently \"npm run build\" \"npm run deploy:server\""
+    "deploy": "concurrently \"npm run build\" \"npm run server\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
