@@ -381,9 +381,9 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           )}
 
           <div className="space-y-4 text-sm md:text-base leading-relaxed border-t pt-6" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
-            {selectedBlog.content.split('\n').map((para, i) => (
-              <p key={i}>{para.trim()}</p>
-            ))}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {selectedBlog.content || ''}
+            </ReactMarkdown>
           </div>
         </div>
       ) : (

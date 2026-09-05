@@ -9,6 +9,8 @@ import {
   Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function MasterView({ onNavigate, theme, toggleTheme }) {
   // Authentication states
