@@ -65,7 +65,7 @@ Before running the server, configure the environment variables in `.env`:
 
 ```env
 PORT=8080                                      # Port for the Node.js server to listen on
-QUOTA_LIMIT=251658240                          # Storage limit quota per user in bytes (Default: 240 MB)
+QUOTA_LIMIT=104857600                          # Storage limit quota per user in bytes (Default: 100 MB)
 MASTER_USER=admin                              # Master username for the admin dashboard
 MASTER_PASS=your-secure-password               # Master password (change before deploying!)
 DB=server_users.db                             # NeDB database filename

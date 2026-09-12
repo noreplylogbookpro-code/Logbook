@@ -2,9 +2,9 @@ const os = require('os');
 require('dotenv').config({ quiet: true });
 
 function parseQuotaLimit(val) {
-    if (!val) return 240 * 1024 * 1024; // 240 MB default
+    if (!val) return 100 * 1024 * 1024; // 100 MB default
     const n = parseInt(val, 10);
-    return isNaN(n) ? 240 * 1024 * 1024 : n;
+    return isNaN(n) ? 100 * 1024 * 1024 : n;
 }
 
 let serverConfig = {
@@ -53,14 +53,16 @@ function getCpuUsagePercent() {
 
 function recordUserActivity(username, role = 'USER', school = 'LOGBOOK', ip = '') {
     if (!username || typeof username !== 'string') return;
-    const key = username.trim().toLowerCase();
-    if (!key) return;
+    const normalizedUser = username.trim().toLowerCase();
+    if (!normalizedUser) return;
+    const normalizedSchool = (school || 'LOGBOOK').trim().toUpperCase();
+    const key = `${normalizedUser}@${normalizedSchool}`;
     activeUserSessions.set(key, {
-        username: key,
+        username: normalizedUser,
         lastActiveAt: Date.now(),
         ip: ip || '',
         role: role || 'USER',
-        school: school || 'LOGBOOK'
+        school: normalizedSchool
     });
 }
 

@@ -87,8 +87,8 @@ app.use((req, res, next) => {
             console.log(`  User: ${req.body?.username || req.body?.email}`);
         }
 
-        const activeUser = req.headers['x-caller-username'] || req.body?.username || req.query?.username || req.body?.email;
-        if (activeUser && typeof activeUser === 'string') {
+        const activeUser = req.tokenPayload?.username || req.headers['x-caller-username'] || req.body?.username || req.query?.username || req.body?.email;
+        if (activeUser && typeof activeUser === 'string' && res.statusCode < 400) {
             recordUserActivity(
                 activeUser,
                 req.headers['x-caller-role'] || req.body?.role || 'USER',

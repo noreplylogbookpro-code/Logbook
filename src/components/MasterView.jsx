@@ -6,7 +6,7 @@ import {
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
-  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff, Code
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
 import ReactMarkdown from 'react-markdown';
@@ -24,7 +24,14 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [loading, setLoading] = useState(false);
 
   // Active view tab state
-  const [activeTab, setActiveTab] = useState('Overview'); // 'Overview' | 'Users' | 'Licenses' | 'Blogs' | 'Logs' | 'Settings'
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = sessionStorage.getItem('masterTab');
+    if (saved) {
+      sessionStorage.removeItem('masterTab');
+      return saved;
+    }
+    return 'Overview';
+  }); // 'Overview' | 'Users' | 'Licenses' | 'Blogs' | 'Logs' | 'Settings'
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Dashboard Data states
@@ -37,7 +44,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [blogs, setBlogs] = useState([]);
   const [changelogs, setChangelogs] = useState([]);
   const [logsList, setLogsList] = useState([]);
-  const [serverConfig, setServerConfig] = useState({ quotaLimit: 240 * 1024 * 1024, signupsEnabled: true });
+  const [serverConfig, setServerConfig] = useState({ quotaLimit: 100 * 1024 * 1024, signupsEnabled: true });
   const [masterProfile, setMasterProfile] = useState({ name: 'Master Admin', email: 'admin@logbook', profilePicIndex: 0, twoFactorEnabled: false });
 
   // Modal states
@@ -1692,6 +1699,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       </button>
                     );
                   })}
+                  <button
+                    onClick={() => {
+                      onNavigate('/dev');
+                      setSidebarOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent"
+                  >
+                    <Code className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+                    Dev Portal
+                  </button>
                 </nav>
               </div>
 
@@ -1750,6 +1767,13 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 </button>
               );
             })}
+            <button
+              onClick={() => onNavigate('/dev')}
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer hover:scale-110 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent"
+            >
+              <Code className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+              Dev Portal
+            </button>
           </nav>
 
           <div className="border-t border-zinc-200 dark:border-white/5 pt-4">
@@ -2907,7 +2931,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
                 <form onSubmit={handleUpdateConfigSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-1">Quota Backup Size Limit (MB)</label>
+                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-1">Cloud Backup Size Limit (MB)</label>
                     <input
                       type="number"
                       value={Math.floor(serverConfig.quotaLimit / (1024 * 1024))}
@@ -3640,7 +3664,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       type="text"
                       value={selectedUser.username}
                       readOnly
-                      className="input-unified bg-zinc-900 border-white/5 text-zinc-400"
+                      className="input-unified bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-white/5 text-zinc-500"
                     />
                   </div>
 

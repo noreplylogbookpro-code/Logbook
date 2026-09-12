@@ -191,8 +191,8 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           <p>Cloud backup is a premium feature available exclusively to users with an active premium subscription. Free users can use local backup (device storage) at no cost and without restrictions.</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Storage Limit</h3>
-          <p>Premium users are allocated up to 240 MB of cloud storage for backup files. This limit applies to the total size of all backup files stored in the cloud for your account.</p>
-          <p>If you reach the 240 MB limit, you must delete older backups before uploading new ones. The app will notify you when you are approaching or have reached the storage limit.</p>
+          <p>Premium users are allocated up to 100 MB of cloud storage for backup files. This limit applies to the total size of all backup files stored in the cloud for your account.</p>
+          <p>If you reach the 100 MB limit, you must delete older backups before uploading new ones. The app will notify you when you are approaching or have reached the storage limit.</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Data Retention</h3>
           <p>Your cloud backups are retained for as long as your premium subscription remains active. Upon expiry or cancellation of your subscription, you will have a 30-day grace period to download your backups. After the 30-day grace period, cloud backup data may be permanently deleted.</p>
@@ -209,15 +209,14 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
       content: (
         <div className="space-y-6">
           <p>These Paid User Terms supplement our general Terms of Service and apply specifically to users who have purchased a premium subscription or self-hosted license.</p>
-
-          <h3 className="text-lg font-bold text-white mt-6">1. Premium Subscription Features</h3>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mt-6">1. Premium Subscription Features</h3>
           <p>By purchasing a premium subscription, you gain access to the following features:</p>
-          <ul className="list-disc pl-5 space-y-2" style={{ color: 'var(--text-secondary)' }}>
+          <ul className="list-disc pl-5 space-y-2 text-zinc-900 dark:text-zinc-400">
             <li>Unlimited daily log entries</li>
             <li>Unlimited monthly exports (Excel, Word, PDF)</li>
             <li>PDF export format</li>
             <li>Premium Analytics Dashboard</li>
-            <li>Cloud backup (up to 240 MB)</li>
+            <li>Cloud backup (up to 100 MB)</li>
             <li>Up to 10 photos per entry</li>
             <li>Tags & categories for entries</li>
           </ul>
@@ -335,7 +334,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     },
     blog: {
       title: 'Tech Blog',
-      updated: 'Weekly updates',
+      updated: 'Regular Updates',
       icon: ScrollText,
       content: selectedBlog ? (
         <div className="space-y-6 text-left">

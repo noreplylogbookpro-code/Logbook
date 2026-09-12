@@ -50,7 +50,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
   };
   // Stats states
   const [profile, setProfile] = useState({ name: 'User', username: '', email: 'user@example.com', twoFactorEnabled: false, userId: '', profilePicIndex: 0 });
-  const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 240 });
+  const [license, setLicense] = useState({ licenseType: 'Free Tier', maxBackups: 3, storageLimitMB: 100 });
   const [stats, setStats] = useState({ totalBackups: 0, storageUsedMB: 0 });
   const [backups, setBackups] = useState([]);
   const [activities, setActivities] = useState(['Dashboard initialized']);
@@ -363,7 +363,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
           setLicense({
             licenseType: normalizedProf.plan === 'licensed' ? 'Self-Hosted License' : 'Premium License',
             maxBackups: 3,
-            storageLimitMB: 240,
+            storageLimitMB: 100,
             licenseKey: licData.licenseKey || null,
             expiresAt: licData.expiresAt || null,
             hasLicense: true
@@ -372,7 +372,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
           setLicense({
             licenseType: 'Free Tier',
             maxBackups: 3,
-            storageLimitMB: 240,
+            storageLimitMB: 100,
             hasLicense: false
           });
         }
@@ -717,7 +717,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
     }
   };
 
-  const limitQuota = license.storageLimitMB || 240;
+  const limitQuota = license.storageLimitMB || 100;
   const isCloseToLimit = stats.storageUsedMB > limitQuota * 0.85;
 
   return (
@@ -1149,8 +1149,8 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                                 setAvatarFailed(true); // Force preset view
                               }}
                               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${isSelected
-                                  ? 'border-accent-blue bg-accent-blue/10 scale-110 shadow-sm'
-                                  : 'border-zinc-200 dark:border-white/5 bg-white dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                                ? 'border-accent-blue bg-accent-blue/10 scale-110 shadow-sm'
+                                : 'border-zinc-200 dark:border-white/5 bg-white dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-900'
                                 }`}
                               style={{ color: av.color }}
                             >

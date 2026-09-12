@@ -29,7 +29,7 @@ function AppContent() {
     console.log(`🌈 Theme Debug: Applying theme '${theme}' to document.documentElement`);
     const root = document.documentElement;
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    
+
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
       metaThemeColor.setAttribute('name', 'theme-color');
@@ -271,7 +271,7 @@ function AppContent() {
 
             <div
               className={`
-                fixed inset-y-0 top-0 right-0 h-[100dvh] md:h-auto w-[85vw] max-w-[340px] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
+                fixed inset-y-0 top-0 right-0 h-[100dvh] h-auto w-[85vw] max-w-[340px] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
                 flex flex-col gap-6 overflow-y-auto overflow-x-hidden backdrop-blur-xl bg-white/90 dark:bg-zinc-950/80
                 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
                 md:static md:w-auto md:p-0 md:shadow-none md:transform-none md:flex md:flex-row md:items-center md:gap-4 md:translate-x-0 md:overflow-visible md:bg-transparent md:backdrop-blur-none
@@ -416,7 +416,7 @@ function AppContent() {
           {view === 'login' && <LoginView onNavigate={navigate} />}
           {view === 'dashboard' && <DashboardView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
           {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
-          {view === 'devportal' && <DevPortalView onNavigate={navigate} />}
+          {view === 'devportal' && <DevPortalView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
           {view === 'helpdesk' && <HelpdeskDashboard onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
         </Suspense>
       </main>

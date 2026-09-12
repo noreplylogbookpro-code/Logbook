@@ -488,7 +488,7 @@ async function checkQuota(req, res, next) {
                 size += (await fs.stat(path.join(userDir, f))).size;
             }
 
-            const quotaLimit = 240 * 1024 * 1024;
+            const quotaLimit = 100 * 1024 * 1024;
             const maxBackupCount = 3;
 
             const fileStats = await Promise.all(
@@ -852,11 +852,13 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
 
         dbUsers.forEach(u => {
             if (!u.username) return;
-            const key = u.username.toLowerCase();
-            const session = activeUserSessions.get(key);
+            const normalizedUser = u.username.toLowerCase();
+            const sessionKey = `${normalizedUser}@logbook`;
+            const mapKey = `${normalizedUser}@main_vault`;
+            const session = activeUserSessions.get(sessionKey);
             const lastActive = session ? session.lastActiveAt : (u.lastActiveAt || u.createdAt || 0);
             const isOnline = (now - lastActive) < ONLINE_THRESHOLD_MS;
-            allUsersMap.set(key, {
+            allUsersMap.set(mapKey, {
                 ...u,
                 name: u.fullName || u.name || u.username,
                 isOnline,
@@ -871,32 +873,26 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
                 const schoolUsers = readUsers(school);
                 schoolUsers.forEach(u => {
                     if (!u.username) return;
-                    const key = u.username.toLowerCase();
-                    const session = activeUserSessions.get(key);
+                    const normalizedUser = u.username.toLowerCase();
+                    const sessionKey = `${normalizedUser}@${school}`;
+                    const mapKey = `${normalizedUser}@${school}`;
+                    const session = activeUserSessions.get(sessionKey);
                     const lastActive = session ? session.lastActiveAt : (u.lastActiveAt || 0);
                     const isOnline = (now - lastActive) < ONLINE_THRESHOLD_MS;
 
-                    if (!allUsersMap.has(key)) {
-                        allUsersMap.set(key, {
-                            _id: `school_${school}_${u.id}`,
-                            id: u.id,
-                            username: u.username,
-                            name: u.fullName || u.username,
-                            role: u.role || 'USER',
-                            plan: 'campus',
-                            school: school,
-                            isOnline,
-                            lastActiveAt: lastActive,
-                            lastIp: session ? session.ip : '',
-                            source: school
-                        });
-                    } else {
-                        const existing = allUsersMap.get(key);
-                        existing.isOnline = existing.isOnline || isOnline;
-                        if (lastActive > (existing.lastActiveAt || 0)) {
-                            existing.lastActiveAt = lastActive;
-                        }
-                    }
+                    allUsersMap.set(mapKey, {
+                        _id: `school_${school}_${u.id}`,
+                        id: u.id,
+                        username: u.username,
+                        name: u.fullName || u.username,
+                        role: u.role || 'USER',
+                        plan: 'campus',
+                        school: school,
+                        isOnline,
+                        lastActiveAt: lastActive,
+                        lastIp: session ? session.ip : '',
+                        source: school
+                    });
                 });
             });
         } catch (e) {
@@ -977,7 +973,7 @@ router.post('/master/users/:id/plan', isMasterAuth, async (req, res) => {
 
     try {
         const expiresAt = subscriptionExpiresAt ? parseInt(subscriptionExpiresAt) : 0;
-        const quotaLimit = 240 * 1024 * 1024;
+        const quotaLimit = 100 * 1024 * 1024;
 
         await db.update(
             { _id: req.params.id },
@@ -1059,7 +1055,7 @@ const handleGetMasterStats = async (req, res) => {
             totalStorageMB: (totalStorageBytes / 1024 / 1024).toFixed(2),
             uptimeSeconds: Math.floor(process.uptime()),
             masterUser: (process.env.SUPER_ADMIN_USER || 'master'),
-            quotaLimitMB: 240,
+            quotaLimitMB: 100,
             cpuUsage: cpuPercent,
             cpuCores: cpus.length,
             cpuModel: cpus[0]?.model ? cpus[0].model.trim() : 'Standard System CPU',
@@ -1084,7 +1080,7 @@ const handleGetMasterStats = async (req, res) => {
             totalStorageMB: "0.00",
             uptimeSeconds: Math.floor(process.uptime()),
             masterUser: (process.env.SUPER_ADMIN_USER || 'master'),
-            quotaLimitMB: 240,
+            quotaLimitMB: 100,
             cpuUsage: 0,
             cpuCores: 1,
             cpuModel: 'System CPU',
@@ -1179,7 +1175,7 @@ const handleMasterBlogMutation = async (req, res) => {
         logServerEvent('warning', `Master deleted blog ID: ${blogId}`);
         return res.json({ success: true, message: "Blog post deleted successfully" });
     }
-    
+
     if (req.method === 'POST' || req.method === 'PUT') {
         const { title, category, tag, author, authorAvatar, date, imageUrl, excerpt, summary, content, slug } = req.body;
         const targetId = blogId || `blog_${Date.now()}`;
@@ -1670,7 +1666,7 @@ router.post('/logout', (req, res) => {
 router.post('/forgot/question', forgotLimiter, async (req, res) => {
     let body = req.body || {};
     if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch (e) {}
+        try { body = JSON.parse(body); } catch (e) { }
     }
     const input = body.usernameOrEmail || body.username || body.email;
     if (!input) return res.status(400).json({ error: "Username or email is required" });
@@ -1787,7 +1783,7 @@ async function getUserBackupDir(req) {
                 }
             }
         }
-    } catch (_) {}
+    } catch (_) { }
     return primaryDir;
 }
 
@@ -1811,8 +1807,8 @@ router.get('/info', isAuthenticated, async (req, res) => {
             totalBackups: count,
             sizeMB: sizeMBVal,
             storageUsedMB: sizeMBVal,
-            quotaMB: 240,
-            quotaLimitMB: 240
+            quotaMB: 100,
+            quotaLimitMB: 100
         });
     } catch (e) {
         res.status(500).json({ error: "Failed to calculate storage info" });
@@ -1984,7 +1980,7 @@ router.get('/profile/security-question', isAuthenticated, async (req, res) => {
 router.post('/profile/security', isAuthenticated, async (req, res) => {
     let body = req.body || {};
     if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch (e) {}
+        try { body = JSON.parse(body); } catch (e) { }
     }
 
     const question = body.question || body.securityQuestion || body.secQuestion || body.security_question;
