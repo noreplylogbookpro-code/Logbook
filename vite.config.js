@@ -82,7 +82,7 @@ function serveAssetsPlugin() {
   };
 }
 
-module.exports = defineConfig({
+export default defineConfig({
   publicDir: false,
   plugins: [react(), cleanDistAssets(), copyMasterHtml(), serveAssetsPlugin()],
   server: {
