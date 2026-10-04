@@ -1,7 +1,7 @@
-const { defineConfig } = require('vite');
-const react = require('@vitejs/plugin-react');
-const fs = require('fs');
-const path = require('path');
+const { defineConfig } = from 'vite';
+const react = from '@vitejs/plugin-react';
+const fs = from 'fs';
+const path = from 'path';
 
 // Plugin: after every build, copy public/index.html → public/master/index.html
 // so the master.* subdomain always has the correct asset hashes.
