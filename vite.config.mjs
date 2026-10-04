@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { cloudflare } from '@cloudflare/vite-plugin';
 import fs from 'fs';
 import path from 'path';
 
@@ -59,7 +60,7 @@ function serveAssetsPlugin() {
 
 export default defineConfig({
   publicDir: false,
-  plugins: [react(), copyMasterHtml(), serveAssetsPlugin()],
+  plugins: [react(),cloudflare(), copyMasterHtml(), serveAssetsPlugin()],
   server: {
     port: 3000,
     watch: {
