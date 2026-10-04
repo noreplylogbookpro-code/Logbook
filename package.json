@@ -1,6 +1,5 @@
 { 
   "version": "2.17.0",
-  
   "scripts": {
     "server": "node server.js",
     "client": "vite --host",
