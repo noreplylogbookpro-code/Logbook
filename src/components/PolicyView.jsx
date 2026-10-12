@@ -149,15 +149,21 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           <p>Thank you for using <strong>Logbook Plus</strong>. We are committed to protecting your privacy and being transparent about how we handle your data.</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>1. Information We Collect</h3>
-          <p><strong>Logbook Plus does not collect, store, transmit, or share any personal data</strong> with the developer or with third parties. The application works entirely offline and does not require an account, login, or internet connection for its core functionality.</p>
-          <p>For users who choose to purchase premium features or subscriptions via the Android app, transaction processing is handled securely by Google Play. We do not collect, store, or have access to your credit card, bank account, or billing details. We only receive purchase verification tokens and transaction IDs from Google Play to unlock paid features on your device.</p>
-          <p>All information you enter in the app (such as expense logs, notes, and attached media) is stored <strong>only on your device or your personal cloud storage</strong> (if you choose to enable encrypted backups).</p>
-
+          <p><strong>Logbook Plus is designed with your privacy in mind.</strong> While the app requires an initial account login or authentication to get started, it operates entirely offline for its core functionality afterward, and we do not track or sell your personal data.</p>
+          <p><strong>Account Information:</strong> When you sign in or create an account, we collect your authentication credentials (such as your email address or user ID) solely for account verification and access management.</p>
+          <p><strong>In-App Purchases:</strong> For users who choose to purchase premium features or subscriptions, transaction processing is handled securely by the app store (such as Google Play). We do not collect, store, or have access to your credit card, bank account, or billing details—we only receive purchase verification tokens and transaction IDs to unlock paid features.</p>
+          <p><strong>Local Data Storage:</strong> All information you enter in the app (such as expense logs, notes, and attached media) is stored <strong>exclusively on your device or your personal cloud storage</strong> (if you choose to enable encrypted backups).</p>
+          
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Data Stored on Your Device</h3>
-          <p>The app stores your data locally in its private storage area. This may include expense log entries, attached images, backup archives, and app settings. Your data is <strong>never uploaded</strong> to our servers or any external service unless you explicitly configure your own cloud destination (e.g., WebDAV, Nextcloud).</p>
+          <p>The app stores your data locally in its private storage area. This may include expense log entries, attached images, backup archives, and app settings. Your core day-to-day data remains on your device and is never uploaded to our servers or any external service unless you explicitly choose to use our cloud backup service (available to premium subscribers) or configure your own external destination (e.g., WebDAV, Nextcloud).</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Backup and Restore</h3>
-          <p>Logbook Plus provides optional backup and restore features so you can protect your data. All backups are encrypted with <strong>AES-256</strong> before leaving your device if you enable encryption. No backup data is ever sent to Logbook Plus infrastructure.</p>
+          <p>Logbook Plus provides flexible backup and restore options depending on your setup:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-2">
+              <li><strong>Cloud Backups (Premium Users):</strong> If you have an active premium plan, you may choose to back up your data to our secure servers. All backups sent to our servers must be protected with an encryption password. </li>
+              <li><strong>Self-Hosted Backups:</strong> Self-hosted users may use their own servers (such as WebDAV or Nextcloud) for backup and restore functions.</li>
+              <li><strong>User Security Responsibility:</strong> You are solely responsible for managing your backup files and passwords. Uploading unencrypted backup files or failing to secure your encryption password may result in data exposure or security breaches, for which you assume full responsibility. No backup data or keys are ever stored on Logbook Plus infrastructure in plaintext.</li>
+          </ul>
         </div>
       )
     },
