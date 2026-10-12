@@ -155,7 +155,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           <p><strong>Local Data Storage:</strong> All information you enter in the app (such as expense logs, notes, and attached media) is stored <strong>exclusively on your device or your personal cloud storage</strong> (if you choose to enable encrypted backups).</p>
           
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Data Stored on Your Device</h3>
-          <p>The app stores your data locally in its private storage area. This may include expense log entries, attached images, backup archives, and app settings. Your core day-to-day data remains on your device and is never uploaded to our servers or any external service unless you explicitly choose to use our cloud backup service (available to premium subscribers) or configure your own external destination (e.g., WebDAV, Nextcloud).</p>
+          <p>The app stores your data locally in its private storage area. This may include expense log entries, attached images, backup archives, and app settings. Your core day-to-day data remains on your device and is never uploaded to our servers or any external service unless you explicitly choose to use our cloud backup service (available to premium subscribers) or configure your own external destination (e.g., WebDAV, Nextcloud available to self-host subscribers).</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Backup and Restore</h3>
           <p>Logbook Plus provides flexible backup and restore options depending on your setup:</p>
