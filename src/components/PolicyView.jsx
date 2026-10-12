@@ -104,17 +104,17 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
       icon: ShieldAlert,
       content: (
         <div className="space-y-6">
-          <p>At <strong>Logbook Plus</strong>, security is built into our core architecture. We employ a <strong>local-first</strong> approach to personal expense tracking and backup logging, ensuring your records never leave your control without your explicit request.</p>
+          <p>At <strong>Logbook Plus</strong>, security is built into our core architecture. While an initial account login is required to get started, we employ a <strong>local-first</strong> approach to personal expense tracking and data management, ensuring your records never leave your control without your explicit request.</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>AES-256 Client-Side Encryption</h3>
-          <p>All database logs and entry photos created within the Logbook Plus app are locally encrypted at rest on your device. We use standard military-grade AES-256 encryption. Your master password/keys are hashed cryptographically and are never transmitted to our servers.</p>
+          <p>All database logs and entry photos created within the Logbook Plus app are locally encrypted at rest on your device using standard military-grade AES-256 encryption. Your authentication credentials and keys are handled securely, and your encryption keys are never transmitted to our servers.</p>
 
-          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>Secure Cloud Backups</h3>
-          <p>If you subscribe to our Cloud Backup API, your backups are encrypted on your local device before transmission. The data remains fully encrypted during transit (TLS 1.3) and is stored in our secure, isolated cloud vault as an opaque, encrypted blob. Since we do not store your private keys, our team cannot read your logs or decrypt your records.</p>
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>Secure Cloud Backups & Self-Hosting</h3>
+          <p>If you have a premium plan and choose to use our cloud backup service, your backups are encrypted on your local device before transmission. The data remains fully encrypted during transit (TLS 1.3) and is stored in our secure, isolated cloud vault. Alternatively, self-hosted users may configure and utilize their own servers (such as WebDAV or Nextcloud) for backup and restore functions.</p>
+          <p><strong>User Responsibility:</strong> You are solely responsible for protecting your backup files and encryption passwords. Uploading unencrypted backup files or failing to secure your password can result in data exposure or a security breach, for which you assume full responsibility. Because client-side encryption is utilized and we do not store your private keys, our team cannot recover your password, read your logs, or decrypt your records if lost.</p>
 
           <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>Reporting Vulnerabilities</h3>
-          <p>We welcome security reports from independent analysts. If you find a potential vulnerability, please reach out to us at: <a href="mailto:support@logbookplus.co.in" className="text-accent-blue hover:underline">support@logbookplus.co.in</a>.</p>
-        </div>
+          <p>We welcome security reports from independent analysts. If you find a potential vulnerability, please reach out to us at: <a href="mailto:support@logbookplus.co.in" className="text-accent-blue hover:underline">support@logbookplus.co.in</a>.</p> </div>
       )
     },
     terms: {
