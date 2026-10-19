@@ -6,7 +6,7 @@ import {
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
-  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff, Code
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff, Code, Megaphone
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
 import ReactMarkdown from 'react-markdown';
@@ -160,6 +160,20 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [changelogDescription, setChangelogDescription] = useState('');
   const [changelogItemsText, setChangelogItemsText] = useState('');
   const [changelogIsMajor, setChangelogIsMajor] = useState(false);
+
+  // Developer Notes Form states
+  const [developerNotes, setDeveloperNotes] = useState([]);
+  const [devNoteLoading, setDevNoteLoading] = useState(false);
+  const [selectedNoteId, setSelectedNoteId] = useState('');
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteMessage, setNoteMessage] = useState('');
+  const [noteDate, setNoteDate] = useState('');
+  const [noteVersion, setNoteVersion] = useState('');
+  const [noteBadge, setNoteBadge] = useState('Announcement');
+  const [noteActionUrl, setNoteActionUrl] = useState('');
+  const [noteActionText, setNoteActionText] = useState('Read More');
+  const [noteIsActive, setNoteIsActive] = useState(true);
+  const [noteMakeExclusive, setNoteMakeExclusive] = useState(true);
 
   // License Form states
   const [licenseeEmail, setLicenseeEmail] = useState('');
@@ -327,6 +341,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       fetchBlogsList();
     } else if (activeTab === 'Changelogs') {
       fetchChangelogsList();
+    } else if (activeTab === 'Developer Notes') {
+      fetchDeveloperNotesList();
     } else if (activeTab === 'Logs') {
       fetchLiveLogs();
       const logsPoller = setInterval(fetchLiveLogs, 2500);
@@ -413,6 +429,20 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         setChangelogs(await res.json());
       }
     } catch { }
+  };
+
+  const fetchDeveloperNotesList = async () => {
+    try {
+      setDevNoteLoading(true);
+      const res = await masterApiCall('/api/admin/developer-notes');
+      if (res.ok) {
+        const data = await res.json();
+        setDeveloperNotes(data.notes || []);
+      }
+    } catch { }
+    finally {
+      setDevNoteLoading(false);
+    }
   };
 
   const fetchRecentLogs = async () => {
@@ -1036,6 +1066,101 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       }
     } catch {
       alert('Failed to delete changelog entry.');
+    }
+  };
+
+  const openNoteEditModal = (note = null) => {
+    setActionError('');
+    setActionSuccess('');
+    if (note) {
+      setSelectedNoteId(note.id || note._id);
+      setNoteTitle(note.title || '');
+      setNoteMessage(note.message || '');
+      setNoteDate(note.date || '');
+      setNoteVersion(note.version || '');
+      setNoteBadge(note.badge || 'Announcement');
+      setNoteActionUrl(note.actionUrl || '');
+      setNoteActionText(note.actionText || 'Read More');
+      setNoteIsActive(note.isActive !== false);
+      setNoteMakeExclusive(false);
+    } else {
+      setSelectedNoteId('');
+      setNoteTitle('');
+      setNoteMessage('');
+      setNoteDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+      setNoteVersion('2.0.20');
+      setNoteBadge('Announcement');
+      setNoteActionUrl('https://logbookplus.co.in/whats-new');
+      setNoteActionText('Read More');
+      setNoteIsActive(true);
+      setNoteMakeExclusive(true);
+    }
+    setActiveModal('editNote');
+  };
+
+  const handleNoteFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setActionError('');
+    try {
+      const payload = {
+        id: selectedNoteId || undefined,
+        title: noteTitle,
+        message: noteMessage,
+        date: noteDate,
+        version: noteVersion,
+        badge: noteBadge,
+        actionUrl: noteActionUrl || null,
+        actionText: noteActionText || (noteActionUrl ? 'Read More' : null),
+        isActive: noteIsActive,
+        makeExclusive: noteMakeExclusive
+      };
+      const url = selectedNoteId
+        ? `/api/admin/developer-note/${encodeURIComponent(selectedNoteId)}`
+        : '/api/admin/developer-note';
+      const method = selectedNoteId ? 'PUT' : 'POST';
+      const res = await masterApiCall(url, {
+        method,
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setActiveModal(null);
+        fetchDeveloperNotesList();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setActionError(err.error || 'Failed to save developer note.');
+      }
+    } catch {
+      setActionError('Network request failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleNote = async (id) => {
+    try {
+      const res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}/toggle`, {
+        method: 'PATCH'
+      });
+      if (res.ok) {
+        fetchDeveloperNotesList();
+      }
+    } catch {
+      alert('Failed to toggle note status.');
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this developer note?')) return;
+    try {
+      const res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchDeveloperNotesList();
+      }
+    } catch {
+      alert('Failed to delete developer note.');
     }
   };
 
@@ -1677,6 +1802,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     { name: 'Subscriptions', icon: CreditCard },
                     { name: 'Blogs', icon: BookOpen },
                     { name: 'Changelogs', icon: ScrollText },
+                    { name: 'Developer Notes', icon: Megaphone },
                     { name: 'Logs', icon: Terminal },
                     { name: 'Settings', icon: Settings },
                   ].map(tab => {
@@ -1748,6 +1874,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
               { name: 'Subscriptions', icon: CreditCard },
               { name: 'Blogs', icon: BookOpen },
               { name: 'Changelogs', icon: ScrollText },
+              { name: 'Developer Notes', icon: Megaphone },
               { name: 'Logs', icon: Terminal },
               { name: 'Settings', icon: Settings },
             ].map(tab => {
@@ -2788,6 +2915,260 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
             </motion.div>
           )}
 
+          {activeTab === 'Developer Notes' && (
+            <motion.div
+              key="Developer Notes"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6 text-left"
+            >
+              {/* Header Card */}
+              <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-accent-purple" />
+                    <h3 className="text-base font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
+                      In-App Developer Notes & Announcements
+                    </h3>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Manage broadcast announcements, release popups, and updates served to the Logbook Plus Android client via <code className="text-accent-blue bg-accent-blue/10 px-1 py-0.5 rounded font-mono">GET /api/developer-note</code>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="/api/developer-note"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-white/10 transition-all flex items-center gap-1.5"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-accent-blue" />
+                    View Live JSON
+                  </a>
+                  <button
+                    onClick={() => openNoteEditModal(null)}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New Announcement
+                  </button>
+                </div>
+              </div>
+
+              {/* Two Column Section: Left = Table, Right = Android Dialog Live Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Notes Table */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-5">
+                    <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">All Announcements</span>
+                        <span className="px-2 py-0.5 bg-accent-purple/10 text-accent-purple text-[11px] font-bold rounded-full">
+                          {developerNotes.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={fetchDeveloperNotesList}
+                        disabled={devNoteLoading}
+                        className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-white flex items-center gap-1 transition"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${devNoteLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </button>
+                    </div>
+
+                    {developerNotes.length === 0 ? (
+                      <div className="py-12 text-center text-zinc-400 space-y-2">
+                        <Megaphone className="w-8 h-8 mx-auto opacity-30" />
+                        <p className="text-sm">No developer notes published yet.</p>
+                        <button
+                          onClick={() => openNoteEditModal(null)}
+                          className="text-xs text-accent-blue hover:underline"
+                        >
+                          Create the first announcement
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {developerNotes.map((note) => {
+                          const isAct = note.isActive !== false;
+                          return (
+                            <div
+                              key={note._id || note.id}
+                              className={`p-3.5 rounded-xl border transition-all ${
+                                isAct
+                                  ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/5'
+                                  : 'border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
+                                        isAct
+                                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                          : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                                      }`}
+                                    >
+                                      {isAct ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-accent-purple/10 text-accent-purple border border-accent-purple/20">
+                                      {note.badge || 'Announcement'}
+                                    </span>
+                                    {note.version && (
+                                      <span className="text-[11px] font-mono text-zinc-400">
+                                        v{note.version}
+                                      </span>
+                                    )}
+                                    <span className="text-[11px] text-zinc-400">{note.date}</span>
+                                  </div>
+                                  <h4 className="font-bold text-zinc-800 dark:text-white text-sm">
+                                    {note.title}
+                                  </h4>
+                                  <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">
+                                    {note.message}
+                                  </p>
+                                  {note.actionUrl && (
+                                    <div className="pt-1">
+                                      <a
+                                        href={note.actionUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[11px] text-accent-blue hover:underline font-semibold flex items-center gap-1"
+                                      >
+                                        <span>Link:</span> {note.actionText || 'Read More'} &rarr;
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleToggleNote(note.id || note._id)}
+                                    className={`px-2 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${
+                                      isAct
+                                        ? 'bg-zinc-200 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-700 dark:text-zinc-300 border-transparent'
+                                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
+                                    }`}
+                                    title={isAct ? 'Deactivate note' : 'Activate note'}
+                                  >
+                                    {isAct ? 'Deactivate' : 'Activate'}
+                                  </button>
+                                  <button
+                                    onClick={() => openNoteEditModal(note)}
+                                    className="px-2 py-1 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-semibold rounded-lg border border-accent-blue/20 transition cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(note.id || note._id)}
+                                    className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border border-red-500/20 transition cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Android App Dialog Mockup Preview */}
+                <div className="lg:col-span-5 space-y-3">
+                  <div className="card-unified bg-white dark:bg-zinc-950/50 border border-zinc-200 dark:border-white/5 p-4 sm:p-5">
+                    <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-2 mb-3">
+                      <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">
+                        Android In-App Dialog Preview
+                      </span>
+                      <span className="text-[11px] font-mono text-accent-purple bg-accent-purple/10 px-2 py-0.5 rounded">
+                        Pixel 9 Pro View
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const activeNote = developerNotes.find(n => n.isActive !== false) || developerNotes[0];
+                      if (!activeNote) {
+                        return (
+                          <div className="py-16 text-center text-zinc-400 text-xs">
+                            No active note available to preview.
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="mx-auto max-w-[340px] rounded-3xl p-3 bg-zinc-900 border-4 border-zinc-700 shadow-2xl space-y-3 text-white">
+                          {/* Mock Phone Status Bar */}
+                          <div className="flex justify-between items-center text-[10px] text-zinc-400 px-2 pt-1 font-mono">
+                            <span>09:41</span>
+                            <div className="flex items-center gap-1.5">
+                              <Wifi className="w-3 h-3" />
+                              <span>5G</span>
+                              <span>100%</span>
+                            </div>
+                          </div>
+
+                          {/* Dialog Card Mockup */}
+                          <div className="bg-zinc-950 rounded-2xl border border-white/10 p-4 space-y-3 shadow-inner">
+                            <div className="flex items-center justify-between">
+                              <span className="px-2.5 py-0.5 bg-accent-purple/20 text-accent-purple text-[10px] font-bold rounded-full uppercase tracking-wider border border-accent-purple/30">
+                                {activeNote.badge || 'Developer Note'}
+                              </span>
+                              <span className="text-[10px] text-zinc-500 font-mono">
+                                {activeNote.version ? `v${activeNote.version}` : activeNote.date}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-bold text-white leading-snug">
+                                {activeNote.title}
+                              </h4>
+                              <p className="text-[11px] text-zinc-300 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
+                                {activeNote.message}
+                              </p>
+                            </div>
+
+                            {activeNote.date && (
+                              <div className="text-[10px] text-zinc-500">
+                                Posted on {activeNote.date}
+                              </div>
+                            )}
+
+                            <div className="pt-2 flex items-center justify-end gap-2 border-t border-white/5">
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 text-[11px] text-zinc-400 hover:text-white font-medium"
+                              >
+                                Dismiss
+                              </button>
+                              {activeNote.actionUrl && (
+                                <a
+                                  href={activeNote.actionUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-3 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-[11px] font-bold rounded-lg shadow"
+                                >
+                                  {activeNote.actionText || 'Read More'}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-center text-[10px] text-zinc-500 pb-1">
+                            Matches <code className="text-zinc-400">DeveloperNoteDialog.kt</code>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'Logs' && (
             <motion.div
               key="Logs"
@@ -3571,6 +3952,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   {activeModal === 'editPlan' && 'Edit User Plan'}
                   {activeModal === 'editBlog' && (selectedBlogId ? 'Edit Blog Post' : 'Create Blog Post')}
                   {activeModal === 'editChangelog' && (selectedChangelogId ? 'Edit Release Note' : 'Create Release Note')}
+                  {activeModal === 'editNote' && (selectedNoteId ? 'Edit Developer Note' : 'Create Developer Note')}
                   {activeModal === 'editProfile' && 'Edit Master Profile'}
                   {activeModal === 'changePwd' && 'Change Master Password'}
                   {activeModal === 'mfaSetup' && 'Configure 2FA Authenticator'}
@@ -3794,6 +4176,137 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5"
                     >
                       {selectedChangelogId ? 'Update Release' : 'Publish Release'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* EDIT DEVELOPER NOTE MODAL CONTENT */}
+              {activeModal === 'editNote' && (
+                <form onSubmit={handleNoteFormSubmit} className="space-y-4 overflow-y-auto max-h-[75vh] pr-1 text-left">
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={noteTitle}
+                      onChange={(e) => setNoteTitle(e.target.value)}
+                      placeholder="Welcome to Logbook Plus v2.0!"
+                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Badge Text</label>
+                      <input
+                        type="text"
+                        value={noteBadge}
+                        onChange={(e) => setNoteBadge(e.target.value)}
+                        placeholder="Announcement"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Target App Version</label>
+                      <input
+                        type="text"
+                        value={noteVersion}
+                        onChange={(e) => setNoteVersion(e.target.value)}
+                        placeholder="2.0.20 (optional)"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Display Date</label>
+                    <input
+                      type="text"
+                      value={noteDate}
+                      onChange={(e) => setNoteDate(e.target.value)}
+                      placeholder="Oct 19, 2026"
+                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Announcement Message *</label>
+                    <textarea
+                      required
+                      rows={5}
+                      value={noteMessage}
+                      onChange={(e) => setNoteMessage(e.target.value)}
+                      placeholder="Enter the full message to display in the Android dialog..."
+                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button URL</label>
+                      <input
+                        type="url"
+                        value={noteActionUrl}
+                        onChange={(e) => setNoteActionUrl(e.target.value)}
+                        placeholder="https://logbookplus.co.in/whats-new"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button Label</label>
+                      <input
+                        type="text"
+                        value={noteActionText}
+                        onChange={(e) => setNoteActionText(e.target.value)}
+                        placeholder="Read More"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/5 space-y-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={noteIsActive}
+                        onChange={(e) => setNoteIsActive(e.target.checked)}
+                        className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple"
+                      />
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                        Mark Note as Active (Served to mobile app)
+                      </span>
+                    </label>
+
+                    {noteIsActive && !selectedNoteId && (
+                      <label className="flex items-center gap-2.5 cursor-pointer pl-6">
+                        <input
+                          type="checkbox"
+                          checked={noteMakeExclusive}
+                          onChange={(e) => setNoteMakeExclusive(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-accent-purple focus:ring-accent-purple"
+                        />
+                        <span className="text-[11px] text-zinc-500">
+                          Deactivate other active notes so this note is exclusively served
+                        </span>
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveModal(null)}
+                      className="w-1/2 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5 text-xs font-bold"
+                    >
+                      {selectedNoteId ? 'Update Note' : 'Publish Note'}
                     </button>
                   </div>
                 </form>

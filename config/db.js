@@ -229,6 +229,7 @@ const changelogDb = new JsonStore(process.env.CHANGELOG_DB || 'database/server_c
 const licensesDb = new JsonStore(process.env.LICENSES_DB || 'database/server_licenses.json');
 const twoFactorDb = new JsonStore(process.env.TWOFACTOR_DB || 'database/server_2fa.json');
 const blogsDb = new JsonStore(process.env.BLOGS_DB || process.env.BLOGS_DB_JSON || 'database/server_blogs.json');
+const developerNotesDb = new JsonStore(process.env.DEVELOPER_NOTES_DB || 'database/server_developer_notes.json');
 
 // Export primary stores
 module.exports = {
@@ -238,5 +239,6 @@ module.exports = {
     changelogDb,
     licensesDb,
     twoFactorDb,
-    blogsDb
+    blogsDb,
+    developerNotesDb
 };

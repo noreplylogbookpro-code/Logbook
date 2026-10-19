@@ -13,7 +13,7 @@ const { google } = require('googleapis');
 require('dotenv').config({ quiet: true });
 
 // Custom encapsulated modules
-const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb } = require('./config/db');
+const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb, developerNotesDb } = require('./config/db');
 const { JWT_SECRET, isAuthenticated, isMasterAuth } = require('./middleware/auth');
 const { logServerEvent } = require('./utils/logger');
 const {
@@ -1456,6 +1456,296 @@ router.delete('/master/changelogs/:id', isMasterAuth, async (req, res) => {
         res.status(500).json({ error: "Failed to delete changelog entry" });
     }
 });
+
+// --- Developer Note / Mobile Announcement Management Endpoints ---
+
+/**
+ * Middleware: Admin Authentication for Developer Notes & Administrative Tools
+ * Accepts either:
+ * 1. Admin API Key via 'X-Admin-Key', 'X-API-Key', or query parameter '?adminKey=' / '?apiKey='
+ * 2. Bearer JWT Token for Master Admin (isMaster: true) or User with role 'SUPER_ADMIN'/'ADMIN'
+ */
+const isAdminOrMasterAuth = (req, res, next) => {
+    // 1. API Key check
+    const apiKey = req.headers['x-admin-key'] ||
+        req.headers['x-api-key'] ||
+        req.query?.adminKey ||
+        req.query?.apiKey;
+
+    const expectedKey = process.env.ADMIN_API_KEY || process.env.MASTER_PASS;
+    if (apiKey && expectedKey && (apiKey === expectedKey || apiKey === process.env.ADMIN_API_KEY)) {
+        req.isAdmin = true;
+        return next();
+    }
+
+    // 2. JWT Bearer token check
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            if (decoded && (decoded.isMaster || decoded.role === 'SUPER_ADMIN' || decoded.role === 'ADMIN')) {
+                req.tokenPayload = decoded;
+                req.isAdmin = true;
+                return next();
+            }
+        } catch (e) {
+            // Token invalid or expired
+        }
+    }
+
+    return res.status(401).json({
+        error: "Admin authentication required. Provide a valid Bearer token or X-Admin-Key header."
+    });
+};
+
+/**
+ * Public Endpoint: GET /api/developer-note
+ * Also aliased at:
+ *   - GET /api/developer-notes/latest
+ *   - GET /api/v1/developer-note
+ * Returns the single latest active developer note/announcement for the Logbook Plus Android client.
+ * Returns HTTP 404 if no active note exists.
+ * Sets Cache-Control: public, max-age=300
+ */
+const handleGetLatestDeveloperNote = async (req, res) => {
+    try {
+        const allNotes = await developerNotesDb.find({});
+        const activeNotes = (allNotes || [])
+            .filter(n => n.isActive === true || n.isActive === 'true' || n.isActive === undefined)
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        if (!activeNotes || activeNotes.length === 0) {
+            res.setHeader('Cache-Control', 'public, max-age=60');
+            return res.status(404).json({
+                error: 'No active developer note found',
+                message: ''
+            });
+        }
+
+        const latest = activeNotes[0];
+        const formattedDate = latest.date || (latest.createdAt
+            ? new Date(latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Recent');
+
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        return res.status(200).json({
+            id: String(latest.id || latest._id),
+            title: latest.title,
+            message: latest.message,
+            date: formattedDate,
+            version: latest.version || null,
+            badge: latest.badge || 'Announcement',
+            actionUrl: latest.actionUrl || null,
+            actionText: latest.actionText || (latest.actionUrl ? 'Read More' : null)
+        });
+    } catch (e) {
+        logServerEvent('critical', `Failed to fetch developer note: ${e.message}`);
+        return res.status(500).json({ error: 'Internal server error while fetching developer note' });
+    }
+};
+
+router.get('/developer-note', handleGetLatestDeveloperNote);
+router.get('/developer-notes/latest', handleGetLatestDeveloperNote);
+router.get('/v1/developer-note', handleGetLatestDeveloperNote);
+
+/**
+ * Admin Endpoint: GET /api/admin/developer-note
+ * Also mounted at /api/admin/developer-notes and /api/master/developer-notes
+ * Returns all developer notes (active and inactive) for admin management
+ */
+const handleListDeveloperNotes = async (req, res) => {
+    try {
+        const notes = (await developerNotesDb.find({}))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        res.json({ success: true, count: notes.length, notes });
+    } catch (e) {
+        logServerEvent('critical', `Failed to list developer notes: ${e.message}`);
+        res.status(500).json({ error: "Failed to load developer notes" });
+    }
+};
+
+router.get('/admin/developer-note', isAdminOrMasterAuth, handleListDeveloperNotes);
+router.get('/admin/developer-notes', isAdminOrMasterAuth, handleListDeveloperNotes);
+router.get('/master/developer-notes', isAdminOrMasterAuth, handleListDeveloperNotes);
+
+/**
+ * Admin Endpoint: POST /api/admin/developer-note
+ * Also mounted at /api/master/developer-note and /api/master/developer-notes
+ * Publish or create a new developer note
+ */
+const handleCreateDeveloperNote = async (req, res) => {
+    const { id, title, message, date, version, badge, actionUrl, actionText, isActive, makeExclusive } = req.body;
+
+    if (!title || !message) {
+        return res.status(400).json({ error: "Title and message are required fields" });
+    }
+
+    try {
+        const now = Date.now();
+        const yyyymmdd = new Date(now).toISOString().slice(0, 10).replace(/-/g, '');
+        const targetId = id ? String(id).trim() : `note_${yyyymmdd}_${Math.random().toString(36).substring(2, 6)}`;
+        const activeState = isActive !== undefined ? (isActive === true || isActive === 'true') : true;
+
+        if (activeState && (makeExclusive === true || makeExclusive === 'true')) {
+            const existingAll = await developerNotesDb.find({});
+            for (const item of existingAll) {
+                if (item.isActive && item._id !== targetId && item.id !== targetId) {
+                    await developerNotesDb.update({ _id: item._id }, { $set: { isActive: false, updatedAt: now } });
+                }
+            }
+        }
+
+        const noteDoc = {
+            _id: targetId,
+            id: targetId,
+            title: String(title).trim(),
+            message: String(message).trim(),
+            date: date ? String(date).trim() : new Date(now).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            version: version ? String(version).trim() : null,
+            badge: badge ? String(badge).trim() : 'Announcement',
+            actionUrl: actionUrl ? String(actionUrl).trim() : null,
+            actionText: actionText ? String(actionText).trim() : (actionUrl ? 'Read More' : null),
+            isActive: activeState,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        if (existing) {
+            noteDoc.createdAt = existing.createdAt || now;
+            await developerNotesDb.update({ $or: [{ _id: targetId }, { id: targetId }] }, { $set: noteDoc }, { upsert: true });
+        } else {
+            await developerNotesDb.insert(noteDoc);
+        }
+
+        developerNotesDb.compactDatafile();
+        logServerEvent('info', `Admin published developer note ID '${targetId}': title='${noteDoc.title}'`);
+        res.status(201).json({ success: true, message: "Developer note saved successfully", note: noteDoc });
+    } catch (e) {
+        logServerEvent('critical', `Failed to create developer note: ${e.message}`);
+        res.status(500).json({ error: "Failed to publish developer note" });
+    }
+};
+
+router.post('/admin/developer-note', isAdminOrMasterAuth, handleCreateDeveloperNote);
+router.post('/admin/developer-notes', isAdminOrMasterAuth, handleCreateDeveloperNote);
+router.post('/master/developer-note', isAdminOrMasterAuth, handleCreateDeveloperNote);
+router.post('/master/developer-notes', isAdminOrMasterAuth, handleCreateDeveloperNote);
+
+/**
+ * Admin Endpoint: PUT /api/admin/developer-note/:id or PUT /api/admin/developer-note
+ * Also mounted at /api/master/developer-notes/:id
+ * Update an existing developer note
+ */
+const handleUpdateDeveloperNote = async (req, res) => {
+    const targetId = req.params.id || req.body?.id || req.body?._id;
+    if (!targetId) {
+        return res.status(400).json({ error: "Developer note ID is required" });
+    }
+
+    try {
+        const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        if (!existing) {
+            return res.status(404).json({ error: `Developer note '${targetId}' not found` });
+        }
+
+        const { title, message, date, version, badge, actionUrl, actionText, isActive, makeExclusive } = req.body;
+        const now = Date.now();
+        const activeState = isActive !== undefined ? (isActive === true || isActive === 'true') : existing.isActive;
+
+        if (activeState && (makeExclusive === true || makeExclusive === 'true')) {
+            const all = await developerNotesDb.find({});
+            for (const item of all) {
+                if (item.isActive && item._id !== existing._id && item.id !== existing.id) {
+                    await developerNotesDb.update({ _id: item._id }, { $set: { isActive: false, updatedAt: now } });
+                }
+            }
+        }
+
+        const updates = { updatedAt: now };
+        if (title !== undefined) updates.title = String(title).trim();
+        if (message !== undefined) updates.message = String(message).trim();
+        if (date !== undefined) updates.date = String(date).trim();
+        if (version !== undefined) updates.version = version ? String(version).trim() : null;
+        if (badge !== undefined) updates.badge = badge ? String(badge).trim() : 'Announcement';
+        if (actionUrl !== undefined) updates.actionUrl = actionUrl ? String(actionUrl).trim() : null;
+        if (actionText !== undefined) updates.actionText = actionText ? String(actionText).trim() : null;
+        if (isActive !== undefined) updates.isActive = activeState;
+
+        await developerNotesDb.update({ $or: [{ _id: targetId }, { id: targetId }] }, { $set: updates });
+        developerNotesDb.compactDatafile();
+
+        const updatedDoc = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        logServerEvent('info', `Admin updated developer note ID '${targetId}'`);
+        res.json({ success: true, message: "Developer note updated successfully", note: updatedDoc });
+    } catch (e) {
+        logServerEvent('critical', `Failed to update developer note: ${e.message}`);
+        res.status(500).json({ error: "Failed to update developer note" });
+    }
+};
+
+router.put('/admin/developer-note', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+router.put('/admin/developer-note/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+router.put('/admin/developer-notes/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+router.put('/master/developer-notes/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+
+/**
+ * Admin Endpoint: PATCH /api/admin/developer-note/:id/toggle or POST /api/admin/developer-note/:id/toggle
+ * Toggle active state of a note
+ */
+const handleToggleDeveloperNote = async (req, res) => {
+    const targetId = req.params.id;
+    if (!targetId) return res.status(400).json({ error: "Note ID is required" });
+
+    try {
+        const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        if (!existing) return res.status(404).json({ error: "Developer note not found" });
+
+        const newState = !existing.isActive;
+        await developerNotesDb.update(
+            { $or: [{ _id: targetId }, { id: targetId }] },
+            { $set: { isActive: newState, updatedAt: Date.now() } }
+        );
+        developerNotesDb.compactDatafile();
+        logServerEvent('info', `Admin toggled developer note ID '${targetId}' to isActive=${newState}`);
+        res.json({ success: true, message: `Developer note is now ${newState ? 'active' : 'inactive'}`, isActive: newState });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to toggle developer note" });
+    }
+};
+
+router.patch('/admin/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+router.post('/admin/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+router.patch('/master/developer-notes/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+router.post('/master/developer-notes/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+
+/**
+ * Admin Endpoint: DELETE /api/admin/developer-note/:id
+ * Also mounted at /api/master/developer-notes/:id
+ * Delete a developer note
+ */
+const handleDeleteDeveloperNote = async (req, res) => {
+    const targetId = req.params.id;
+    if (!targetId) return res.status(400).json({ error: "Note ID is required" });
+
+    try {
+        const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        if (!existing) return res.status(404).json({ error: "Developer note not found" });
+
+        await developerNotesDb.remove({ $or: [{ _id: targetId }, { id: targetId }] }, {});
+        developerNotesDb.compactDatafile();
+        logServerEvent('warning', `Admin deleted developer note ID '${targetId}'`);
+        res.json({ success: true, message: "Developer note deleted successfully" });
+    } catch (e) {
+        logServerEvent('critical', `Failed to delete developer note: ${e.message}`);
+        res.status(500).json({ error: "Failed to delete developer note" });
+    }
+};
+
+router.delete('/admin/developer-note/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
+router.delete('/admin/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
+router.delete('/master/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 
 router.post('/check-email', signupLimiter, async (req, res) => {
     const { email } = req.body;

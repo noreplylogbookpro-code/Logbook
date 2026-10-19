@@ -130,6 +130,51 @@ const API_SECTIONS = [
         ]
       }
     ]
+  },
+  {
+    title: 'Developer Notes & Announcements',
+    id: 'developer-notes',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/api/developer-note',
+        description: 'Fetch the latest active developer note / in-app announcement for the Android client.',
+        requiresAuth: false,
+        responses: [
+          { code: 200, msg: 'Returns latest active note (id, title, message, date, version, badge, actionUrl, actionText).' },
+          { code: 404, msg: 'No active developer note found.' }
+        ]
+      },
+      {
+        method: 'POST',
+        path: '/api/admin/developer-note',
+        description: 'Publish or update an in-app developer note / announcement (Admin auth via JWT or X-Admin-Key).',
+        requiresAuth: true,
+        bodyParams: [
+          { name: 'title', type: 'string', required: true, desc: 'Headline for the announcement.' },
+          { name: 'message', type: 'string', required: true, desc: 'Full announcement body message.' },
+          { name: 'version', type: 'string', required: false, desc: 'Target app version (e.g. 2.0.20).' },
+          { name: 'badge', type: 'string', required: false, desc: 'Badge text (e.g. Announcement, Maintenance).' },
+          { name: 'actionUrl', type: 'string', required: false, desc: 'Optional button link URL.' },
+          { name: 'actionText', type: 'string', required: false, desc: 'Optional button label (e.g. Read More).' },
+          { name: 'isActive', type: 'boolean', required: false, desc: 'Whether note is active (default: true).' }
+        ],
+        defaultPayload: {
+          title: 'Welcome to Logbook Plus v2.0!',
+          message: 'We have launched brand new Google Play subscription features, cloud sync improvements, and enhanced backup restore capabilities.\n\nThank you for using Logbook Plus!',
+          date: 'Oct 19, 2026',
+          version: '2.0.20',
+          badge: 'Announcement',
+          actionUrl: 'https://logbookplus.co.in/whats-new',
+          actionText: 'Read More',
+          isActive: true
+        },
+        responses: [
+          { code: 201, msg: 'Developer note published successfully.' },
+          { code: 401, msg: 'Admin authentication required.' }
+        ]
+      }
+    ]
   }
 ];
 
