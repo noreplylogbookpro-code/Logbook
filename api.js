@@ -34,6 +34,8 @@ const {
 const { readSubscriptions, writeSubscriptions, SCHOOLS, readUsers, readTickets, getSubscriptionForSchool, readLicenses, writeLicenses } = require('./utils/dbHelper');
 const ticketRoutes = require('./routes/ticketRoutes');
 const helpdeskAuthRoutes = require('./routes/authRoutes');
+const { handleTelegramUpdate, getActiveDeveloperNote } = require('./utils/telegramBotService');
+const { sendOtpEmail, verifySmtpConnection, getSmtpConfig } = require('./utils/emailService');
 
 const MASTER_USER = process.env.MASTER_USER;
 const MASTER_PASS = process.env.MASTER_PASS;
@@ -1821,6 +1823,43 @@ router.delete('/admin/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDev
 router.delete('/master/developer-note/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 router.delete('/master/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 
+/**
+ * Telegram Bot Webhook Endpoint
+ * Allows Telegram Bot to push message updates to the server.
+ * Predefined commands like `/devnote <Title> | <Message>` automatically publish
+ * or update active Developer Notes shown in the app and website.
+ */
+router.post('/telegram/webhook', async (req, res) => {
+    try {
+        const update = req.body;
+        const result = await handleTelegramUpdate(update);
+        return res.status(200).json({ ok: true, result });
+    } catch (err) {
+        logServerEvent('error', `[TELEGRAM BOT] Webhook handling error: ${err.message}`);
+        return res.status(200).json({ ok: true }); // Always return 200 to Telegram
+    }
+});
+
+router.post('/webhook/telegram', async (req, res) => {
+    try {
+        const update = req.body;
+        const result = await handleTelegramUpdate(update);
+        return res.status(200).json({ ok: true, result });
+    } catch (err) {
+        logServerEvent('error', `[TELEGRAM BOT] Webhook handling error: ${err.message}`);
+        return res.status(200).json({ ok: true });
+    }
+});
+
+router.get('/telegram/webhook', async (req, res) => {
+    const activeNote = await getActiveDeveloperNote();
+    res.json({
+        ok: true,
+        service: 'Logbook Plus Telegram Bot Webhook',
+        activeNote: activeNote ? { title: activeNote.title, badge: activeNote.badge, date: activeNote.date } : null
+    });
+});
+
 router.post('/check-email', signupLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email is required" });
@@ -2492,9 +2531,18 @@ function maskEmailAddress(email) {
 }
 
 async function sendDeletionOtpNotification({ email, username, otp }) {
-    // 1. Dispatch alert via Telegram Bot if available
-    const botToken = process.env.DEFAULT_TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID;
+    // 1. Dispatch actual Email via native SMTP transport
+    const emailResult = await sendOtpEmail({
+        to: email,
+        username,
+        otp,
+        maskedEmail: maskEmailAddress(email)
+    });
+
+    // 2. Dispatch alert via Server / DevNote Telegram Bot if available (as backup/security channel)
+    const botToken = (process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || process.env.SERVER_TELEGRAM_BOT_TOKEN || '').trim();
+    const chatId = (process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID || process.env.SERVER_TELEGRAM_BOT_CHAT_ID || '').trim();
+    let telegramSent = false;
     if (botToken && chatId) {
         try {
             const https = require('https');
@@ -2513,8 +2561,16 @@ async function sendDeletionOtpNotification({ email, username, otp }) {
             req.on('error', () => { });
             req.write(payload);
             req.end();
+            telegramSent = true;
         } catch (e) { }
     }
+
+    return {
+        emailDispatched: emailResult.success,
+        emailConfigured: emailResult.configured,
+        error: emailResult.error || null,
+        telegramDispatched: telegramSent
+    };
 }
 
 const handleDeleteAccountRequestOtp = async (req, res) => {
@@ -2540,24 +2596,38 @@ const handleDeleteAccountRequestOtp = async (req, res) => {
             email: user.email
         });
 
-        await sendDeletionOtpNotification({
+        const dispatchResult = await sendDeletionOtpNotification({
             email: user.email,
             username: user.username,
             otp
         });
 
-        logServerEvent('warning', `[ACCOUNT DELETION OTP] OTP verification code generated for user '${user.username}' (${user.email}): ${otp}`);
+        logServerEvent('info', `[ACCOUNT DELETION OTP] Verification code generated for user '${user.username}' (${maskEmailAddress(user.email)}) | Email: ${dispatchResult.emailDispatched ? 'SENT' : (dispatchResult.emailConfigured ? 'FAILED' : 'NOT_CONFIGURED')}`);
+
+        let userMsg = `Verification OTP generated for ${maskEmailAddress(user.email)}.`;
+        if (dispatchResult.emailDispatched) {
+            userMsg = `Verification code sent to ${maskEmailAddress(user.email)}. Please check your inbox and spam folder.`;
+        } else if (!dispatchResult.emailConfigured) {
+            userMsg = `Verification code generated. (Note: Server SMTP is not yet configured in .env).`;
+        } else {
+            userMsg = `Could not deliver email: ${dispatchResult.error || 'SMTP delivery failed'}. Please check your server SMTP settings.`;
+        }
 
         res.json({
             success: true,
-            message: `Verification OTP sent to your registered account (${maskEmailAddress(user.email)}).`,
+            message: userMsg,
             email: maskEmailAddress(user.email),
+            mailStatus: {
+                sent: dispatchResult.emailDispatched,
+                configured: dispatchResult.emailConfigured,
+                error: dispatchResult.error || null,
+                telegramSent: dispatchResult.telegramDispatched
+            },
             requires2FA: has2FA,
             requiresSecurityQuestion: !has2FA && hasSecurityQuestion,
             securityQuestion: (!has2FA && hasSecurityQuestion) ? user.securityQuestion : null,
             requiresPassword: !has2FA && !hasSecurityQuestion,
-            expiresInSeconds: 600,
-            devOtp: (process.env.NODE_ENV !== 'production' || !process.env.SMTP_HOST) ? otp : undefined
+            expiresInSeconds: 600
         });
     } catch (e) {
         logServerEvent('critical', `Failed to initiate account deletion OTP for user ID '${req.userId}': ${e.message}`);
@@ -2653,9 +2723,20 @@ const handleDeleteAccountConfirm = async (req, res) => {
 };
 
 router.post('/user/delete-account/request-otp', isAuthenticated, handleDeleteAccountRequestOtp);
+router.post('/user/delete-account/resend-otp', isAuthenticated, handleDeleteAccountRequestOtp);
 router.post('/user/delete-account/confirm', isAuthenticated, handleDeleteAccountConfirm);
 router.post('/profile/delete-account/request-otp', isAuthenticated, handleDeleteAccountRequestOtp);
+router.post('/profile/delete-account/resend-otp', isAuthenticated, handleDeleteAccountRequestOtp);
 router.post('/profile/delete-account/confirm', isAuthenticated, handleDeleteAccountConfirm);
+
+router.get('/system/email-status', async (req, res) => {
+    const status = await verifySmtpConnection();
+    res.json({
+        success: status.success,
+        configured: status.configured,
+        message: status.message || status.error || (status.configured ? 'Connected' : 'Not configured')
+    });
+});
 
 router.get('/site-settings', async (req, res) => {
     try {
@@ -3286,5 +3367,8 @@ router.post('/master/backup/import', isMasterAuth, backupUpload.single('backup')
         res.status(500).json({ error: 'Backup import failed: ' + e.message });
     }
 });
+
+router.pendingAccountDeletions = pendingAccountDeletions;
+router._getPendingDeletionOtp = (userId) => pendingAccountDeletions.get(userId)?.otp;
 
 module.exports = router;

@@ -23,6 +23,7 @@ const { getSubscriptionForSchool } = require('./utils/dbHelper');
 
 // API Router
 const apiRouter = require('./api');
+const { startTelegramPolling } = require('./utils/telegramBotService');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -317,5 +318,9 @@ app.listen(PORT, '0.0.0.0', async () => {
     const restored = await initSessionsFromLogs(logsDb);
     if (restored > 0) {
         logServerEvent('info', `Restored ${restored} online user session(s) from server logs.`);
+    }
+
+    if (process.env.ENABLE_TELEGRAM_BOT_POLLING === 'true') {
+        startTelegramPolling();
     }
 });

@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity,
-  Copy, Check, Unlock, Upload, FileKey, Eye, EyeOff, Mail
+  Copy, Check, Unlock, Upload, FileKey, Eye, EyeOff, Mail,
+  RefreshCw, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 import CustomSelect from './DropdownMenu.jsx';
@@ -112,6 +113,19 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
   const [deleteError, setDeleteError] = useState('');
   const [deleteSuccess, setDeleteSuccess] = useState('');
 
+  // Resend OTP & Mail Delivery Diagnostics States
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendStatus, setResendStatus] = useState(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
+
   const initiateDeleteAccount = () => {
     setDeleteStep('warning');
     setDeleteOtp('');
@@ -120,18 +134,29 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
     setDeletePassword('');
     setDeleteError('');
     setDeleteSuccess('');
+    setResendStatus(null);
+    setResendCooldown(0);
     setActiveModal('deleteAccount');
   };
 
   const handleRequestDeleteOtp = async () => {
     setDeleteLoading(true);
     setDeleteError('');
+    setResendStatus(null);
     try {
       const res = await fetch('/api/user/delete-account/request-otp', {
         method: 'POST',
         headers: getHeaders()
       });
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        if (!res.ok) {
+          setDeleteError(`Server returned status ${res.status}. Please make sure the server process is restarted to load new endpoints.`);
+          return;
+        }
+      }
       if (!res.ok) {
         setDeleteError(data.error || 'Failed to send verification OTP.');
         return;
@@ -141,11 +166,61 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
       setDeleteRequiresSecurityQ(Boolean(data.requiresSecurityQuestion));
       setDeleteSecurityQuestionText(data.securityQuestion || '');
       setDeleteRequiresPassword(Boolean(data.requiresPassword));
+      setResendCooldown(60);
+      if (data.mailStatus) {
+        setResendStatus({
+          sent: Boolean(data.mailStatus.sent),
+          configured: Boolean(data.mailStatus.configured),
+          message: data.mailStatus.sent
+            ? `Verification code dispatched to ${data.email || profile.email}.`
+            : (data.mailStatus.configured
+                ? `Email sending failed: ${data.mailStatus.error || 'SMTP delivery issue'}.`
+                : `Note: SMTP email server is not configured in .env on the server.`)
+        });
+      }
       setDeleteStep('verify');
     } catch (err) {
-      setDeleteError('Network error while requesting verification OTP.');
+      setDeleteError(err.message ? `Network request failed: ${err.message}` : 'Network error while requesting verification OTP.');
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || resendingEmail) return;
+    setResendingEmail(true);
+    setResendStatus(null);
+    try {
+      const res = await fetch('/api/user/delete-account/request-otp', {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        setResendStatus({ sent: false, configured: false, message: `Server error (${res.status}).` });
+        return;
+      }
+      if (!res.ok) {
+        setResendStatus({ sent: false, configured: false, message: data.error || 'Failed to resend email.' });
+        return;
+      }
+      setResendCooldown(60);
+      const isSent = Boolean(data.mailStatus?.sent);
+      setResendStatus({
+        sent: isSent,
+        configured: Boolean(data.mailStatus?.configured),
+        message: isSent
+          ? `Verification email sent successfully to ${deleteMaskedEmail}! Please check your inbox and spam folder.`
+          : (data.mailStatus?.configured
+              ? `Could not deliver email: ${data.mailStatus?.error || 'SMTP delivery failed'}.`
+              : `SMTP email server is not configured in .env on the server.`)
+      });
+    } catch (err) {
+      setResendStatus({ sent: false, configured: false, message: `Network error: ${err.message}` });
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -184,7 +259,15 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
           password: deletePassword
         })
       });
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        if (!res.ok) {
+          setDeleteError(`Server returned status ${res.status}. Please check server logs.`);
+          return;
+        }
+      }
       if (!res.ok) {
         setDeleteError(data.error || 'Failed to delete account.');
         return;
@@ -193,9 +276,9 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
       setTimeout(() => {
         localStorage.removeItem('authToken');
         onNavigate('/app/');
-      }, 1500);
+      }, 2000);
     } catch (err) {
-      setDeleteError('Network error while confirming account deletion.');
+      setDeleteError(err.message ? `Network error: ${err.message}` : 'Network error while deleting account. Please try again.');
     } finally {
       setDeleteLoading(false);
     }
@@ -1704,6 +1787,54 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                           required
                           autoFocus
                         />
+                      </div>
+
+                      {/* Resend Email Action & Mail Check Diagnostics */}
+                      <div className="space-y-2 pt-0.5">
+                        <div className="flex items-center justify-between text-xs px-1">
+                          <span className="text-zinc-500">Didn't receive email?</span>
+                          <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={resendCooldown > 0 || resendingEmail}
+                            className="font-semibold text-accent-blue hover:underline disabled:text-zinc-400 disabled:no-underline flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {resendingEmail ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+                                <span>Verifying & Sending...</span>
+                              </>
+                            ) : resendCooldown > 0 ? (
+                              <span>Resend in {resendCooldown}s</span>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Resend Email (Check)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Mail Delivery Status Check Notice */}
+                        {resendStatus && (
+                          <div className={`p-2.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                            resendStatus.sent
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {resendStatus.sent ? (
+                              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-500" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                            )}
+                            <div className="space-y-0.5">
+                              <span className="font-bold block">
+                                {resendStatus.sent ? 'Email Dispatch Verified' : 'Mail Send Check Notice'}
+                              </span>
+                              <p className="leading-relaxed">{resendStatus.message}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {deleteRequires2FA && (

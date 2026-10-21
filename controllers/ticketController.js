@@ -334,8 +334,12 @@ exports.sendNotification = async (req, res) => {
     let telegramError = null;
     let whatsappError = null;
 
-    const activeTelegramToken = (telegramBotToken && telegramBotToken.trim()) || (process.env.DEFAULT_TELEGRAM_BOT_TOKEN && process.env.DEFAULT_TELEGRAM_BOT_TOKEN.trim());
-    const activeTelegramChatId = (telegramChatId && telegramChatId.trim()) || (process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID && process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID.trim());
+    const activeTelegramToken = (telegramBotToken && telegramBotToken.trim()) ||
+        (process.env.HELPDESK_TELEGRAM_BOT_TOKEN && process.env.HELPDESK_TELEGRAM_BOT_TOKEN.trim()) ||
+        (process.env.DEFAULT_TELEGRAM_BOT_TOKEN && process.env.DEFAULT_TELEGRAM_BOT_TOKEN.trim());
+    const activeTelegramChatId = (telegramChatId && telegramChatId.trim()) ||
+        (process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID && process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID.trim()) ||
+        (process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID && process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID.trim());
 
     const activeWhatsappPhone = (whatsappPhone && whatsappPhone.trim()) || (process.env.DEFAULT_WHATSAPP_PHONE && process.env.DEFAULT_WHATSAPP_PHONE.trim());
     const activeWhatsappApiKey = (whatsappApiKey && whatsappApiKey.trim()) || (process.env.DEFAULT_WHATSAPP_API_KEY && process.env.DEFAULT_WHATSAPP_API_KEY.trim());
@@ -563,8 +567,8 @@ exports.getNotificationDefaults = (req, res) => {
         return res.status(200).json({
             success: true,
             defaults: {
-                telegramBotToken: (process.env.DEFAULT_TELEGRAM_BOT_TOKEN || '').trim(),
-                telegramChatId: (process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID || '').trim(),
+                telegramBotToken: (process.env.HELPDESK_TELEGRAM_BOT_TOKEN || process.env.DEFAULT_TELEGRAM_BOT_TOKEN || '').trim(),
+                telegramChatId: (process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID || process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID || '').trim(),
                 whatsappPhone: (process.env.DEFAULT_WHATSAPP_PHONE || '').trim(),
                 whatsappApiKey: (process.env.DEFAULT_WHATSAPP_API_KEY || '').trim()
             }

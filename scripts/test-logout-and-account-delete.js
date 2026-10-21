@@ -144,9 +144,8 @@ async function runTests() {
                 'Authorization': `Bearer ${user1Token}`
             }
         });
-        data = await res.json();
-        assert(res.status === 200 && data.success === true && !!data.devOtp, 'Request Account Deletion OTP', `(requiresSecurityQ: ${data.requiresSecurityQuestion}, question: "${data.securityQuestion}")`);
-        const deletionOtp1 = data.devOtp;
+        const deletionOtp1 = apiRouter._getPendingDeletionOtp(user1Id);
+        assert(res.status === 200 && data.success === true && !!deletionOtp1, 'Request Account Deletion OTP', `(requiresSecurityQ: ${data.requiresSecurityQuestion}, question: "${data.securityQuestion}")`);
 
         // Try confirm with wrong security answer (should fail 400)
         res = await fetch(`${baseUrl}/user/delete-account/confirm`, {
@@ -277,8 +276,8 @@ async function runTests() {
             headers: { 'Authorization': `Bearer ${user2Token}` }
         });
         data = await res.json();
-        assert(res.status === 200 && data.requires2FA === true, 'Request Deletion OTP reflects requires2FA = true');
-        const deletionOtp2 = data.devOtp;
+        const deletionOtp2 = apiRouter._getPendingDeletionOtp(user2Id);
+        assert(res.status === 200 && data.requires2FA === true && !!deletionOtp2, 'Request Deletion OTP reflects requires2FA = true');
 
         // Confirm deletion with 2FA code
         res = await fetch(`${baseUrl}/user/delete-account/confirm`, {
