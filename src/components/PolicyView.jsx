@@ -4,7 +4,7 @@ import {
   ShieldAlert, BookOpen, Scale, Landmark, RefreshCcw,
   ScrollText, Calendar, ArrowLeft, History, Mail,
   MessageSquare, Bug, Lightbulb, Activity, CheckCircle,
-  Users, Briefcase, FileCode, ChevronDown, Search
+  Users, Briefcase, FileCode, ChevronDown, Search, UserX
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu.jsx';
 import ReactMarkdown from 'react-markdown';
@@ -32,10 +32,12 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     if (cleanPath) {
       const validKeys = [
         'security', 'terms', 'privacy', 'refund', 'cloud-backup-policy',
-        'paid-terms', 'changelog', 'status', 'careers', 'blog',
+        'paid-terms', 'delete-account', 'changelog', 'careers', 'blog',
         'help-center', 'documentation', 'community', 'contact'
       ];
-      if (validKeys.includes(cleanPath)) {
+      if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
+        setActiveDoc('delete-account');
+      } else if (validKeys.includes(cleanPath)) {
         setActiveDoc(cleanPath);
       }
     }
@@ -233,6 +235,74 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         </div>
       )
     },
+    'delete-account': {
+      title: 'Account Deletion Policy',
+      updated: 'October 2026',
+      icon: UserX,
+      content: (
+        <div className="space-y-6">
+          <p>
+            At <strong>Logbook Plus</strong>, we prioritize user autonomy and transparency regarding data retention. In strict compliance with global privacy regulations and Google Play Account Deletion guidelines, we provide users with simple, self-service tools to permanently delete their account and wipe all stored cloud data at any time.
+          </p>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>1. Methods to Request Account Deletion</h3>
+          <p>You can execute or request account deletion through any of the following channels:</p>
+          <ul className="list-disc pl-5 mt-2 space-y-2">
+            <li>
+              <strong>Self-Service via Web Vault Dashboard:</strong> Log in to your vault at <a href="/app/" className="text-accent-blue hover:underline">logbookplus.co.in/app</a>, open the <strong>Account Manager</strong> menu in the navigation bar, and click <strong>Delete Account</strong>.
+            </li>
+            <li>
+              <strong>Self-Service via Android App:</strong> Open Logbook Plus on your device, navigate to <em>Settings → Account Security → Delete Account</em>.
+            </li>
+            <li>
+              <strong>Manual Support Request:</strong> If you no longer have access to the app or device, contact our privacy team at <a href="mailto:support@logbookplus.co.in" className="text-accent-blue hover:underline">support@logbookplus.co.in</a> from your registered email with the subject <em>"Account Deletion Request"</em>. Manual requests are verified and processed within 48 to 72 business hours.
+            </li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Security Verification Steps</h3>
+          <p>
+            To prevent unauthorized account takeovers or accidental data loss, the account deletion procedure requires two-step identity confirmation:
+          </p>
+          <ol className="list-decimal pl-5 mt-2 space-y-2">
+            <li>
+              <strong>Email Verification OTP:</strong> A single-use 6-digit confirmation code is generated and dispatched to your registered account email. This OTP expires after 10 minutes.
+            </li>
+            <li>
+              <strong>Second-Factor Identity Challenge:</strong> Depending on your account security setup, you will be prompted for:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>Your <strong>6-digit Authenticator 2FA code</strong> (if Two-Factor Authentication is active), or</li>
+                <li>Your registered <strong>Security Question Answer</strong> (if 2FA is not active), or</li>
+                <li>Your account <strong>Password</strong> (if recovery questions are not configured).</li>
+              </ul>
+            </li>
+          </ol>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. What Data Is Permanently Purged</h3>
+          <p>Once identity verification succeeds, our system immediately purges the following data from our cloud infrastructure:</p>
+          <ul className="list-disc pl-5 mt-2 space-y-2">
+            <li><strong>Account Identity:</strong> User ID, username, email address, profile avatar, and credentials.</li>
+            <li><strong>Encrypted Vault Backups:</strong> All client-side encrypted backup files (.enc, .zip archives) stored in your cloud storage allocation.</li>
+            <li><strong>Security Keys:</strong> Hashed passwords, encrypted TOTP secrets, sequence counters, and security questions.</li>
+            <li><strong>Active Sessions & Tracking:</strong> Live session tokens, network records, and online activity logs.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>4. Local Device Data</h3>
+          <p>
+            Because Logbook Plus utilizes a <strong>local-first</strong> offline architecture, account deletion purges all cloud-based copies and tokens. Expense records, logs, and receipt images stored locally on your physical smartphone remain on your device until you clear the app storage or uninstall the application.
+          </p>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>5. Retention & Grace Periods</h3>
+          <p>
+            Account deletion is <strong>instantaneous and irreversible</strong>. We maintain zero shadow archives or residual profile snapshots. If you maintain an active Google Play subscription, please cancel it via Google Play Store (under <em>Account → Subscriptions</em>) prior to deleting your account.
+          </p>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>6. Contact & Support</h3>
+          <p>
+            If you have questions regarding this policy or need assistance deleting your account, reach out to: <a href="mailto:support@logbookplus.co.in" className="text-accent-blue hover:underline">support@logbookplus.co.in</a>.
+          </p>
+        </div>
+      )
+    },
     changelog: {
       title: 'Changelog History',
       updated: dynamicChangelogs[0]?.date || 'Latest Releases',
@@ -277,36 +347,6 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
               </ul>
             </div>
           )}
-        </div>
-      )
-    },
-    status: {
-      title: 'Systems Status',
-      updated: 'Live Uptime',
-      icon: Activity,
-      content: (
-        <div className="space-y-6">
-          <p>We monitor systems around the clock to ensure reliable encrypted backup synchronizations.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { name: 'Cloud Backup Relay', status: 'Operational', uptime: '99.98%' },
-              { name: 'License Validation API', status: 'Operational', uptime: '100.00%' },
-              { name: 'Secure SQLite Vaults', status: 'Operational', uptime: '99.99%' },
-              { name: 'WebDAV Sync Gateway', status: 'Operational', uptime: '99.95%' },
-            ].map((node) => (
-              <div key={node.name} className="p-4 rounded-xl flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                <span className="text-md font-mono font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{node.name}</span>
-
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {node.status}
-                  </span>
-                  <span className="text-sm text-emerald-400 font-mono">{node.uptime} Uptime</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )
     },

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Server, FolderOpen, Trash2, Download, AlertTriangle,
   User, Key, ShieldAlert, CreditCard, LogOut, X, ChevronDown, Activity,
-  Copy, Check, Unlock, Upload, FileKey, Eye, EyeOff
+  Copy, Check, Unlock, Upload, FileKey, Eye, EyeOff, Mail
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 import CustomSelect from './DropdownMenu.jsx';
@@ -96,6 +96,110 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
   const [decrypting, setDecrypting] = useState(false);
   const [decryptError, setDecryptError] = useState('');
   const [decryptSuccess, setDecryptSuccess] = useState('');
+
+  // Account Deletion States
+  const [deleteStep, setDeleteStep] = useState('warning'); // 'warning' | 'verify'
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [deleteTwoFactorCode, setDeleteTwoFactorCode] = useState('');
+  const [deleteSecurityAnswer, setDeleteSecurityAnswer] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteRequires2FA, setDeleteRequires2FA] = useState(false);
+  const [deleteRequiresSecurityQ, setDeleteRequiresSecurityQ] = useState(false);
+  const [deleteSecurityQuestionText, setDeleteSecurityQuestionText] = useState('');
+  const [deleteRequiresPassword, setDeleteRequiresPassword] = useState(false);
+  const [deleteMaskedEmail, setDeleteMaskedEmail] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
+
+  const initiateDeleteAccount = () => {
+    setDeleteStep('warning');
+    setDeleteOtp('');
+    setDeleteTwoFactorCode('');
+    setDeleteSecurityAnswer('');
+    setDeletePassword('');
+    setDeleteError('');
+    setDeleteSuccess('');
+    setActiveModal('deleteAccount');
+  };
+
+  const handleRequestDeleteOtp = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/user/delete-account/request-otp', {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.error || 'Failed to send verification OTP.');
+        return;
+      }
+      setDeleteMaskedEmail(data.email || profile.email || 'your registered email');
+      setDeleteRequires2FA(Boolean(data.requires2FA));
+      setDeleteRequiresSecurityQ(Boolean(data.requiresSecurityQuestion));
+      setDeleteSecurityQuestionText(data.securityQuestion || '');
+      setDeleteRequiresPassword(Boolean(data.requiresPassword));
+      setDeleteStep('verify');
+    } catch (err) {
+      setDeleteError('Network error while requesting verification OTP.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleConfirmDeleteAccount = async (e) => {
+    if (e) e.preventDefault();
+    if (!deleteOtp || deleteOtp.trim().length !== 6) {
+      setDeleteError('Please enter the 6-digit OTP code sent to your email.');
+      return;
+    }
+    if (deleteRequires2FA && (!deleteTwoFactorCode || deleteTwoFactorCode.trim().length !== 6)) {
+      setDeleteError('Please enter your 6-digit 2FA authenticator code.');
+      return;
+    }
+    if (deleteRequiresSecurityQ && !deleteSecurityAnswer.trim()) {
+      setDeleteError('Please enter the answer to your security question.');
+      return;
+    }
+    if (deleteRequiresPassword && !deletePassword) {
+      setDeleteError('Please enter your account password.');
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/user/delete-account/confirm', {
+        method: 'POST',
+        headers: {
+          ...getHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          otp: deleteOtp.trim(),
+          twoFactorCode: deleteTwoFactorCode.trim(),
+          securityAnswer: deleteSecurityAnswer.trim(),
+          password: deletePassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.error || 'Failed to delete account.');
+        return;
+      }
+      setDeleteSuccess(data.message || 'Account successfully deleted.');
+      setTimeout(() => {
+        localStorage.removeItem('authToken');
+        onNavigate('/app/');
+      }, 1500);
+    } catch (err) {
+      setDeleteError('Network error while confirming account deletion.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const copyMfaSecret = (text) => {
     if (!text) return;
@@ -792,10 +896,21 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                     <div className="h-[1px] bg-zinc-200 dark:bg-white/5 my-1" />
                     <button
                       onClick={() => {
+                        initiateDeleteAccount();
+                        setMenuOpen(false);
+                        window.dispatchEvent(new Event('closeMobileMenu'));
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 dark:hover:bg-rose-500/20 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-500" />
+                      Delete Account
+                    </button>
+                    <button
+                      onClick={() => {
                         handleLogout();
                         window.dispatchEvent(new Event('closeMobileMenu'));
                       }}
-                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       {t('logoutSession')}
@@ -988,6 +1103,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                   {activeModal === 'mfa' && t('modal2faSettings')}
                   {activeModal === 'billing' && t('modalBillingSettings')}
                   {activeModal === 'decrypt' && 'Decrypt Backup File (.enc → .zip)'}
+                  {activeModal === 'deleteAccount' && 'Permanently Delete Account'}
                 </h3>
                 <button
                   onClick={() => { setActiveModal(null); setActionError(''); setActionSuccess(''); }}
@@ -1507,6 +1623,180 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* DELETE ACCOUNT MODAL CONTENT */}
+              {activeModal === 'deleteAccount' && (
+                <div className="space-y-4">
+                  {deleteStep === 'warning' ? (
+                    <div className="space-y-4 text-left">
+                      <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 dark:text-red-400 text-xs flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
+                        <div className="space-y-1">
+                          <p className="font-bold text-sm">Irreversible Permanent Deletion</p>
+                          <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                            Deleting your account will permanently wipe your vault credentials, encryption keys, and all cloud backups. This action cannot be undone.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/5 space-y-1 text-xs">
+                        <span className="text-zinc-500 font-semibold block">Registered Account Email:</span>
+                        <span className="font-mono font-bold text-zinc-900 dark:text-white break-all">{profile.email || 'Your account email'}</span>
+                        <p className="text-[11px] text-zinc-500 mt-1">
+                          We will send a 6-digit confirmation OTP to your registered email to verify ownership before account deletion.
+                        </p>
+                      </div>
+
+                      {deleteError && (
+                        <div className="p-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold text-center">
+                          {deleteError}
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveModal(null)}
+                          className="w-1/2 btn-secondary-unified"
+                        >
+                          {t('cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRequestDeleteOtp}
+                          disabled={deleteLoading}
+                          className="w-1/2 btn-danger-unified flex items-center justify-center gap-2"
+                        >
+                          {deleteLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Sending OTP...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4" />
+                              <span>Send Verification OTP</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleConfirmDeleteAccount} className="space-y-4 text-left">
+                      <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/5 text-xs space-y-1">
+                        <span className="text-zinc-500 font-semibold block">OTP Sent To:</span>
+                        <span className="font-mono font-bold text-zinc-900 dark:text-white">{deleteMaskedEmail}</span>
+                        <p className="text-[11px] text-zinc-500">
+                          Enter the 6-digit email OTP and verify your identity {deleteRequires2FA ? 'using your 2FA authenticator' : deleteRequiresSecurityQ ? 'using your security question' : 'using your account password'}.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Email Verification OTP *</label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={deleteOtp}
+                          onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••••"
+                          className="input-unified font-mono text-center tracking-widest text-lg font-bold"
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      {deleteRequires2FA && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Authenticator 2FA Code *</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={deleteTwoFactorCode}
+                              onChange={(e) => setDeleteTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                              placeholder="6-digit 2FA code"
+                              className="input-unified font-mono text-center tracking-widest text-lg font-bold"
+                              required
+                            />
+                            <Shield className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          </div>
+                        </div>
+                      )}
+
+                      {deleteRequiresSecurityQ && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Security Question *</label>
+                          <div className="p-2.5 bg-zinc-100 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                            {deleteSecurityQuestionText}
+                          </div>
+                          <input
+                            type="text"
+                            value={deleteSecurityAnswer}
+                            onChange={(e) => setDeleteSecurityAnswer(e.target.value)}
+                            placeholder="Enter your security answer"
+                            className="input-unified mt-2"
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {deleteRequiresPassword && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase block pl-1">Account Password *</label>
+                          <input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Enter account password"
+                            className="input-unified"
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {deleteError && (
+                        <div className="p-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold text-center">
+                          {deleteError}
+                        </div>
+                      )}
+
+                      {deleteSuccess && (
+                        <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-semibold text-center">
+                          {deleteSuccess}
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep('warning')}
+                          className="w-1/3 btn-secondary-unified"
+                          disabled={deleteLoading}
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={deleteLoading}
+                          className="w-2/3 btn-danger-unified flex items-center justify-center gap-2"
+                        >
+                          {deleteLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Deleting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4" />
+                              <span>Confirm & Delete</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               )}
             </motion.div>
           </div>

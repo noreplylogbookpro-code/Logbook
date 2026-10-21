@@ -7,7 +7,7 @@ require('dotenv').config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 // Custom encapsulated modules
-const { db, twoFactorDb } = require('./config/db');
+const { db, twoFactorDb, logsDb } = require('./config/db');
 const { logServerEvent } = require('./utils/logger');
 const {
     activeUserSessions,
@@ -15,7 +15,9 @@ const {
     networkEndpointStats,
     networkClientIpStats,
     networkMethodStats,
-    recordUserActivity
+    recordUserActivity,
+    markUserOffline,
+    initSessionsFromLogs
 } = require('./utils/serverState');
 const { getSubscriptionForSchool } = require('./utils/dbHelper');
 
@@ -87,12 +89,18 @@ app.use((req, res, next) => {
             console.log(`  User: ${req.body?.username || req.body?.email}`);
         }
 
+        const isLogoutRequest = url.includes('/logout');
         const activeUser = req.tokenPayload?.username || req.headers['x-caller-username'] || req.body?.username || req.query?.username || req.body?.email;
-        if (activeUser && typeof activeUser === 'string' && res.statusCode < 400) {
+        const callerRole = req.headers['x-caller-role'] || req.body?.role || 'USER';
+        const targetSchool = req.headers['x-school-key'] || req.body?.school || 'LOGBOOK';
+
+        if (isLogoutRequest && activeUser && typeof activeUser === 'string') {
+            markUserOffline(activeUser);
+        } else if (activeUser && typeof activeUser === 'string' && res.statusCode < 400 && !isLogoutRequest) {
             recordUserActivity(
                 activeUser,
-                req.headers['x-caller-role'] || req.body?.role || 'USER',
-                req.headers['x-school-key'] || req.body?.school || 'LOGBOOK',
+                callerRole,
+                targetSchool,
                 req.ip
             );
         }
@@ -105,8 +113,12 @@ app.use((req, res, next) => {
                 level = 'warning';
             }
 
-            let msg = `[HTTP] ${req.method} ${url} - ${res.statusCode} (${duration}ms)`;
-            if (req.body && (req.body.username || req.body.email)) {
+            let msg = isLogoutRequest && res.statusCode < 400
+                ? `User logged out: '${activeUser || 'unknown'}'`
+                : `[HTTP] ${req.method} ${url} - ${res.statusCode} (${duration}ms)`;
+            if (!isLogoutRequest && activeUser && typeof activeUser === 'string') {
+                msg += ` (User: ${activeUser})`;
+            } else if (!isLogoutRequest && req.body && (req.body.username || req.body.email)) {
                 msg += ` (User: ${req.body.username || req.body.email})`;
             }
 
@@ -115,7 +127,10 @@ app.use((req, res, next) => {
                 url,
                 status: res.statusCode,
                 durationMs: duration,
-                ip: req.ip
+                ip: req.ip,
+                username: (activeUser && typeof activeUser === 'string') ? activeUser.toLowerCase() : undefined,
+                school: targetSchool,
+                isLogout: isLogoutRequest && res.statusCode < 400
             });
         }
     });
@@ -166,6 +181,11 @@ app.use((req, res, next) => {
     const host = raw.split(':')[0].toLowerCase();
     const url = req.url;
 
+    // Allow HTML page delivery (GET non-API requests) so login UI can load
+    if (req.method === 'GET' && !url.startsWith('/api/')) {
+        return next();
+    }
+
     // Skip guard for main domain, master console, assets, health, and standard SaaS routes
     if (
         !host.startsWith('helpdesk.') &&
@@ -190,7 +210,7 @@ app.use((req, res, next) => {
 
     const targetSchool = req.headers['x-school-key'] || req.query.school || (req.body && req.body.school) || 'NHSST';
 
-    const callerRole = req.headers['x-caller-role'] || '';
+    const callerRole = req.headers['x-caller-role'] || req.query.role || (req.body && req.body.role) || '';
     if (callerRole === 'SUPER_ADMIN') {
         return next();
     }
@@ -294,4 +314,8 @@ async function migrateTwoFactorSecrets() {
 app.listen(PORT, '0.0.0.0', async () => {
     logServerEvent('info', `Server started successfully and running at http://localhost:${PORT}`);
     await migrateTwoFactorSecrets();
+    const restored = await initSessionsFromLogs(logsDb);
+    if (restored > 0) {
+        logServerEvent('info', `Restored ${restored} online user session(s) from server logs.`);
+    }
 });

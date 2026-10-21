@@ -6,7 +6,8 @@ import {
   Terminal, Settings, Users, Activity, Plus, Copy, Check, X,
   BookOpen, Clock, RefreshCw, AlertTriangle, Menu, Sun, Moon,
   Download, Upload, HardDrive, FileCheck, FolderArchive, ChevronRight, Info, Search, Filter,
-  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff, Code, Megaphone
+  Cpu, Wifi, ArrowDown, ArrowUp, Maximize2, Minimize2, ScrollText, Eye, EyeOff, Code, Megaphone,
+  Play, Pause
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu';
 import ReactMarkdown from 'react-markdown';
@@ -230,6 +231,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logLevelFilter, setLogLevelFilter] = useState('ALL');
   const [selectedLogDetails, setSelectedLogDetails] = useState(null);
+  const [isLogsPaused, setIsLogsPaused] = useState(false);
 
   // Timers and Refs
   const logsConsoleRef = useRef(null);
@@ -344,23 +346,25 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     } else if (activeTab === 'Developer Notes') {
       fetchDeveloperNotesList();
     } else if (activeTab === 'Logs') {
-      fetchLiveLogs();
-      const logsPoller = setInterval(fetchLiveLogs, 2500);
-      return () => clearInterval(logsPoller);
+      if (!isLogsPaused) {
+        fetchLiveLogs();
+        const logsPoller = setInterval(fetchLiveLogs, 2500);
+        return () => clearInterval(logsPoller);
+      }
     } else if (activeTab === 'Settings') {
       fetchMasterProfile();
       fetchConfig();
     } else if (activeTab === 'Helpdesk' || activeTab === 'Subscriptions' || activeTab === 'Billing') {
       fetchSelfHostSubscriptions();
     }
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab, isAuthenticated, isLogsPaused]);
 
   // Auto-scroll logs console
   useEffect(() => {
-    if (activeTab === 'Logs' && logsConsoleRef.current) {
+    if (activeTab === 'Logs' && logsConsoleRef.current && !isLogsPaused) {
       logsConsoleRef.current.scrollTop = logsConsoleRef.current.scrollHeight;
     }
-  }, [logsList, activeTab]);
+  }, [logsList, activeTab, isLogsPaused]);
 
   // Click outside to close profile dropdown
   useEffect(() => {
@@ -434,8 +438,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const fetchDeveloperNotesList = async () => {
     try {
       setDevNoteLoading(true);
-      const res = await masterApiCall('/api/admin/developer-notes');
-      if (res.ok) {
+      let res = await masterApiCall('/api/master/developer-notes').catch(() => null);
+      if (!res || !res.ok) {
+        res = await masterApiCall('/api/admin/developer-notes').catch(() => null);
+      }
+      if (res && res.ok) {
         const data = await res.json();
         setDeveloperNotes(data.notes || []);
       }
@@ -1103,31 +1110,49 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
     setLoading(true);
     setActionError('');
     try {
+      let formattedUrl = noteActionUrl ? noteActionUrl.trim() : null;
+      if (formattedUrl && !/^https?:\/\//i.test(formattedUrl)) {
+        formattedUrl = 'https://' + formattedUrl;
+      }
+
       const payload = {
         id: selectedNoteId || undefined,
-        title: noteTitle,
-        message: noteMessage,
-        date: noteDate,
-        version: noteVersion,
-        badge: noteBadge,
-        actionUrl: noteActionUrl || null,
-        actionText: noteActionText || (noteActionUrl ? 'Read More' : null),
+        title: (noteTitle || '').trim(),
+        message: (noteMessage || '').trim(),
+        date: (noteDate || '').trim() || undefined,
+        version: noteVersion ? noteVersion.trim() : null,
+        badge: noteBadge ? noteBadge.trim() : 'Announcement',
+        actionUrl: formattedUrl || null,
+        actionText: noteActionText ? noteActionText.trim() : (formattedUrl ? 'Read More' : null),
         isActive: noteIsActive,
         makeExclusive: noteMakeExclusive
       };
-      const url = selectedNoteId
+
+      const masterUrl = selectedNoteId
+        ? `/api/master/developer-note/${encodeURIComponent(selectedNoteId)}`
+        : '/api/master/developer-note';
+      const adminUrl = selectedNoteId
         ? `/api/admin/developer-note/${encodeURIComponent(selectedNoteId)}`
         : '/api/admin/developer-note';
       const method = selectedNoteId ? 'PUT' : 'POST';
-      const res = await masterApiCall(url, {
+
+      let res = await masterApiCall(masterUrl, {
         method,
         body: JSON.stringify(payload)
-      });
-      if (res.ok) {
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        res = await masterApiCall(adminUrl, {
+          method,
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+      }
+
+      if (res && res.ok) {
         setActiveModal(null);
-        fetchDeveloperNotesList();
+        await fetchDeveloperNotesList();
       } else {
-        const err = await res.json().catch(() => ({}));
+        const err = res ? await res.json().catch(() => ({})) : {};
         setActionError(err.error || 'Failed to save developer note.');
       }
     } catch {
@@ -1139,11 +1164,18 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
   const handleToggleNote = async (id) => {
     try {
-      const res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}/toggle`, {
+      let res = await masterApiCall(`/api/master/developer-note/${encodeURIComponent(id)}/toggle`, {
         method: 'PATCH'
-      });
-      if (res.ok) {
+      }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}/toggle`, {
+          method: 'PATCH'
+        }).catch(() => null);
+      }
+      if (res && res.ok) {
         fetchDeveloperNotesList();
+      } else {
+        alert('Failed to toggle note status.');
       }
     } catch {
       alert('Failed to toggle note status.');
@@ -1153,11 +1185,18 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const handleDeleteNote = async (id) => {
     if (!window.confirm('Are you sure you want to delete this developer note?')) return;
     try {
-      const res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}`, {
+      let res = await masterApiCall(`/api/master/developer-note/${encodeURIComponent(id)}`, {
         method: 'DELETE'
-      });
-      if (res.ok) {
+      }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await masterApiCall(`/api/admin/developer-note/${encodeURIComponent(id)}`, {
+          method: 'DELETE'
+        }).catch(() => null);
+      }
+      if (res && res.ok) {
         fetchDeveloperNotesList();
+      } else {
+        alert('Failed to delete developer note.');
       }
     } catch {
       alert('Failed to delete developer note.');
@@ -3189,10 +3228,38 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    Live Polling (2.5s)
-                  </span>
+                  {isLogsPaused ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      Stream Paused
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      Live Polling (2.5s)
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setIsLogsPaused(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      isLogsPaused
+                        ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
+                        : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                    }`}
+                    title={isLogsPaused ? "Resume Live Logs Streaming" : "Pause Live Logs Streaming"}
+                  >
+                    {isLogsPaused ? (
+                      <>
+                        <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        Resume Stream
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3.5 h-3.5 text-zinc-400" />
+                        Pause Stream
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={fetchLiveLogs}
                     className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
@@ -4246,7 +4313,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     <div className="space-y-1">
                       <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button URL</label>
                       <input
-                        type="url"
+                        type="text"
                         value={noteActionUrl}
                         onChange={(e) => setNoteActionUrl(e.target.value)}
                         placeholder="https://logbookplus.co.in/whats-new"

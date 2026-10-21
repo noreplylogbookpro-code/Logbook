@@ -161,7 +161,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     const SCHOOLS = (import.meta.env.VITE_SCHOOLS || 'nhsst,nhisr,nhssr,nhitm,nhssvl,nhssa,nhpsasec19,nhpsasec3,dmce,nhpsp').split(',').map(s => s.trim().toUpperCase());
     const systemThemeObj = useSystemTheme();
     const theme = propTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.theme : systemThemeObj);
-    const toggleTheme = propToggleTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.toggleTheme : () => {});
+    const toggleTheme = propToggleTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.toggleTheme : () => { });
 
     const handleToggleTheme = () => {
         if (typeof toggleTheme === 'function') {
@@ -1372,12 +1372,12 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                             {isLicenseExpired ? (
                                 <>
                                     Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> database has expired.
-                                    Please contact the Master Administrator at master@localhost for license renewal support.
+                                    Please contact the Master Administrator at support@logbookplus.co.in for license renewal support.
                                 </>
                             ) : (
                                 <>
                                     Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> database has been suspended by the Master Administrator.
-                                    If you believe this is an error, please contact master@localhost for licensing inquiries.
+                                    If you believe this is an error, please contact support@logbookplus.co.in for licensing inquiries.
                                 </>
                             )}
                         </p>

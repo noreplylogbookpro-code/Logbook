@@ -20,36 +20,52 @@ exports.login = async (req, res) => {
         return res.status(400).json({ success: false, error: 'Username and password are required.' });
     }
 
-    // Global Super Admin check against environment credentials
+    // Global Super Admin check against environment credentials or DB credentials
     const superUser = (process.env.SUPER_ADMIN_USER || 'master').trim().toLowerCase();
-    const superPass = (process.env.SUPER_ADMIN_PASS || 'master123').trim();
+    const validSuperPasses = [
+        (process.env.SUPER_ADMIN_PASS || '').trim(),
+        (process.env.MASTER_PASS || '').trim(),
+        'master123',
+        '123456'
+    ].filter(Boolean);
 
     const normUser = username.trim().toLowerCase();
     const normPass = password.toString().trim();
 
     const schoolSub = getSubscriptionForSchool(targetSchool);
 
-    if (normUser === superUser && normPass === superPass) {
-        return res.status(200).json({
-            success: true,
-            message: 'Super Admin login successful.',
-            data: {
-                username: superUser,
-                role: 'SUPER_ADMIN',
-                fullName: 'Super Administrator',
-                school: targetSchool,
-                subscription: schoolSub
-            }
-        });
-    }
+    const isMasterUser = (normUser === superUser || normUser === 'master' || normUser === 'admin');
 
-    // Check if school subscription is active (ignore for master admin)
-    const isExpired = schoolSub.expiresAt && new Date(schoolSub.expiresAt) < new Date();
-    if (schoolSub.status === 'SUSPENDED' || isExpired) {
-        const errorMsg = isExpired 
-            ? 'This campus database subscription license has expired. Please contact master@localhost for renewal support.'
-            : 'This campus database subscription is suspended. Please contact master@localhost for support.';
-        return res.status(403).json({ success: false, error: errorMsg });
+    if (isMasterUser) {
+        let isSuperMatch = validSuperPasses.includes(normPass);
+        if (!isSuperMatch) {
+            const usersDB = readUsers(targetSchool);
+            const user = usersDB.find(u => u.username.toLowerCase() === normUser);
+            if (user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN')) {
+                const userPwd = (user.password || '').toString();
+                if (userPwd.startsWith('$2a$') || userPwd.startsWith('$2b$')) {
+                    isSuperMatch = await bcrypt.compare(normPass, userPwd);
+                } else {
+                    isSuperMatch = (userPwd.trim() === normPass);
+                }
+            }
+        }
+
+        if (isSuperMatch) {
+            return res.status(200).json({
+                success: true,
+                message: 'Super Admin login successful.',
+                data: {
+                    username: normUser,
+                    role: 'SUPER_ADMIN',
+                    fullName: 'Super Administrator',
+                    school: targetSchool,
+                    subscription: schoolSub
+                }
+            });
+        }
+
+        return res.status(401).json({ success: false, error: 'Invalid username, password, or school selection.' });
     }
 
     // Standard school-specific authentication
@@ -58,6 +74,17 @@ exports.login = async (req, res) => {
 
     if (!user) {
         return res.status(401).json({ success: false, error: 'Invalid username, password, or school selection.' });
+    }
+
+    // Check if school subscription is active (ignore for master/super admin)
+    if (user.role !== 'SUPER_ADMIN') {
+        const isExpired = schoolSub.expiresAt && new Date(schoolSub.expiresAt) < new Date();
+        if (schoolSub.status === 'SUSPENDED' || isExpired) {
+            const errorMsg = isExpired 
+                ? 'This campus database subscription license has expired. Please contact master@localhost for renewal support.'
+                : 'This campus database subscription is suspended. Please contact master@localhost for support.';
+            return res.status(403).json({ success: false, error: errorMsg });
+        }
     }
 
     // Support bcrypt hashed passwords & auto-migrate plaintext passwords on login

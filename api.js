@@ -24,7 +24,11 @@ const {
     networkClientIpStats,
     networkMethodStats,
     getCpuUsagePercent,
-    recordUserActivity
+    recordUserActivity,
+    extractUserFromLog,
+    markUserOffline,
+    isUserExplicitlyOffline,
+    isLogoutLog
 } = require('./utils/serverState');
 
 const { readSubscriptions, writeSubscriptions, SCHOOLS, readUsers, readTickets, getSubscriptionForSchool, readLicenses, writeLicenses } = require('./utils/dbHelper');
@@ -846,24 +850,67 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
     try {
         const dbUsers = await db.find({ username: { $exists: true } }, { password: 0 });
         const now = Date.now();
-        const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+        const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
+        // Read server logs to check particular user log activity
+        const recentLogs = await logsDb.find({ type: 'server_log' });
+        const userLatestLogMap = new Map();
+        if (Array.isArray(recentLogs)) {
+            for (const log of recentLogs) {
+                const u = extractUserFromLog(log);
+                if (!u) continue;
+                const existing = userLatestLogMap.get(u);
+                const logTime = log.timestamp || 0;
+                const isLogout = isLogoutLog(log);
+                if (!existing || logTime > existing.timestamp) {
+                    userLatestLogMap.set(u, {
+                        timestamp: logTime,
+                        ip: log.metadata?.ip || '',
+                        school: log.metadata?.school || 'LOGBOOK',
+                        isLogout
+                    });
+                }
+            }
+        }
 
         const allUsersMap = new Map();
 
         dbUsers.forEach(u => {
             if (!u.username) return;
             const normalizedUser = u.username.toLowerCase();
-            const sessionKey = `${normalizedUser}@logbook`;
+            const sessionKey = `${normalizedUser}@LOGBOOK`;
             const mapKey = `${normalizedUser}@main_vault`;
-            const session = activeUserSessions.get(sessionKey);
-            const lastActive = session ? session.lastActiveAt : (u.lastActiveAt || u.createdAt || 0);
-            const isOnline = (now - lastActive) < ONLINE_THRESHOLD_MS;
+            let session = activeUserSessions.get(sessionKey) || activeUserSessions.get(`${normalizedUser}@logbook`);
+            const userLog = userLatestLogMap.get(normalizedUser);
+            const isLatestLogout = userLog?.isLogout === true;
+
+            if (isLatestLogout) {
+                activeUserSessions.delete(sessionKey);
+                activeUserSessions.delete(`${normalizedUser}@logbook`);
+                session = null;
+            } else if (!session && userLog) {
+                session = {
+                    username: normalizedUser,
+                    lastActiveAt: userLog.timestamp,
+                    ip: userLog.ip || u.lastIp || '',
+                    school: 'LOGBOOK'
+                };
+                if ((now - userLog.timestamp) < ONLINE_THRESHOLD_MS) {
+                    activeUserSessions.set(sessionKey, session);
+                }
+            }
+
+            const lastActive = session ? session.lastActiveAt : (userLog ? userLog.timestamp : (u.lastActiveAt || u.createdAt || 0));
+            const hasRecentLog = !isLatestLogout && userLog && (now - userLog.timestamp) < ONLINE_THRESHOLD_MS;
+            const isExplicitOffline = isLatestLogout || isUserExplicitlyOffline(normalizedUser, lastActive) || (u.lastLoggedOutAt && u.lastLoggedOutAt >= lastActive);
+            const isOnline = !isExplicitOffline && Boolean((session && (now - session.lastActiveAt) < ONLINE_THRESHOLD_MS) || hasRecentLog);
+
             allUsersMap.set(mapKey, {
                 ...u,
                 name: u.fullName || u.name || u.username,
                 isOnline,
                 lastActiveAt: lastActive,
-                lastIp: session ? session.ip : (u.lastIp || ''),
+                lastIp: session ? session.ip : (userLog ? userLog.ip : (u.lastIp || '')),
                 source: 'Main Vault'
             });
         });
@@ -874,11 +921,33 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
                 schoolUsers.forEach(u => {
                     if (!u.username) return;
                     const normalizedUser = u.username.toLowerCase();
-                    const sessionKey = `${normalizedUser}@${school}`;
-                    const mapKey = `${normalizedUser}@${school}`;
-                    const session = activeUserSessions.get(sessionKey);
-                    const lastActive = session ? session.lastActiveAt : (u.lastActiveAt || 0);
-                    const isOnline = (now - lastActive) < ONLINE_THRESHOLD_MS;
+                    const schoolCode = (school || '').toUpperCase();
+                    const sessionKey = `${normalizedUser}@${schoolCode}`;
+                    const mapKey = `${normalizedUser}@${schoolCode}`;
+                    let session = activeUserSessions.get(sessionKey) || activeUserSessions.get(`${normalizedUser}@${school.toLowerCase()}`);
+                    const userLog = userLatestLogMap.get(normalizedUser);
+                    const isLatestLogout = userLog?.isLogout === true;
+
+                    if (isLatestLogout) {
+                        activeUserSessions.delete(sessionKey);
+                        activeUserSessions.delete(`${normalizedUser}@${school.toLowerCase()}`);
+                        session = null;
+                    } else if (!session && userLog && (userLog.school === school || userLog.school === 'LOGBOOK')) {
+                        session = {
+                            username: normalizedUser,
+                            lastActiveAt: userLog.timestamp,
+                            ip: userLog.ip || '',
+                            school: school
+                        };
+                        if ((now - userLog.timestamp) < ONLINE_THRESHOLD_MS) {
+                            activeUserSessions.set(sessionKey, session);
+                        }
+                    }
+
+                    const lastActive = session ? session.lastActiveAt : (userLog ? userLog.timestamp : (u.lastActiveAt || 0));
+                    const hasRecentLog = !isLatestLogout && userLog && (now - userLog.timestamp) < ONLINE_THRESHOLD_MS;
+                    const isExplicitOffline = isLatestLogout || isUserExplicitlyOffline(normalizedUser, lastActive);
+                    const isOnline = !isExplicitOffline && Boolean((session && (now - session.lastActiveAt) < ONLINE_THRESHOLD_MS) || hasRecentLog);
 
                     allUsersMap.set(mapKey, {
                         _id: `school_${school}_${u.id}`,
@@ -890,7 +959,7 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
                         school: school,
                         isOnline,
                         lastActiveAt: lastActive,
-                        lastIp: session ? session.ip : '',
+                        lastIp: session ? session.ip : (userLog ? userLog.ip : ''),
                         source: school
                     });
                 });
@@ -1614,7 +1683,7 @@ const handleCreateDeveloperNote = async (req, res) => {
         const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
         if (existing) {
             noteDoc.createdAt = existing.createdAt || now;
-            await developerNotesDb.update({ $or: [{ _id: targetId }, { id: targetId }] }, { $set: noteDoc }, { upsert: true });
+            await developerNotesDb.update({ _id: existing._id }, { $set: noteDoc });
         } else {
             await developerNotesDb.insert(noteDoc);
         }
@@ -1673,10 +1742,10 @@ const handleUpdateDeveloperNote = async (req, res) => {
         if (actionText !== undefined) updates.actionText = actionText ? String(actionText).trim() : null;
         if (isActive !== undefined) updates.isActive = activeState;
 
-        await developerNotesDb.update({ $or: [{ _id: targetId }, { id: targetId }] }, { $set: updates });
+        await developerNotesDb.update({ _id: existing._id }, { $set: updates });
         developerNotesDb.compactDatafile();
 
-        const updatedDoc = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
+        const updatedDoc = await developerNotesDb.findOne({ _id: existing._id });
         logServerEvent('info', `Admin updated developer note ID '${targetId}'`);
         res.json({ success: true, message: "Developer note updated successfully", note: updatedDoc });
     } catch (e) {
@@ -1688,6 +1757,8 @@ const handleUpdateDeveloperNote = async (req, res) => {
 router.put('/admin/developer-note', isAdminOrMasterAuth, handleUpdateDeveloperNote);
 router.put('/admin/developer-note/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
 router.put('/admin/developer-notes/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+router.put('/master/developer-note', isAdminOrMasterAuth, handleUpdateDeveloperNote);
+router.put('/master/developer-note/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
 router.put('/master/developer-notes/:id', isAdminOrMasterAuth, handleUpdateDeveloperNote);
 
 /**
@@ -1704,7 +1775,7 @@ const handleToggleDeveloperNote = async (req, res) => {
 
         const newState = !existing.isActive;
         await developerNotesDb.update(
-            { $or: [{ _id: targetId }, { id: targetId }] },
+            { _id: existing._id },
             { $set: { isActive: newState, updatedAt: Date.now() } }
         );
         developerNotesDb.compactDatafile();
@@ -1717,6 +1788,8 @@ const handleToggleDeveloperNote = async (req, res) => {
 
 router.patch('/admin/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
 router.post('/admin/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+router.patch('/master/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
+router.post('/master/developer-note/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
 router.patch('/master/developer-notes/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
 router.post('/master/developer-notes/:id/toggle', isAdminOrMasterAuth, handleToggleDeveloperNote);
 
@@ -1733,7 +1806,7 @@ const handleDeleteDeveloperNote = async (req, res) => {
         const existing = await developerNotesDb.findOne({ $or: [{ _id: targetId }, { id: targetId }] });
         if (!existing) return res.status(404).json({ error: "Developer note not found" });
 
-        await developerNotesDb.remove({ $or: [{ _id: targetId }, { id: targetId }] }, {});
+        await developerNotesDb.remove({ _id: existing._id }, {});
         developerNotesDb.compactDatafile();
         logServerEvent('warning', `Admin deleted developer note ID '${targetId}'`);
         res.json({ success: true, message: "Developer note deleted successfully" });
@@ -1745,6 +1818,7 @@ const handleDeleteDeveloperNote = async (req, res) => {
 
 router.delete('/admin/developer-note/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 router.delete('/admin/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
+router.delete('/master/developer-note/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 router.delete('/master/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDeveloperNote);
 
 router.post('/check-email', signupLimiter, async (req, res) => {
@@ -1845,6 +1919,7 @@ router.post('/signup', signupLimiter, async (req, res) => {
         const inserted = await db.insert(newUser);
         db.compactDatafile();
 
+        recordUserActivity(cleanUsername, 'USER', 'LOGBOOK', req.ip);
         logServerEvent('info', `New user registered successfully: '${cleanUsername}' (${cleanEmail}) from IP: ${req.ip}`);
         const token = jwt.sign({ userId: inserted._id, username: cleanUsername }, JWT_SECRET, { expiresIn: '7d' });
         res.status(201).json({ success: true, token, user: { id: inserted._id, username: cleanUsername, email: cleanEmail, plan: 'unpaid' } });
@@ -1949,8 +2024,43 @@ router.post('/login/verify', mfaLimiter, async (req, res) => {
     }
 });
 
-router.post('/logout', (req, res) => {
-    res.json({ success: true, message: "Logged out successfully" });
+router.post('/logout', async (req, res) => {
+    try {
+        let targetUser = req.body?.username || req.query?.username;
+        let targetUserId = null;
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                if (decoded?.username) targetUser = decoded.username;
+                if (decoded?.userId) targetUserId = decoded.userId;
+            } catch (e) {
+                // Ignore expired/invalid token on logout
+            }
+        }
+
+        if (targetUser && typeof targetUser === 'string') {
+            markUserOffline(targetUser);
+            logServerEvent('info', `User logged out: '${targetUser}' from IP: ${req.ip}`, {
+                username: targetUser.toLowerCase(),
+                isLogout: true,
+                ip: req.ip
+            });
+        }
+
+        if (targetUserId) {
+            await db.update({ _id: targetUserId }, { $set: { isOnline: false, lastLoggedOutAt: Date.now() } });
+            db.compactDatafile();
+        } else if (targetUser) {
+            await db.update({ username: String(targetUser).toLowerCase().trim() }, { $set: { isOnline: false, lastLoggedOutAt: Date.now() } });
+            db.compactDatafile();
+        }
+
+        res.json({ success: true, message: "Logged out successfully" });
+    } catch (err) {
+        res.json({ success: true, message: "Logged out" });
+    }
 });
 
 router.post('/forgot/question', forgotLimiter, async (req, res) => {
@@ -2369,6 +2479,183 @@ router.post('/profile/2fa/disable', isAuthenticated, async (req, res) => {
         res.status(500).json({ error: "Failed to disable 2FA" });
     }
 });
+
+// --- Account Deletion Flow (Email OTP + 2FA or Security Question Verification) ---
+
+const pendingAccountDeletions = new Map();
+
+function maskEmailAddress(email) {
+    if (!email || !email.includes('@')) return email || '';
+    const [name, domain] = email.split('@');
+    if (name.length <= 2) return `${name[0]}*@${domain}`;
+    return `${name[0]}${'*'.repeat(Math.min(Math.max(name.length - 2, 3), 6))}${name[name.length - 1]}@${domain}`;
+}
+
+async function sendDeletionOtpNotification({ email, username, otp }) {
+    // 1. Dispatch alert via Telegram Bot if available
+    const botToken = process.env.DEFAULT_TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID;
+    if (botToken && chatId) {
+        try {
+            const https = require('https');
+            const text = `⚠️ <b>Security Alert: Account Deletion OTP</b>\n\n` +
+                `<b>Account:</b> <code>${username}</code>\n` +
+                `<b>Email:</b> ${email}\n` +
+                `<b>Deletion Code:</b> <code>${otp}</code>\n\n` +
+                `<i>Valid for 10 minutes. If you did not request account deletion, please secure your credentials immediately.</i>`;
+            const payload = JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' });
+            const req = https.request({
+                hostname: 'api.telegram.org',
+                path: `/bot${botToken}/sendMessage`,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+            });
+            req.on('error', () => { });
+            req.write(payload);
+            req.end();
+        } catch (e) { }
+    }
+}
+
+const handleDeleteAccountRequestOtp = async (req, res) => {
+    try {
+        const user = await db.findOne({ _id: req.userId });
+        if (!user) {
+            return res.status(404).json({ error: "User account not found." });
+        }
+
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId });
+        const has2FA = !!(twoFactor && twoFactor.twoFactorEnabled && twoFactor.twoFactorSecret);
+        const hasSecurityQuestion = !!(user.securityQuestion && user.securityAnswer);
+
+        pendingAccountDeletions.set(req.userId, {
+            otp,
+            expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+            attempts: 0,
+            has2FA,
+            hasSecurityQuestion,
+            securityQuestion: (!has2FA && hasSecurityQuestion) ? user.securityQuestion : null,
+            username: user.username,
+            email: user.email
+        });
+
+        await sendDeletionOtpNotification({
+            email: user.email,
+            username: user.username,
+            otp
+        });
+
+        logServerEvent('warning', `[ACCOUNT DELETION OTP] OTP verification code generated for user '${user.username}' (${user.email}): ${otp}`);
+
+        res.json({
+            success: true,
+            message: `Verification OTP sent to your registered account (${maskEmailAddress(user.email)}).`,
+            email: maskEmailAddress(user.email),
+            requires2FA: has2FA,
+            requiresSecurityQuestion: !has2FA && hasSecurityQuestion,
+            securityQuestion: (!has2FA && hasSecurityQuestion) ? user.securityQuestion : null,
+            requiresPassword: !has2FA && !hasSecurityQuestion,
+            expiresInSeconds: 600,
+            devOtp: (process.env.NODE_ENV !== 'production' || !process.env.SMTP_HOST) ? otp : undefined
+        });
+    } catch (e) {
+        logServerEvent('critical', `Failed to initiate account deletion OTP for user ID '${req.userId}': ${e.message}`);
+        res.status(500).json({ error: "Failed to process account deletion request." });
+    }
+};
+
+const handleDeleteAccountConfirm = async (req, res) => {
+    const { otp, twoFactorCode, securityAnswer, password } = req.body;
+
+    if (!otp) {
+        return res.status(400).json({ error: "Email verification OTP code is required." });
+    }
+
+    try {
+        const pending = pendingAccountDeletions.get(req.userId);
+        if (!pending || Date.now() > pending.expiresAt) {
+            return res.status(400).json({ error: "Deletion OTP has expired or was not requested. Please request a new OTP." });
+        }
+
+        pending.attempts = (pending.attempts || 0) + 1;
+        if (pending.attempts > 5) {
+            pendingAccountDeletions.delete(req.userId);
+            return res.status(429).json({ error: "Too many failed attempts. Please request a new OTP." });
+        }
+
+        if (String(otp).trim() !== pending.otp) {
+            return res.status(400).json({ error: "Invalid email verification OTP code." });
+        }
+
+        const user = await db.findOne({ _id: req.userId });
+        if (!user) {
+            return res.status(404).json({ error: "User account not found." });
+        }
+
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId });
+        const has2FA = !!(twoFactor && twoFactor.twoFactorEnabled && twoFactor.twoFactorSecret);
+
+        if (has2FA) {
+            if (!twoFactorCode || String(twoFactorCode).trim().length !== 6) {
+                return res.status(400).json({ error: "6-digit 2FA authenticator verification code is required." });
+            }
+            const matchedCounter = verifyTOTP(String(twoFactorCode).trim(), decryptText(twoFactor.twoFactorSecret));
+            if (matchedCounter === null) {
+                return res.status(400).json({ error: "Invalid 2FA authenticator verification code." });
+            }
+        } else if (user.securityQuestion && user.securityAnswer) {
+            if (!securityAnswer || !String(securityAnswer).trim()) {
+                return res.status(400).json({ error: "Answer to your security question is required." });
+            }
+            const isMatch = await bcrypt.compare(String(securityAnswer).trim().toLowerCase(), user.securityAnswer);
+            if (!isMatch) {
+                return res.status(400).json({ error: "Incorrect answer to your security question." });
+            }
+        } else {
+            if (!password) {
+                return res.status(400).json({ error: "Account password is required for confirmation." });
+            }
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ error: "Incorrect account password." });
+            }
+        }
+
+        // --- Purge User Account and Backups ---
+        pendingAccountDeletions.delete(req.userId);
+
+        const userDir = path.join(__dirname, 'uploads', req.userId);
+        if (await fs.pathExists(userDir)) {
+            await fs.remove(userDir);
+        }
+
+        await twoFactorDb.remove({ _id: req.userId }, {});
+        await db.remove({ _id: req.userId }, {});
+        db.compactDatafile();
+
+        markUserOffline(user.username);
+
+        logServerEvent('critical', `User permanently deleted their account: '${user.username}' (${user.email}) and all cloud data purged from IP: ${req.ip}`, {
+            username: user.username.toLowerCase(),
+            isLogout: true,
+            ip: req.ip
+        });
+
+        res.json({
+            success: true,
+            message: "Your account and all associated encrypted backups have been permanently deleted."
+        });
+    } catch (e) {
+        logServerEvent('critical', `Failed to delete account for user ID '${req.userId}': ${e.message}`);
+        res.status(500).json({ error: "Failed to finalize account deletion." });
+    }
+};
+
+router.post('/user/delete-account/request-otp', isAuthenticated, handleDeleteAccountRequestOtp);
+router.post('/user/delete-account/confirm', isAuthenticated, handleDeleteAccountConfirm);
+router.post('/profile/delete-account/request-otp', isAuthenticated, handleDeleteAccountRequestOtp);
+router.post('/profile/delete-account/confirm', isAuthenticated, handleDeleteAccountConfirm);
 
 router.get('/site-settings', async (req, res) => {
     try {

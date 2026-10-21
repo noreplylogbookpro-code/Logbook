@@ -215,11 +215,11 @@ function AppContent() {
       view = 'dashboard';
     } else if ([
       'security', 'terms', 'privacy', 'refund', 'cloud-backup-policy',
-      'paid-terms', 'changelog', 'status', 'careers', 'blog',
+      'paid-terms', 'delete-account', 'delete-account-policy', 'changelog', 'careers', 'blog',
       'help-center', 'documentation', 'community', 'contact'
     ].includes(cleanPath)) {
       view = 'policy';
-      initialDoc = cleanPath;
+      initialDoc = (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') ? 'delete-account' : cleanPath;
     }
   }
 
@@ -519,7 +519,6 @@ function AppContent() {
                   <li><a href="/help-center/" className="hover:text-accent-cyan transition-colors">{t('helpCenter')}</a></li>
                   <li><a href="/documentation/" className="hover:text-accent-cyan transition-colors">{t('apiDocs')}</a></li>
                   <li><a href="/community/" className="hover:text-accent-cyan transition-colors">{t('discord')}</a></li>
-                  <li><a href="/status/" className="hover:text-accent-cyan transition-colors">{t('status')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
@@ -529,6 +528,7 @@ function AppContent() {
                   <li><a href="/privacy/" className="hover:text-accent-pink transition-colors">{t('privacyPolicy')}</a></li>
                   <li><a href="/refund/" className="hover:text-accent-pink transition-colors">{t('refundPolicy')}</a></li>
                   <li><a href="/cloud-backup-policy/" className="hover:text-accent-pink transition-colors">{t('backupPolicy')}</a></li>
+                  <li><a href="/delete-account/" className="hover:text-accent-pink transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
                 </ul>
               </div>
             </div>

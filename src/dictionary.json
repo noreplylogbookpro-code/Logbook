@@ -79,6 +79,7 @@
     "privacyPolicy": "Privacy Policy",
     "refundPolicy": "Refund Policy",
     "backupPolicy": "Backup Policy",
+    "deleteAccountPolicy": "Delete Account Policy",
     "allRightsReserved": "All rights reserved.",
     "aesProtocol": "AES-256 Private Backup Protocol",
     "heroBadge": "Local-first · Zero vendor lock",
