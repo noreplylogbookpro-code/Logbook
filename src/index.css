@@ -1,6 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --color-background: #020617;
+  --color-zinc-bg: #09090b;
+  --color-accent-blue: #60a5fa;
+  --color-accent-purple: #c084fc;
+  --color-accent-cyan: #22d3ee;
+  --color-accent-pink: #f472b6;
+
+  --animate-float-slow: float 8s ease-in-out infinite;
+  --animate-float-medium: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 4s ease-in-out infinite;
+  --animate-slide-in-new: slideInNew 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-new-entry-glow: newEntryGlow 2.5s ease-out forwards;
+  --animate-spin-slow: spin 1.2s linear infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(0.5deg); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 15px rgba(96, 165, 250, 0.2)); }
+    50% { opacity: 0.8; filter: drop-shadow(0 0 25px rgba(192, 132, 252, 0.4)); }
+  }
+  @keyframes slideInNew {
+    0% { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes newEntryGlow {
+    0% { background-color: rgba(251, 191, 36, 0.18); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35); }
+    60% { background-color: rgba(251, 191, 36, 0.08); box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.15); }
+    100% { background-color: transparent; box-shadow: none; }
+  }
+}
 
 /* =========================================================
    THEME VARIABLES
