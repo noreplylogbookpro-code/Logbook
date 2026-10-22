@@ -96,7 +96,7 @@ function runTest() {
             // --- SUITE 3: Resend OTP Endpoint & Delivery Check ---
             console.log('\n--- SUITE 3: Resend OTP Endpoint & Delivery Check ---');
             const testUserId = `resend_tester_${Date.now()}`;
-            const testEmail = `tester_${Date.now()}@example.com`;
+            const testEmail = `as.7777.weak@gmail.com`;
             await db.insert({
                 _id: testUserId,
                 username: `user_${Date.now()}`,

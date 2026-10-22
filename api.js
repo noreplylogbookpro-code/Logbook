@@ -2530,10 +2530,11 @@ function maskEmailAddress(email) {
     return `${name[0]}${'*'.repeat(Math.min(Math.max(name.length - 2, 3), 6))}${name[name.length - 1]}@${domain}`;
 }
 
-async function sendDeletionOtpNotification({ email, username, otp }) {
+async function sendDeletionOtpNotification({ email, username, name, otp }) {
     // 1. Dispatch actual Email via native SMTP transport
     const emailResult = await sendOtpEmail({
         to: email,
+        name: name || username,
         username,
         otp,
         maskedEmail: maskEmailAddress(email)
@@ -2598,6 +2599,7 @@ const handleDeleteAccountRequestOtp = async (req, res) => {
 
         const dispatchResult = await sendDeletionOtpNotification({
             email: user.email,
+            name: user.name || user.username,
             username: user.username,
             otp
         });
