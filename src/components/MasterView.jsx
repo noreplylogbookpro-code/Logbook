@@ -175,6 +175,17 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const [noteActionText, setNoteActionText] = useState('Read More');
   const [noteIsActive, setNoteIsActive] = useState(true);
   const [noteMakeExclusive, setNoteMakeExclusive] = useState(true);
+  const [isCustomBadge, setIsCustomBadge] = useState(false);
+
+  // Helper date formatters for Developer Notes date picker dialog
+
+
+  const formatInputToDisplayDate = (isoStr) => {
+    if (!isoStr) return '';
+    const [y, m, d] = isoStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   // License Form states
   const [licenseeEmail, setLicenseeEmail] = useState('');
@@ -1079,13 +1090,16 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
   const openNoteEditModal = (note = null) => {
     setActionError('');
     setActionSuccess('');
+    const BADGE_PRESETS = ['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'];
     if (note) {
       setSelectedNoteId(note.id || note._id);
       setNoteTitle(note.title || '');
       setNoteMessage(note.message || '');
       setNoteDate(note.date || '');
       setNoteVersion(note.version || '');
-      setNoteBadge(note.badge || 'Announcement');
+      const currentBadge = note.badge || 'Announcement';
+      setNoteBadge(currentBadge);
+      setIsCustomBadge(!BADGE_PRESETS.includes(currentBadge));
       setNoteActionUrl(note.actionUrl || '');
       setNoteActionText(note.actionText || 'Read More');
       setNoteIsActive(note.isActive !== false);
@@ -1097,6 +1111,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
       setNoteDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
       setNoteVersion('2.0.20');
       setNoteBadge('Announcement');
+      setIsCustomBadge(false);
       setNoteActionUrl('https://logbookplus.co.in/whats-new');
       setNoteActionText('Read More');
       setNoteIsActive(true);
@@ -3035,21 +3050,19 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                           return (
                             <div
                               key={note._id || note.id}
-                              className={`p-3.5 rounded-xl border transition-all ${
-                                isAct
+                              className={`p-3.5 rounded-xl border transition-all ${isAct
                                   ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/5'
                                   : 'border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span
-                                      className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${
-                                        isAct
+                                      className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${isAct
                                           ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                                           : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-                                      }`}
+                                        }`}
                                     >
                                       {isAct ? 'Active' : 'Inactive'}
                                     </span>
@@ -3086,11 +3099,10 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
                                   <button
                                     onClick={() => handleToggleNote(note.id || note._id)}
-                                    className={`px-2 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${
-                                      isAct
+                                    className={`px-2 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${isAct
                                         ? 'bg-zinc-200 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-700 dark:text-zinc-300 border-transparent'
                                         : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
-                                    }`}
+                                      }`}
                                     title={isAct ? 'Deactivate note' : 'Activate note'}
                                   >
                                     {isAct ? 'Deactivate' : 'Activate'}
@@ -3241,11 +3253,10 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   )}
                   <button
                     onClick={() => setIsLogsPaused(prev => !prev)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                      isLogsPaused
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${isLogsPaused
                         ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
                         : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
-                    }`}
+                      }`}
                     title={isLogsPaused ? "Resume Live Logs Streaming" : "Pause Live Logs Streaming"}
                   >
                     {isLogsPaused ? (
@@ -4265,14 +4276,42 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Badge Text</label>
-                      <input
-                        type="text"
-                        value={noteBadge}
-                        onChange={(e) => setNoteBadge(e.target.value)}
-                        placeholder="Announcement"
-                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
-                      />
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Badge</label>
+                      <select
+                        value={['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge) ? noteBadge : 'Custom'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'Custom') {
+                            setIsCustomBadge(true);
+                            if (['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge)) {
+                              setNoteBadge('');
+                            }
+                          } else {
+                            setIsCustomBadge(false);
+                            setNoteBadge(val);
+                          }
+                        }}
+                        className="w-full input-field-unified text-sm px-3 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100"
+                      >
+                        <option value="Announcement">📢 Announcement</option>
+                        <option value="Update">🚀 Update</option>
+                        <option value="Security">🛡️ Security Alert</option>
+                        <option value="Urgent">⚠️ Urgent</option>
+                        <option value="Maintenance">🔧 Maintenance</option>
+                        <option value="Feature">✨ New Feature</option>
+                        <option value="Patch">🩹 Patch</option>
+                        <option value="Custom">✏️ Custom Badge...</option>
+                      </select>
+                      {isCustomBadge && (
+                        <input
+                          type="text"
+                          autoFocus
+                          value={noteBadge}
+                          onChange={(e) => setNoteBadge(e.target.value)}
+                          placeholder="Type custom badge (e.g. Critical)"
+                          className="w-full input-field-unified text-sm px-3.5 py-2 rounded-xl mt-1.5"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Target App Version</label>
@@ -4287,14 +4326,39 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Display Date</label>
-                    <input
-                      type="text"
-                      value={noteDate}
-                      onChange={(e) => setNoteDate(e.target.value)}
-                      placeholder="Oct 19, 2026"
-                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
-                    />
+                    <div className="flex items-center justify-between">
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Display Date</label>
+                      <button
+                        type="button"
+                        onClick={() => setNoteDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}
+                        className="text-[11px] text-accent-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                      >
+                        <Clock className="w-3 h-3" /> Today
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="relative flex items-center">
+                        <Calendar className="w-4 h-4 text-zinc-400 absolute left-3 pointer-events-none" />
+                        <input
+                          type="date"
+                          value={formatDateForInput(noteDate)}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setNoteDate(formatInputToDisplayDate(e.target.value));
+                            }
+                          }}
+                          className="w-full input-field-unified text-sm pl-9 pr-3.5 py-2.5 rounded-xl cursor-pointer"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={noteDate}
+                        onChange={(e) => setNoteDate(e.target.value)}
+                        placeholder="Oct 19, 2026"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                        title="Display text sent to Android & Web Vault"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1">

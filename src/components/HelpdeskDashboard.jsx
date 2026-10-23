@@ -158,7 +158,7 @@ const FLOORS = [
 ];
 
 export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggleTheme: propToggleTheme } = {}) {
-    const SCHOOLS = (import.meta.env.VITE_SCHOOLS || 'nhsst,nhisr,nhssr,nhitm,nhssvl,nhssa,nhpsasec19,nhpsasec3,dmce,nhpsp').split(',').map(s => s.trim().toUpperCase());
+    const SCHOOLS = (import.meta.env.VITE_SCHOOLS).split(',').map(s => s.trim().toUpperCase());
     const systemThemeObj = useSystemTheme();
     const theme = propTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.theme : systemThemeObj);
     const toggleTheme = propToggleTheme || (typeof systemThemeObj === 'object' ? systemThemeObj.toggleTheme : () => { });
@@ -423,7 +423,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                     title: 'Test Bot Alert 🤖',
                     message: `Congratulations! Your IT Helpdesk notification bot integration is working in real time! (Time: ${new Date().toLocaleTimeString()})`,
                     alertType: 'GENERAL',
-                    school: session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school || 'NHSST')
+                    school: session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school)
                 })
             });
             const result = await res.json();
@@ -482,7 +482,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     // Trigger Mobile & Browser Alert Dispatcher
     const triggerNotificationAlert = async (title, message, alertType, ticket) => {
         let mobileAlertSent = false;
-        const activeSchool = session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school || 'NHSST');
+        const activeSchool = session?.role === 'SUPER_ADMIN' ? selectedSchool : (session?.school);
 
         if (settingsForm.telegramEnabled || settingsForm.whatsappEnabled) {
             try {
@@ -686,7 +686,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     // Fetch Dashboard Stats & User Accounts (FULL — shows loading spinner)
     const fetchDashboardData = async () => {
         if (!session) return;
-        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
         try {
             setLoading(true);
             const statsRes = await fetch(`${API_BASE_URL}/tickets/dashboard?username=${session.username}&role=${session.role}`, {
@@ -733,7 +733,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     // Silent background poll — no loading spinner, only animates new entries
     const fetchDashboardDataSilent = async () => {
         if (!session) return;
-        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
         try {
             setIsPolling(true);
             const statsRes = await fetch(`${API_BASE_URL}/tickets/dashboard?username=${session.username}&role=${session.role}`, {
@@ -851,7 +851,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         }
         try {
             setProfileUpdating(true);
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
             const res = await fetch(`${API_BASE_URL}/auth/profile`, {
                 method: 'PUT',
                 headers: {
@@ -939,7 +939,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         e.preventDefault();
         if (!selectedUserToEditBadge) return;
         try {
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
             const res = await fetch(`${API_BASE_URL}/auth/users/${selectedUserToEditBadge.id}/role`, {
                 method: 'PATCH',
                 headers: {
@@ -972,7 +972,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 reportedBy: (session && session.username) || 'anonymous'
             };
 
-            const activeSchool = (session && session.role === 'SUPER_ADMIN') ? selectedSchool : ((session && session.school) || 'NHSST');
+            const activeSchool = (session && session.role === 'SUPER_ADMIN') ? selectedSchool : ((session && session.school));
             const res = await fetch(`${API_BASE_URL}/tickets`, {
                 method: 'POST',
                 headers: {
@@ -1035,7 +1035,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
 
     const executeStatusUpdate = async (id, status, remark) => {
         try {
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
             const res = await fetch(`${API_BASE_URL}/tickets/${id}/status`, {
                 method: 'PATCH',
                 headers: {
@@ -1088,7 +1088,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         if (!adminRemark.trim()) return alert('Please enter technical remarks.');
 
         try {
-            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+            const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
             const res = await fetch(`${API_BASE_URL}/tickets/${selectedTicketToClose.id}/close`, {
                 method: 'PATCH',
                 headers: {
@@ -1115,7 +1115,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         setUserFormSuccess('');
         setUserFormError('');
         try {
-            const activeSchool = session.role === 'SUPER_ADMIN' ? (newUserForm.school || selectedSchool) : (session.school || 'NHSST');
+            const activeSchool = session.role === 'SUPER_ADMIN' ? (newUserForm.school || selectedSchool) : (session.school);
             const res = await fetch(`${API_BASE_URL}/auth/users`, {
                 method: 'POST',
                 headers: {
@@ -1147,7 +1147,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             isDanger: true,
             onConfirm: async () => {
                 try {
-                    const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+                    const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
                     const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
                         method: 'DELETE',
                         headers: {
@@ -1181,7 +1181,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
 
     // Export CSV report
     const handleDownloadCSV = () => {
-        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST');
+        const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
         let csvUrl = `${API_BASE_URL}/tickets/reports/csv?status=${exportStatus}&school=${activeSchool}`;
         if (exportCategory !== 'ALL') csvUrl += `&category=${exportCategory}`;
         if (exportFloor !== 'ALL') csvUrl += `&floor=${exportFloor}`;
@@ -1255,7 +1255,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     const startIndex = templatePage * itemsPerPage;
     const visibleTemplates = SCHOOL_TEMPLATES.slice(startIndex, startIndex + itemsPerPage);
 
-    const currentSchool = session ? (session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')) : loginCredentials.school;
+    const currentSchool = session ? (session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school)) : loginCredentials.school;
 
     // RENDER: LOGIN FORM — added dark variants for consistency
     if (!session) {
@@ -1335,7 +1335,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                                         required
                                         value={loginCredentials.school}
                                         onChange={e => setLoginCredentials({ ...loginCredentials, school: e.target.value })}
-                                        placeholder="e.g. NHSST"
+                                        placeholder="e.g. School Code"
                                         className="bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 block w-full pl-10 pr-3 py-2.5 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                                     />
                                 </div>
@@ -1634,7 +1634,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight truncate">
-                                {session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')} Logbook
+                                {session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school)} Logbook
                             </h1>
                             <p className="text-[10px] text-slate-500 dark:text-slate-400">Campus Maintenance</p>
                         </div>
@@ -2219,7 +2219,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                                         value={newUserForm.role}
                                         onChange={val => setNewUserForm({ ...newUserForm, role: val })}
                                         options={[
-                                            { value: 'USER', label: `${session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school || 'NHSST')} Staff User (USER)` },
+                                            { value: 'USER', label: `${session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school)} Staff User (USER)` },
                                             { value: 'ADMIN', label: 'IT Support Engineer (ADMIN)' },
                                             ...(session.role === 'SUPER_ADMIN' ? [{ value: 'SUPER_ADMIN', label: 'Super Administrator (SUPER_ADMIN)' }] : [])
                                         ]}

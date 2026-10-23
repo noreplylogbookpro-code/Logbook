@@ -231,6 +231,14 @@ const twoFactorDb = new JsonStore(process.env.TWOFACTOR_DB || 'database/server_2
 const blogsDb = new JsonStore(process.env.BLOGS_DB || process.env.BLOGS_DB_JSON || 'database/server_blogs.json');
 const developerNotesDb = new JsonStore(process.env.DEVELOPER_NOTES_DB || 'database/server_developer_notes.json');
 
+function reloadAllStores() {
+    [usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb, developerNotesDb].forEach(store => {
+        if (store && typeof store._load === 'function') {
+            store._load();
+        }
+    });
+}
+
 // Export primary stores
 module.exports = {
     db: usersDb,
@@ -240,5 +248,6 @@ module.exports = {
     licensesDb,
     twoFactorDb,
     blogsDb,
-    developerNotesDb
+    developerNotesDb,
+    reloadAllStores
 };

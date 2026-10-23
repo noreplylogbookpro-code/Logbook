@@ -3355,6 +3355,15 @@ router.post('/master/backup/import', isMasterAuth, backupUpload.single('backup')
             }
         }
 
+        try {
+            const { reloadAllStores } = require('./config/db');
+            if (typeof reloadAllStores === 'function') {
+                reloadAllStores();
+            }
+        } catch (e) {
+            logServerEvent('warning', `Backup import: store reload error: ${e.message}`);
+        }
+
         logServerEvent('warning', `Master imported server backup: ${restoredCount} files restored, ${skippedCount} skipped from backup created ${manifest.createdAt}`);
 
         res.json({
