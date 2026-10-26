@@ -221,8 +221,8 @@ app.use((req, res, next) => {
 
     if (schoolSub.status === 'SUSPENDED' || isExpired) {
         const errorMsg = isExpired
-            ? 'This campus database subscription license has expired. Please contact master@localhost for renewal support.'
-            : 'This campus database subscription is suspended. Please contact master@localhost for support.';
+            ? 'This campus database subscription license has expired. Please contact support@logbookplus.co.in for renewal support.'
+            : 'This campus database subscription is suspended. Please contact support@logbookplus.co.in for support.';
         return res.status(403).json({
             success: false,
             error: errorMsg,

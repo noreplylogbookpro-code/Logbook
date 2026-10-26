@@ -32,8 +32,8 @@ let lastUpdateId = 0;
  */
 function sendTelegramMessage({ botToken, chatId, text, parseMode = 'HTML' }) {
     return new Promise((resolve) => {
-        const token = (botToken || process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || process.env.SERVER_TELEGRAM_BOT_TOKEN || process.env.DEFAULT_TELEGRAM_BOT_TOKEN || '').trim();
-        const targetChatId = (chatId || process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID || process.env.SERVER_TELEGRAM_BOT_CHAT_ID || process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID || '').trim();
+        const token = (botToken || "").trim();
+        const targetChatId = (chatId || "").trim();
 
         if (!token || !targetChatId) {
             return resolve({ success: false, error: 'Telegram bot token or chat ID is missing.' });
@@ -85,6 +85,85 @@ function sendTelegramMessage({ botToken, chatId, text, parseMode = 'HTML' }) {
             resolve({ success: false, error: err.message });
         }
     });
+}
+
+// In-memory anti-spam cooldown cache for Telegram alerts (key -> timestamp)
+const securityAlertCooldowns = new Map();
+
+// Cooldown intervals by severity level
+const ALERT_COOLDOWNS_MS = {
+    critical: 1 * 60 * 1000, // 1 minute cooldown for critical events
+    error: 1.5 * 60 * 1000,  // 1.5 minutes cooldown for errors
+    alarm: 2 * 60 * 1000,    // 2 minutes cooldown for security alarms
+    warning: 3 * 60 * 1000   // 3 minutes cooldown for warnings
+};
+
+/**
+ * Sends an automated Telegram alert notification for critical events, warnings, errors, and alarms
+ */
+async function sendEventAlertTelegram({ level = 'alarm', ip, endpoint, reason, details }) {
+    const normLevel = (level || 'alarm').toLowerCase();
+    const cooldownMs = ALERT_COOLDOWNS_MS[normLevel] || (2 * 60 * 1000);
+
+    // Form unique deduplication key: severity:ip:endpoint:reasonPrefix
+    const cleanReason = String(reason || '').trim();
+    const reasonSnippet = cleanReason.replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+    const key = `${normLevel}:${ip || 'server'}:${endpoint || 'general'}:${reasonSnippet}`;
+
+    const now = Date.now();
+    const lastAlert = securityAlertCooldowns.get(key) || 0;
+
+    // Suppress notification if already alerted within cooldown window
+    if (now - lastAlert < cooldownMs) {
+        return { success: false, throttled: true, reason: 'Suppressed by alert cooldown' };
+    }
+    securityAlertCooldowns.set(key, now);
+
+    // Evict expired entries to avoid memory leak
+    if (securityAlertCooldowns.size > 500) {
+        for (const [k, timestamp] of securityAlertCooldowns.entries()) {
+            if (now - timestamp > 5 * 60 * 1000) securityAlertCooldowns.delete(k);
+        }
+    }
+
+    let headerBadge = '<b>SECURITY ALARM TRIGGERED</b>';
+    if (normLevel === 'critical') {
+        headerBadge = '<b>CRITICAL SERVER EVENT</b>';
+    } else if (normLevel === 'error') {
+        headerBadge = '<b>SERVER ERROR DETECTED</b>';
+    } else if (normLevel === 'warning') {
+        headerBadge = '<b>SYSTEM WARNING DETECTED</b>';
+    }
+
+    const timeStr = new Date(now).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const formattedIp = ip ? `<code>${ip}</code>` : '<i>System / Internal</i>';
+    const formattedEndpoint = endpoint ? `<code>${endpoint}</code>` : '<i>N/A</i>';
+
+    const text = `${headerBadge}\n\n` +
+        `<b>Severity:</b> <code>#${normLevel.toUpperCase()}</code>\n` +
+        `<b>Event:</b> ${cleanReason || 'System event recorded'}\n` +
+        `<b>Client IP:</b> ${formattedIp}\n` +
+        `<b>Target Endpoint:</b> ${formattedEndpoint}\n` +
+        `<b>Timestamp:</b> ${timeStr}\n` +
+        (details ? `<b>Details:</b> ${details}\n` : '') +
+        `\nLogbook Security & Server Monitor`;
+
+    const token = (process.env.SERVER_TELEGRAM_BOT_TOKEN).trim();
+    const chatId = (process.env.SERVER_TELEGRAM_BOT_CHAT_ID).trim();
+
+    return sendTelegramMessage({
+        botToken: token,
+        chatId: chatId,
+        text,
+        parseMode: 'HTML'
+    });
+}
+
+/**
+ * Backwards-compatible security alert wrapper
+ */
+async function sendSecurityAlertTelegram(params) {
+    return sendEventAlertTelegram({ level: 'alarm', ...params });
 }
 
 /**
@@ -175,31 +254,43 @@ async function getActiveDeveloperNote() {
 /**
  * Parses user command / message text into note fields
  */
-function parseDevNoteCommand(rawText) {
+function parseDevNoteCommand(rawText, isPrivateChat = false) {
     if (!rawText || typeof rawText !== 'string') return null;
 
     let text = rawText.trim();
+    if (!text) return null;
 
-    // Remove leading command triggers: /devnote, #devnote, devnote:, /note
-    const triggerRegex = /^(\/devnote|#devnote|devnote:|\/note)\s*/i;
-    if (!triggerRegex.test(text)) {
-        return null; // Not a devnote command
+    const lowerText = text.toLowerCase();
+
+    // Check for /start or help commands
+    if (lowerText === '/start' || lowerText === '/help' || lowerText === 'help' || lowerText === '?') {
+        return { type: 'HELP' };
     }
 
-    const payload = text.replace(triggerRegex, '').trim();
+    // Check for explicit commands with triggers: /devnote, #devnote, devnote:, /note
+    const triggerRegex = /^(\/devnote|#devnote|devnote:|\/note)\s*/i;
+    let payload = '';
+
+    if (triggerRegex.test(text)) {
+        payload = text.replace(triggerRegex, '').trim();
+    } else if (isPrivateChat || text.includes('|') || lowerText.startsWith('title:') || lowerText.startsWith('/status') || lowerText.startsWith('/off') || lowerText.startsWith('/on')) {
+        payload = text;
+    } else {
+        return null;
+    }
 
     // Check for sub-commands
     const lowerPayload = payload.toLowerCase();
-    if (!payload || lowerPayload === 'status' || lowerPayload === 'info' || lowerPayload === 'show') {
+    if (!payload || lowerPayload === 'status' || lowerPayload === '/status' || lowerPayload === 'info' || lowerPayload === 'show') {
         return { type: 'STATUS' };
     }
-    if (lowerPayload === 'off' || lowerPayload === 'disable' || lowerPayload === 'hide' || lowerPayload === 'stop') {
+    if (lowerPayload === 'off' || lowerPayload === '/off' || lowerPayload === 'disable' || lowerPayload === 'hide' || lowerPayload === 'stop') {
         return { type: 'DISABLE' };
     }
-    if (lowerPayload === 'on' || lowerPayload === 'enable' || lowerPayload === 'start') {
+    if (lowerPayload === 'on' || lowerPayload === '/on' || lowerPayload === 'enable' || lowerPayload === 'start') {
         return { type: 'ENABLE' };
     }
-    if (lowerPayload === 'help' || lowerPayload === '?') {
+    if (lowerPayload === 'help' || lowerPayload === '/help' || lowerPayload === '?') {
         return { type: 'HELP' };
     }
 
@@ -244,7 +335,7 @@ function parseDevNoteCommand(rawText) {
         }
     }
 
-    // Format C: Single line without pipes (first sentence or dash is title, rest is message)
+    // Format C: Single line with dash: Title - Message
     if (payload.includes(' - ')) {
         const [title, ...rest] = payload.split(' - ');
         return {
@@ -255,7 +346,7 @@ function parseDevNoteCommand(rawText) {
         };
     }
 
-    // If only one line given, treat as title with generic notice or return help
+    // Format D: Plain sentence or announcement
     return {
         type: 'CREATE',
         title: payload.length > 50 ? payload.substring(0, 47) + '...' : payload,
@@ -280,33 +371,31 @@ async function handleTelegramUpdate(update) {
     const chatId = String(message.chat?.id || '');
     const sender = message.from?.username || message.from?.first_name || 'Admin';
     const text = message.text.trim();
+    const isPrivateChat = message.chat?.type === 'private';
 
-    // Verify authorized chat ID (prioritizes DEVNOTE_TELEGRAM_BOT_CHAT_ID, then SERVER_TELEGRAM_BOT_CHAT_ID, then DEFAULT_TELEGRAM_BOT_CHAT_ID)
-    const defaultChatId = String(
-        process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID ||
-        process.env.SERVER_TELEGRAM_BOT_CHAT_ID ||
-        process.env.DEFAULT_TELEGRAM_BOT_CHAT_ID ||
-        ''
-    ).trim();
+    const devnoteBotToken = (process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || '').trim();
+    const authorizedChatId = String(process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID || '').trim();
     const adminChatIds = (process.env.TELEGRAM_ADMIN_CHAT_IDS || '')
         .split(',')
         .map(id => id.trim())
         .filter(Boolean);
 
-    const isAuthorized = !defaultChatId ||
-        chatId === defaultChatId ||
+    const isAuthorized = !authorizedChatId ||
+        chatId === authorizedChatId ||
+        isPrivateChat ||
         adminChatIds.includes(chatId) ||
         (message.from && adminChatIds.includes(String(message.from.id)));
 
-    // Parse command
-    const parsed = parseDevNoteCommand(text);
+    // Parse command with private chat awareness
+    const parsed = parseDevNoteCommand(text, isPrivateChat);
     if (!parsed) {
         return { handled: false, reason: 'Not a recognized devnote command' };
     }
 
-    // If unauthorized, send refusal
+    // If unauthorized, send refusal via Developer Note Bot
     if (!isAuthorized) {
         await sendTelegramMessage({
+            botToken: devnoteBotToken,
             chatId,
             text: `⛔ <b>Access Denied</b>\n\nYour Telegram Chat ID <code>${chatId}</code> is not authorized to publish Developer Notes on this server.`
         });
@@ -316,22 +405,22 @@ async function handleTelegramUpdate(update) {
     // Execute requested command
     if (parsed.type === 'HELP') {
         const helpText =
-            `📖 <b>Logbook Plus - Developer Note Telegram Commands</b>\n\n` +
-            `Use these predefined formats to publish announcements directly to the Logbook Plus app & website:\n\n` +
-            `<b>1. Quick Pipe Syntax:</b>\n` +
-            `<code>/devnote Title | Message | Badge (optional) | ActionURL (optional)</code>\n\n` +
-            `<i>Example:</i>\n` +
-            `<code>/devnote Scheduled Maintenance | Cloud backup services will restart at 11 PM UTC | Maintenance</code>\n\n` +
-            `<b>2. Multiline Syntax:</b>\n` +
-            `<code>/devnote\nTitle: New Update v2.18\nMessage: Check out our newest encrypted backup features!\nBadge: Update\nURL: https://logbookplus.co.in/changelog</code>\n\n` +
-            `<b>3. Manage Note Status:</b>\n` +
-            `• <code>/devnote status</code> - View current live note\n` +
-            `• <code>/devnote off</code> - Disable/hide active note from users\n` +
-            `• <code>/devnote on</code> - Re-enable previous note\n` +
-            `• <code>/devnote help</code> - View this help guide\n\n` +
-            `🌐 <i>Updates are live immediately on <code>/api/developer-note</code></i>`;
+            `📢 <b>Logbook Developer Note Bot</b>\n\n` +
+            `Send me announcements and updates to publish them directly into <code>server_developer_notes.json</code> for all app & web users!\n\n` +
+            `<b>Supported Formats:</b>\n` +
+            `1️⃣ <b>Pipe Format:</b>\n` +
+            `<code>Title | Message | Badge (optional) | Link (optional)</code>\n` +
+            `<i>Example:</i> <code>Scheduled Maintenance | Server restart at 11 PM UTC | Maintenance</code>\n\n` +
+            `2️⃣ <b>Multiline Format:</b>\n` +
+            `<code>Title: System Upgrade\nMessage: Performance optimizations deployed.\nBadge: Update</code>\n\n` +
+            `3️⃣ <b>Commands:</b>\n` +
+            `• <code>/status</code> - View current live note\n` +
+            `• <code>/off</code> - Turn off active note\n` +
+            `• <code>/on</code> - Re-enable previous note\n` +
+            `• <code>/help</code> - Show this guide\n\n` +
+            `<i>All published notes are immediately saved to <code>server_developer_notes.json</code> and live on <code>/api/developer-note</code>.</i>`;
 
-        await sendTelegramMessage({ chatId, text: helpText });
+        await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: helpText });
         return { handled: true, success: true, command: 'HELP' };
     }
 
@@ -339,8 +428,9 @@ async function handleTelegramUpdate(update) {
         const active = await getActiveDeveloperNote();
         if (!active) {
             await sendTelegramMessage({
+                botToken: devnoteBotToken,
                 chatId,
-                text: `ℹ️ <b>Developer Note Status:</b> 🔴 <b>No Active Note</b>\n\n` +
+                text: `<b>Developer Note Status:</b> <b>No Active Note</b>\n\n` +
                     `There is currently no active announcement displayed to app users.\n\n` +
                     `To publish one, send:\n<code>/devnote Your Title | Your Message</code>`
             });
@@ -354,7 +444,7 @@ async function handleTelegramUpdate(update) {
                 (active.actionUrl ? `<b>Action:</b> <a href="${active.actionUrl}">${active.actionText || 'Read More'}</a>\n` : '') +
                 `<b>Status:</b> 🟢 Active & Visible in App\n\n` +
                 `<i>To turn it off, send <code>/devnote off</code></i>`;
-            await sendTelegramMessage({ chatId, text: statusText });
+            await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: statusText });
         }
         return { handled: true, success: true, command: 'STATUS' };
     }
@@ -362,6 +452,7 @@ async function handleTelegramUpdate(update) {
     if (parsed.type === 'DISABLE') {
         const res = await setDeveloperNoteStatus(false);
         await sendTelegramMessage({
+            botToken: devnoteBotToken,
             chatId,
             text: `⏸️ <b>Developer Note Disabled</b>\n\n` +
                 `The active developer note has been hidden. Clients requesting <code>/api/developer-note</code> will receive no active banner.\n\n` +
@@ -374,6 +465,7 @@ async function handleTelegramUpdate(update) {
         const res = await setDeveloperNoteStatus(true);
         if (res.success && res.note) {
             await sendTelegramMessage({
+                botToken: devnoteBotToken,
                 chatId,
                 text: `▶️ <b>Developer Note Re-enabled</b>\n\n` +
                     `<b>Title:</b> ${res.note.title}\n` +
@@ -381,6 +473,7 @@ async function handleTelegramUpdate(update) {
             });
         } else {
             await sendTelegramMessage({
+                botToken: devnoteBotToken,
                 chatId,
                 text: `⚠️ <b>Unable to enable note:</b> ${res.message || 'No prior notes found in database.'}`
             });
@@ -412,10 +505,11 @@ async function handleTelegramUpdate(update) {
                 `🟢 <b>Live Status:</b> Broadcasted to Android App & Web Vault via <code>/api/developer-note</code>.\n\n` +
                 `<i>Send <code>/devnote off</code> anytime to turn it off.</i>`;
 
-            await sendTelegramMessage({ chatId, text: confirmation });
+            await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: confirmation });
             return { handled: true, success: true, command: 'CREATE', note };
         } catch (err) {
             await sendTelegramMessage({
+                botToken: devnoteBotToken,
                 chatId,
                 text: `❌ <b>Error Publishing Note:</b> ${err.message}`
             });
@@ -430,9 +524,9 @@ async function handleTelegramUpdate(update) {
  * Long-polling worker for local testing / servers without public webhooks
  */
 async function startTelegramPolling({ botToken, pollIntervalMs = 3000 } = {}) {
-    const token = (botToken || process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || process.env.SERVER_TELEGRAM_BOT_TOKEN || process.env.DEFAULT_TELEGRAM_BOT_TOKEN || '').trim();
+    const token = (botToken || process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || '').trim();
     if (!token) {
-        logServerEvent('warning', '[TELEGRAM BOT] Polling not started: DEVNOTE_TELEGRAM_BOT_TOKEN / DEFAULT_TELEGRAM_BOT_TOKEN is not configured.');
+        logServerEvent('warning', '[TELEGRAM BOT] Polling not started: DEVNOTE_TELEGRAM_BOT_TOKEN is not configured.');
         return;
     }
 
@@ -505,6 +599,8 @@ function stopTelegramPolling() {
 
 module.exports = {
     sendTelegramMessage,
+    sendEventAlertTelegram,
+    sendSecurityAlertTelegram,
     publishDeveloperNote,
     setDeveloperNoteStatus,
     getActiveDeveloperNote,

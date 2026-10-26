@@ -4,7 +4,7 @@ const { readUsers, writeUsers, readSubscriptions, getSubscriptionForSchool, read
 // Helper to extract school key from headers or request parameters
 const getSchool = (req) => {
     const school = req.headers['x-school-key'] || req.query.school || (req.body && req.body.school);
-    if (!school) return (process.env.VITE_SCHOOL_CODE || 'NHSST').toUpperCase().trim();
+    if (!school) return (process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
     return school.toUpperCase().trim();
 };
 
@@ -14,19 +14,25 @@ const getSchool = (req) => {
  */
 exports.login = async (req, res) => {
     const { username, password, school } = req.body;
-    const targetSchool = (school || process.env.VITE_SCHOOL_CODE || 'NHSST').toUpperCase().trim();
+    const targetSchool = (school || process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
 
     if (!username || !password) {
         return res.status(400).json({ success: false, error: 'Username and password are required.' });
     }
 
-    // Global Super Admin check against environment credentials or DB credentials
-    const superUser = (process.env.SUPER_ADMIN_USER || 'master').trim().toLowerCase();
+    // Global Super Admin / Default Admin check against environment credentials or DB credentials
+
+    const superUser = (process.env.SUPER_ADMIN_USER).trim().toLowerCase();
+    const redirectMail = (process.env.REDIRECT_MAIL).trim().toLowerCase();
+    const defaultAdminUser = (process.env.DEFAULT_ADMIN_USER).trim().toLowerCase();
+
     const validSuperPasses = [
-        (process.env.SUPER_ADMIN_PASS || '').trim(),
-        (process.env.MASTER_PASS || '').trim(),
-        'master123',
-        '123456'
+        (process.env.SUPER_ADMIN_PASS).trim(),
+        (process.env.MASTER_PASS).trim(),
+    ].filter(Boolean);
+
+    const validAdminPasses = [
+        (process.env.DEFAULT_ADMIN_PASS).trim(),
     ].filter(Boolean);
 
     const normUser = username.trim().toLowerCase();
@@ -34,31 +40,34 @@ exports.login = async (req, res) => {
 
     const schoolSub = getSubscriptionForSchool(targetSchool);
 
-    const isMasterUser = (normUser === superUser || normUser === 'master' || normUser === 'admin');
+    const isSuperUser = Boolean(superUser && normUser === superUser);
+    const isDefaultAdmin = Boolean(defaultAdminUser && normUser === defaultAdminUser);
 
-    if (isMasterUser) {
-        let isSuperMatch = validSuperPasses.includes(normPass);
-        if (!isSuperMatch) {
-            const usersDB = readUsers(targetSchool);
-            const user = usersDB.find(u => u.username.toLowerCase() === normUser);
-            if (user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN')) {
-                const userPwd = (user.password || '').toString();
-                if (userPwd.startsWith('$2a$') || userPwd.startsWith('$2b$')) {
-                    isSuperMatch = await bcrypt.compare(normPass, userPwd);
-                } else {
-                    isSuperMatch = (userPwd.trim() === normPass);
-                }
+    if (isSuperUser || isDefaultAdmin) {
+        const allowedPasses = isSuperUser ? validSuperPasses : validAdminPasses;
+        let isMatch = allowedPasses.includes(normPass);
+        const usersDB = readUsers(targetSchool);
+        const user = usersDB.find(u => u.username.toLowerCase() === normUser);
+
+        if (!isMatch && user) {
+            const userPwd = (user.password || '').toString();
+            if (userPwd.startsWith('$2a$') || userPwd.startsWith('$2b$')) {
+                isMatch = await bcrypt.compare(normPass, userPwd);
+            } else {
+                isMatch = (userPwd.trim() === normPass);
             }
         }
 
-        if (isSuperMatch) {
+        if (isMatch) {
+            const assignedRole = isSuperUser ? 'SUPER_ADMIN' : 'ADMIN';
+            const displayName = user?.fullName || (isSuperUser ? 'Super Administrator' : normUser);
             return res.status(200).json({
                 success: true,
-                message: 'Super Admin login successful.',
+                message: `${isSuperUser ? 'Super Admin' : 'Admin'} login successful.`,
                 data: {
                     username: normUser,
-                    role: 'SUPER_ADMIN',
-                    fullName: 'Super Administrator',
+                    role: user?.role || assignedRole,
+                    fullName: displayName,
                     school: targetSchool,
                     subscription: schoolSub
                 }
@@ -76,13 +85,13 @@ exports.login = async (req, res) => {
         return res.status(401).json({ success: false, error: 'Invalid username, password, or school selection.' });
     }
 
-    // Check if school subscription is active (ignore for master/super admin)
+    // Check if school subscription is active (ignore for super admin)
     if (user.role !== 'SUPER_ADMIN') {
         const isExpired = schoolSub.expiresAt && new Date(schoolSub.expiresAt) < new Date();
         if (schoolSub.status === 'SUSPENDED' || isExpired) {
-            const errorMsg = isExpired 
-                ? 'This campus database subscription license has expired. Please contact master@localhost for renewal support.'
-                : 'This campus database subscription is suspended. Please contact master@localhost for support.';
+            const errorMsg = isExpired
+                ? `This campus database subscription license has expired. Please contact ${redirectMail} for renewal support.`
+                : `This campus database subscription is suspended. Please contact ${redirectMail} for support.`;
             return res.status(403).json({ success: false, error: errorMsg });
         }
     }
@@ -99,7 +108,7 @@ exports.login = async (req, res) => {
             try {
                 user.password = await bcrypt.hash(normPass, 10);
                 writeUsers(usersDB, targetSchool);
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -127,10 +136,14 @@ exports.login = async (req, res) => {
 exports.createUser = async (req, res) => {
     const { fullName, username, password, role, roleBadge, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
-    const callerRole = req.headers['x-caller-role'] || '';
+    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
 
     if (!fullName || !username || !password) {
         return res.status(400).json({ success: false, error: 'Full name, username, and password are required.' });
+    }
+
+    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrative privileges (ADMIN or SUPER_ADMIN) are required to create accounts.' });
     }
 
     // Enforce role creation constraints: standard ADMIN cannot create a SUPER_ADMIN
@@ -180,12 +193,22 @@ exports.createUser = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     const { username, newPassword, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
+    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+
+    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrative privileges (ADMIN or SUPER_ADMIN) are required to reset passwords.' });
+    }
 
     if (!username || !newPassword || !newPassword.trim()) {
         return res.status(400).json({ success: false, error: 'Username and new password are required.' });
     }
 
     const normUser = username.trim().toLowerCase();
+    const superUser = (process.env.SUPER_ADMIN_USER || '').trim().toLowerCase();
+    if (callerRole === 'ADMIN' && superUser && normUser === superUser) {
+        return res.status(403).json({ success: false, error: 'IT Admins cannot reset Super Admin passwords.' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword.toString().trim(), 10);
 
     // 1. Check school database
@@ -215,7 +238,7 @@ exports.resetPassword = async (req, res) => {
                 break;
             }
         }
-    } catch (e) {}
+    } catch (e) { }
 
     if (foundAndUpdated) {
         return res.status(200).json({
@@ -232,6 +255,11 @@ exports.resetPassword = async (req, res) => {
  * @desc    Get all registered users for a school
  */
 exports.getUsers = (req, res) => {
+    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrative privileges are required to view user accounts.' });
+    }
+
     const targetSchool = getSchool(req);
     const usersDB = readUsers(targetSchool);
 
@@ -249,9 +277,13 @@ exports.getUsers = (req, res) => {
  */
 exports.deleteUser = (req, res) => {
     const userId = parseInt(req.params.id, 10);
-    const callerRole = req.headers['x-caller-role'] || '';
+    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
     const callerUsername = req.headers['x-caller-username'] || '';
     const targetSchool = getSchool(req);
+
+    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrative privileges are required to delete user accounts.' });
+    }
 
     const usersDB = readUsers(targetSchool);
     const userIndex = usersDB.findIndex(u => u.id === userId);
@@ -266,9 +298,9 @@ exports.deleteUser = (req, res) => {
         return res.status(400).json({ success: false, error: 'You cannot delete your own logged-in account.' });
     }
 
-    const superUser = (process.env.SUPER_ADMIN_USER || 'master').trim().toLowerCase();
-    const adminUser = (process.env.DEFAULT_ADMIN_USER || 'admin').trim().toLowerCase();
-    if (user.username.toLowerCase() === adminUser || user.username.toLowerCase() === superUser) {
+    const superUser = (process.env.SUPER_ADMIN_USER || '').trim().toLowerCase();
+    const adminUser = (process.env.DEFAULT_ADMIN_USER || '').trim().toLowerCase();
+    if ((superUser && user.username.toLowerCase() === superUser) || (adminUser && user.username.toLowerCase() === adminUser)) {
         return res.status(400).json({ success: false, error: 'Protected core system accounts cannot be deleted.' });
     }
 
@@ -304,8 +336,8 @@ exports.updateProfile = (req, res) => {
     const newName = fullName.trim();
 
     // Check if updating Super Admin
-    const superUser = (process.env.SUPER_ADMIN_USER || 'master').trim().toLowerCase();
-    if (normUser === superUser) {
+    const superUser = (process.env.SUPER_ADMIN_USER || '').trim().toLowerCase();
+    if (superUser && normUser === superUser) {
         try {
             const usersDB = readUsers(targetSchool);
             const user = usersDB.find(u => u.username.toLowerCase() === normUser);
@@ -313,7 +345,7 @@ exports.updateProfile = (req, res) => {
                 user.fullName = newName;
                 writeUsers(usersDB, targetSchool);
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Also update past tickets for Super Admin
         try {
@@ -328,13 +360,13 @@ exports.updateProfile = (req, res) => {
             if (updatedCount > 0) {
                 writeTickets(ticketsDB, targetSchool);
             }
-        } catch (e) {}
+        } catch (e) { }
 
         return res.status(200).json({
             success: true,
             message: 'Super Admin profile updated successfully.',
             data: {
-                username: superUser,
+                username: normUser,
                 fullName: newName
             }
         });
@@ -391,6 +423,15 @@ exports.updateUserRole = (req, res) => {
     const userId = parseInt(req.params.id, 10);
     const { role, roleBadge } = req.body;
     const targetSchool = getSchool(req);
+    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+
+    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrative privileges are required to update user roles.' });
+    }
+
+    if (callerRole === 'ADMIN' && (role || '').toUpperCase() === 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'Only Super Admins can assign the Super Admin role.' });
+    }
 
     const usersDB = readUsers(targetSchool);
     const user = usersDB.find(u => u.id === userId);

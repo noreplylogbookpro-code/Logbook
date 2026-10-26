@@ -316,7 +316,7 @@ export default function AboutView({ onNavigate }) {
                   <Code2 className="w-3.5 h-3.5" /> GitHub
                 </a>
                 <a
-                  href="https://discord.gg/dRtT67ehK"
+                  href="https://discord.gg/28xCSvTUkw"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 rounded-xl border transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-semibold"

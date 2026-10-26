@@ -3,12 +3,12 @@ const path = require('path');
 require('dotenv').config({ quiet: true });
 
 const DB_DIR = path.join(__dirname, '../database');
-const SCHOOLS = (process.env.VITE_SCHOOLS || 'NHSST,NHISR,NHSSR,NHITM,NHSSVL,NHSSA,NHPSASEC19,NHPSASEC3,DMCE,NHPSP').split(',').map(s => s.trim().toUpperCase());
+const SCHOOLS = (process.env.VITE_SCHOOLS).split(',').map(s => s.trim().toUpperCase());
 
 function getSchoolKey(school) {
-    if (!school) return 'NHSST';
+    if (!school) return (process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
     const upper = school.toUpperCase().trim();
-    return SCHOOLS.includes(upper) ? upper : 'NHSST';
+    return SCHOOLS.includes(upper) ? upper : (process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
 }
 
 function getTicketsFile(school) {

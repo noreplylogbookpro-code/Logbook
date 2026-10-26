@@ -1371,12 +1371,12 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                             {isLicenseExpired ? (
                                 <>
-                                    Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> database has expired.
+                                    Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> Account Plan has expired.
                                     Please contact the Master Administrator at support@logbookplus.co.in for license renewal support.
                                 </>
                             ) : (
                                 <>
-                                    Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> database has been suspended by the Master Administrator.
+                                    Access to the <b className="text-slate-800 dark:text-white">{currentSchool}</b> Account Plan has been suspended by the Master Administrator.
                                     If you believe this is an error, please contact support@logbookplus.co.in for licensing inquiries.
                                 </>
                             )}

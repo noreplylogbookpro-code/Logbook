@@ -2540,9 +2540,9 @@ async function sendDeletionOtpNotification({ email, username, name, otp }) {
         maskedEmail: maskEmailAddress(email)
     });
 
-    // 2. Dispatch alert via Server / DevNote Telegram Bot if available (as backup/security channel)
-    const botToken = (process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || process.env.SERVER_TELEGRAM_BOT_TOKEN || '').trim();
-    const chatId = (process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID || process.env.SERVER_TELEGRAM_BOT_CHAT_ID || '').trim();
+    // 2. Dispatch security alert via Server Security Telegram Bot
+    const botToken = (process.env.SERVER_TELEGRAM_BOT_TOKEN || '').trim();
+    const chatId = (process.env.SERVER_TELEGRAM_BOT_CHAT_ID || '').trim();
     let telegramSent = false;
     if (botToken && chatId) {
         try {

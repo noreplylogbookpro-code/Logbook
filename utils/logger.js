@@ -81,6 +81,37 @@ function logServerEvent(level, message, metadata = {}) {
     }).catch(err => {
         console.error("Error inserting server log:", err);
     });
+
+    // Automated Telegram Alerts for Alarm, Critical, Error, and Warning events
+    const normalizedLevel = (level || '').toLowerCase();
+    const alertLevels = ['alarm', 'critical', 'warning', 'error'];
+
+    if (alertLevels.includes(normalizedLevel)) {
+        try {
+            const { sendEventAlertTelegram } = require('./telegramBotService');
+            const ipMatch = cleanMessage.match(/(?:from\s+IP:\s*|client\s+IP:\s*)([^\s,]+)/i);
+            const ip = cleanMetadata.ip || (ipMatch ? ipMatch[1] : undefined);
+            const epMatch = cleanMessage.match(/(?:endpoint:\s*|on\s+endpoint:\s*)([^\s,]+)/i);
+            const endpoint = cleanMetadata.url || (epMatch ? epMatch[1] : undefined);
+
+            const detailsParts = [];
+            if (cleanMetadata.status) detailsParts.push(`Status: ${cleanMetadata.status}`);
+            if (cleanMetadata.username) detailsParts.push(`User: @${cleanMetadata.username}`);
+            if (cleanMetadata.school) detailsParts.push(`School: ${cleanMetadata.school}`);
+
+            sendEventAlertTelegram({
+                level: normalizedLevel,
+                ip,
+                endpoint,
+                reason: cleanMessage,
+                details: detailsParts.length > 0 ? detailsParts.join(' | ') : undefined
+            }).catch(err => {
+                console.error('[TELEGRAM ALERT ERROR]', err.message);
+            });
+        } catch (err) {
+            console.error('[TELEGRAM ALERT DISPATCH FAILURE]', err.message);
+        }
+    }
 }
 
 module.exports = {

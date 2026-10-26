@@ -223,13 +223,13 @@ class JsonStore extends EventEmitter {
 }
 
 // Create stores
-const usersDb = new JsonStore(process.env.DB || process.env.DB_JSON || 'database/server_users.json');
-const logsDb = new JsonStore(process.env.LOGS_DB || process.env.LOGS_DB_JSON || 'database/server_logs.json');
-const changelogDb = new JsonStore(process.env.CHANGELOG_DB || 'database/server_changelog.json');
-const licensesDb = new JsonStore(process.env.LICENSES_DB || 'database/server_licenses.json');
-const twoFactorDb = new JsonStore(process.env.TWOFACTOR_DB || 'database/server_2fa.json');
-const blogsDb = new JsonStore(process.env.BLOGS_DB || process.env.BLOGS_DB_JSON || 'database/server_blogs.json');
-const developerNotesDb = new JsonStore(process.env.DEVELOPER_NOTES_DB || 'database/server_developer_notes.json');
+const usersDb = new JsonStore(process.env.DB);
+const logsDb = new JsonStore(process.env.LOGS_DB);
+const changelogDb = new JsonStore(process.env.CHANGELOG_DB);
+const licensesDb = new JsonStore(process.env.LICENSES_DB);
+const twoFactorDb = new JsonStore(process.env.TWOFACTOR_DB);
+const blogsDb = new JsonStore(process.env.BLOGS_DB || process.env.BLOGS_DB_JSON);
+const developerNotesDb = new JsonStore(process.env.DEVELOPER_NOTES_DB);
 
 function reloadAllStores() {
     [usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb, developerNotesDb].forEach(store => {
