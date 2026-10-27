@@ -20,8 +20,10 @@
  */
 
 const https = require('https');
-const { developerNotesDb } = require('../config/db');
+const os = require('os');
+const { developerNotesDb, db, logsDb } = require('../config/db');
 const { logServerEvent } = require('./logger');
+const { getCpuUsagePercent, activeUserSessions, networkStats } = require('./serverState');
 
 let isPollingActive = false;
 let pollingAbortController = null;
@@ -251,6 +253,70 @@ async function getActiveDeveloperNote() {
     return active[0] || null;
 }
 
+function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatUptime(seconds) {
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    parts.push(`${s}s`);
+    return parts.join(' ');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+async function buildServerStatsMessage() {
+    const memUsage = process.memoryUsage();
+    const freeMem = os.freemem();
+    const totalMem = os.totalmem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = Math.round((usedMem / totalMem) * 100);
+    const cpuPercent = getCpuUsagePercent();
+    const uptimeStr = formatUptime(process.uptime());
+
+    let totalUsers = 0;
+    let totalLogs = 0;
+    try {
+        totalUsers = await db.count({});
+    } catch (_) {}
+    try {
+        totalLogs = await logsDb.count({});
+    } catch (_) {}
+
+    const activeSessionsCount = activeUserSessions ? activeUserSessions.size : 0;
+    const nowStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+    return `📊 <b>LOGBOOK SERVER STATS REPORT</b>\n\n` +
+        `<b>Status:</b> 🟢 <code>ONLINE (HEALTHY)</code>\n` +
+        `<b>Uptime:</b> ⏱️ ${uptimeStr}\n` +
+        `<b>CPU Load:</b> ⚙️ ${cpuPercent}%\n` +
+        `<b>RAM Usage:</b> 🧠 ${formatBytes(usedMem)} / ${formatBytes(totalMem)} (${memPercent}%)\n` +
+        `<b>Process Heap:</b> 📦 ${formatBytes(memUsage.heapUsed)}\n` +
+        `<b>Active Sessions:</b> 👥 ${activeSessionsCount} online\n` +
+        `<b>Registered Users:</b> 👤 ${totalUsers}\n` +
+        `<b>Server Logs:</b> 📝 ${totalLogs}\n` +
+        `<b>Network Rx/Tx:</b> 🌐 ${formatBytes(networkStats?.bytesRx || 0)} / ${formatBytes(networkStats?.bytesTx || 0)}\n` +
+        `<b>Timestamp:</b> 📅 ${nowStr}\n\n` +
+        `<i>Logbook Security & Server Monitor</i>`;
+}
+
 /**
  * Parses user command / message text into note fields
  */
@@ -262,36 +328,58 @@ function parseDevNoteCommand(rawText, isPrivateChat = false) {
 
     const lowerText = text.toLowerCase();
 
-    // Check for /start or help commands
+    // 1. Help & Start
     if (lowerText === '/start' || lowerText === '/help' || lowerText === 'help' || lowerText === '?') {
         return { type: 'HELP' };
     }
 
-    // Check for explicit commands with triggers: /devnote, #devnote, devnote:, /note
+    // 2. Server stats & metrics commands
+    if (lowerText === '/stats' || lowerText === '/server' || lowerText === '/metrics' || lowerText === '/health' || lowerText === 'stats') {
+        return { type: 'STATS' };
+    }
+
+    // 3. Status of active developer note
+    if (lowerText === '/status' || lowerText === 'status') {
+        return { type: 'STATUS' };
+    }
+
+    // 4. Quick disable/enable commands
+    if (lowerText === '/off' || lowerText === 'off' || lowerText === '/disable') {
+        return { type: 'DISABLE' };
+    }
+    if (lowerText === '/on' || lowerText === 'on' || lowerText === '/enable') {
+        return { type: 'ENABLE' };
+    }
+
+    // 5. Explicit prefix triggers: /devnote, #devnote, devnote:, /note
     const triggerRegex = /^(\/devnote|#devnote|devnote:|\/note)\s*/i;
     let payload = '';
 
     if (triggerRegex.test(text)) {
         payload = text.replace(triggerRegex, '').trim();
-    } else if (isPrivateChat || text.includes('|') || lowerText.startsWith('title:') || lowerText.startsWith('/status') || lowerText.startsWith('/off') || lowerText.startsWith('/on')) {
+        const lowerPayload = payload.toLowerCase();
+        if (!payload || lowerPayload === 'status' || lowerPayload === '/status' || lowerPayload === 'info' || lowerPayload === 'show') {
+            return { type: 'STATUS' };
+        }
+        if (lowerPayload === 'stats' || lowerPayload === '/stats') {
+            return { type: 'STATS' };
+        }
+        if (lowerPayload === 'off' || lowerPayload === '/off' || lowerPayload === 'disable' || lowerPayload === 'hide' || lowerPayload === 'stop') {
+            return { type: 'DISABLE' };
+        }
+        if (lowerPayload === 'on' || lowerPayload === '/on' || lowerPayload === 'enable' || lowerPayload === 'start') {
+            return { type: 'ENABLE' };
+        }
+        if (lowerPayload === 'help' || lowerPayload === '/help' || lowerPayload === '?') {
+            return { type: 'HELP' };
+        }
+    } else if (text.startsWith('/')) {
+        // Any unknown slash command MUST NEVER be converted to a developer note!
+        return { type: 'UNKNOWN', command: text };
+    } else if (isPrivateChat || text.includes('|') || lowerText.startsWith('title:') || lowerText.includes(' - ')) {
         payload = text;
     } else {
         return null;
-    }
-
-    // Check for sub-commands
-    const lowerPayload = payload.toLowerCase();
-    if (!payload || lowerPayload === 'status' || lowerPayload === '/status' || lowerPayload === 'info' || lowerPayload === 'show') {
-        return { type: 'STATUS' };
-    }
-    if (lowerPayload === 'off' || lowerPayload === '/off' || lowerPayload === 'disable' || lowerPayload === 'hide' || lowerPayload === 'stop') {
-        return { type: 'DISABLE' };
-    }
-    if (lowerPayload === 'on' || lowerPayload === '/on' || lowerPayload === 'enable' || lowerPayload === 'start') {
-        return { type: 'ENABLE' };
-    }
-    if (lowerPayload === 'help' || lowerPayload === '/help' || lowerPayload === '?') {
-        return { type: 'HELP' };
     }
 
     // Format A: Multiline Key: Value format
@@ -346,19 +434,23 @@ function parseDevNoteCommand(rawText, isPrivateChat = false) {
         };
     }
 
-    // Format D: Plain sentence or announcement
-    return {
-        type: 'CREATE',
-        title: payload.length > 50 ? payload.substring(0, 47) + '...' : payload,
-        message: payload,
-        badge: 'Announcement'
-    };
+    // Format D: Plain sentence or announcement (ONLY if it didn't start with /)
+    if (!payload.startsWith('/')) {
+        return {
+            type: 'CREATE',
+            title: payload.length > 50 ? payload.substring(0, 47) + '...' : payload,
+            message: payload,
+            badge: 'Announcement'
+        };
+    }
+
+    return { type: 'UNKNOWN', command: payload };
 }
 
 /**
  * Handles an incoming Telegram update (from Webhook or Long-Polling)
  */
-async function handleTelegramUpdate(update) {
+async function handleTelegramUpdate(update, callerBotToken = null) {
     if (!update || typeof update !== 'object') {
         return { handled: false, reason: 'Empty update' };
     }
@@ -373,8 +465,9 @@ async function handleTelegramUpdate(update) {
     const text = message.text.trim();
     const isPrivateChat = message.chat?.type === 'private';
 
-    const devnoteBotToken = (process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || '').trim();
+    const activeBotToken = (callerBotToken || process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || process.env.SERVER_TELEGRAM_BOT_TOKEN || '').trim();
     const authorizedChatId = String(process.env.DEVNOTE_TELEGRAM_BOT_CHAT_ID || '').trim();
+    const serverChatId = String(process.env.SERVER_TELEGRAM_BOT_CHAT_ID || '').trim();
     const adminChatIds = (process.env.TELEGRAM_ADMIN_CHAT_IDS || '')
         .split(',')
         .map(id => id.trim())
@@ -382,6 +475,7 @@ async function handleTelegramUpdate(update) {
 
     const isAuthorized = !authorizedChatId ||
         chatId === authorizedChatId ||
+        chatId === serverChatId ||
         isPrivateChat ||
         adminChatIds.includes(chatId) ||
         (message.from && adminChatIds.includes(String(message.from.id)));
@@ -392,12 +486,12 @@ async function handleTelegramUpdate(update) {
         return { handled: false, reason: 'Not a recognized devnote command' };
     }
 
-    // If unauthorized, send refusal via Developer Note Bot
+    // If unauthorized, send refusal via Active Bot
     if (!isAuthorized) {
         await sendTelegramMessage({
-            botToken: devnoteBotToken,
+            botToken: activeBotToken,
             chatId,
-            text: `⛔ <b>Access Denied</b>\n\nYour Telegram Chat ID <code>${chatId}</code> is not authorized to publish Developer Notes on this server.`
+            text: `⛔ <b>Access Denied</b>\n\nYour Telegram Chat ID <code>${chatId}</code> is not authorized to execute commands on this server.`
         });
         return { handled: true, success: false, reason: 'Unauthorized chat' };
     }
@@ -405,30 +499,37 @@ async function handleTelegramUpdate(update) {
     // Execute requested command
     if (parsed.type === 'HELP') {
         const helpText =
-            `📢 <b>Logbook Developer Note Bot</b>\n\n` +
-            `Send me announcements and updates to publish them directly into <code>server_developer_notes.json</code> for all app & web users!\n\n` +
-            `<b>Supported Formats:</b>\n` +
-            `1️⃣ <b>Pipe Format:</b>\n` +
-            `<code>Title | Message | Badge (optional) | Link (optional)</code>\n` +
-            `<i>Example:</i> <code>Scheduled Maintenance | Server restart at 11 PM UTC | Maintenance</code>\n\n` +
-            `2️⃣ <b>Multiline Format:</b>\n` +
-            `<code>Title: System Upgrade\nMessage: Performance optimizations deployed.\nBadge: Update</code>\n\n` +
-            `3️⃣ <b>Commands:</b>\n` +
-            `• <code>/status</code> - View current live note\n` +
+            `📢 <b>Logbook Telegram Bot Commands</b>\n\n` +
+            `📊 <b>Server Monitoring:</b>\n` +
+            `• <code>/stats</code> (or <code>/server</code>) - View real-time server health, CPU, RAM, uptime, and sessions\n\n` +
+            `📢 <b>Developer Notes Management:</b>\n` +
+            `• <code>/status</code> - View current live developer note\n` +
             `• <code>/off</code> - Turn off active note\n` +
             `• <code>/on</code> - Re-enable previous note\n` +
             `• <code>/help</code> - Show this guide\n\n` +
+            `<b>Publishing a Note:</b>\n` +
+            `1️⃣ <b>Pipe Format:</b>\n` +
+            `<code>/devnote Title | Message | Badge (optional) | Link (optional)</code>\n` +
+            `<i>Example:</i> <code>/devnote Scheduled Maintenance | Server restart at 11 PM UTC | Maintenance</code>\n\n` +
+            `2️⃣ <b>Multiline Format:</b>\n` +
+            `<code>/devnote\nTitle: System Upgrade\nMessage: Performance optimizations deployed.\nBadge: Update</code>\n\n` +
             `<i>All published notes are immediately saved to <code>server_developer_notes.json</code> and live on <code>/api/developer-note</code>.</i>`;
 
-        await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: helpText });
+        await sendTelegramMessage({ botToken: activeBotToken, chatId, text: helpText });
         return { handled: true, success: true, command: 'HELP' };
+    }
+
+    if (parsed.type === 'STATS') {
+        const statsText = await buildServerStatsMessage();
+        await sendTelegramMessage({ botToken: activeBotToken, chatId, text: statsText });
+        return { handled: true, success: true, command: 'STATS' };
     }
 
     if (parsed.type === 'STATUS') {
         const active = await getActiveDeveloperNote();
         if (!active) {
             await sendTelegramMessage({
-                botToken: devnoteBotToken,
+                botToken: activeBotToken,
                 chatId,
                 text: `<b>Developer Note Status:</b> <b>No Active Note</b>\n\n` +
                     `There is currently no active announcement displayed to app users.\n\n` +
@@ -444,7 +545,7 @@ async function handleTelegramUpdate(update) {
                 (active.actionUrl ? `<b>Action:</b> <a href="${active.actionUrl}">${active.actionText || 'Read More'}</a>\n` : '') +
                 `<b>Status:</b> 🟢 Active & Visible in App\n\n` +
                 `<i>To turn it off, send <code>/devnote off</code></i>`;
-            await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: statusText });
+            await sendTelegramMessage({ botToken: activeBotToken, chatId, text: statusText });
         }
         return { handled: true, success: true, command: 'STATUS' };
     }
@@ -517,6 +618,21 @@ async function handleTelegramUpdate(update) {
         }
     }
 
+    if (parsed.type === 'UNKNOWN') {
+        const unknownText =
+            `❓ <b>Unrecognized Command:</b> <code>${escapeHtml(parsed.command)}</code>\n\n` +
+            `<b>Available Commands:</b>\n` +
+            `• <code>/stats</code> - Live server health, CPU, RAM, & active sessions\n` +
+            `• <code>/status</code> - View current live developer note\n` +
+            `• <code>/devnote Title | Message</code> - Publish a developer note\n` +
+            `• <code>/off</code> - Turn off active note\n` +
+            `• <code>/on</code> - Re-enable previous note\n` +
+            `• <code>/help</code> - Show format guide and examples`;
+
+        await sendTelegramMessage({ botToken: activeBotToken, chatId, text: unknownText });
+        return { handled: true, success: false, command: 'UNKNOWN' };
+    }
+
     return { handled: false, reason: 'Unknown command' };
 }
 
@@ -560,7 +676,7 @@ async function startTelegramPolling({ botToken, pollIntervalMs = 3000 } = {}) {
                                 if (update.update_id >= lastUpdateId) {
                                     lastUpdateId = update.update_id;
                                 }
-                                await handleTelegramUpdate(update);
+                                await handleTelegramUpdate(update, token);
                             }
                         }
                     } catch (e) { }
