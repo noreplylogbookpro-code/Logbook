@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const { logServerEvent } = require('../utils/logger');
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // --- Helper to extract client IP safely behind reverse proxies & Cloudflare ---
 const getClientIp = (req) => {
@@ -43,41 +46,67 @@ const authCreateUserLimiter = createLimiter(60, 20, 'Too many user creation atte
 // Updated to limit to 3 attempts per 24 hours to prevent abuse
 const authResetPasswordLimiter = createLimiter(1440, 3, 'Too many password reset attempts. Please try again after 24 hours.');
 
-// --- Middleware: Verify Administrative Role (ADMIN or SUPER_ADMIN) ---
-const requireAdminRole = (req, res, next) => {
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
-    if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
-        const clientIp = getClientIp(req);
-        logServerEvent('warning', `Unauthorized administrative action attempted on ${req.originalUrl || req.url} from IP: ${clientIp}`);
-        return res.status(403).json({
-            success: false,
-            error: 'Access denied: Administrative privileges (ADMIN or SUPER_ADMIN) are required.'
-        });
+// --- Middleware: Verify Helpdesk JWT and extract role from token ---
+const verifyHelpdeskToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Authentication required. Please log in.' });
     }
-    next();
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (!decoded.helpdeskUser) {
+            return res.status(403).json({ success: false, error: 'Invalid helpdesk session token.' });
+        }
+        // Attach verified token data to request — this is the ONLY trusted source of role
+        req.helpdeskAuth = {
+            username: decoded.username,
+            role: decoded.role,
+            school: decoded.school
+        };
+        // Also set headers from verified token so controllers read correct values
+        req.headers['x-caller-role'] = decoded.role;
+        req.headers['x-caller-username'] = decoded.username;
+        if (decoded.school) req.headers['x-school-key'] = decoded.school;
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, error: 'Session expired or invalid. Please log in again.' });
+    }
 };
+
+// --- Middleware: Verify Administrative Role (ADMIN or SUPER_ADMIN) from VERIFIED JWT ---
+const requireAdminRole = [
+    verifyHelpdeskToken,
+    (req, res, next) => {
+        const callerRole = req.helpdeskAuth.role;
+        if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
+            const clientIp = getClientIp(req);
+            logServerEvent('warning', `Unauthorized administrative action attempted on ${req.originalUrl || req.url} by '${req.helpdeskAuth.username}' from IP: ${clientIp}`);
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied: Administrative privileges (ADMIN or SUPER_ADMIN) are required.'
+            });
+        }
+        next();
+    }
+];
 
 // --- Authentication Endpoint ---
 router.post('/login', authLoginLimiter, authController.login);
 
-// --- User Management (Admin Dashboard) ---
-router.put('/profile', authController.updateProfile);
+// --- User Management (Admin Dashboard) — all protected by JWT verification ---
+router.put('/profile', verifyHelpdeskToken, authController.updateProfile);
 router.post('/users', authCreateUserLimiter, requireAdminRole, authController.createUser);
 router.get('/users', requireAdminRole, authController.getUsers);
 router.delete('/users/:id', requireAdminRole, authController.deleteUser);
 router.patch('/users/:id/role', requireAdminRole, authController.updateUserRole);
 router.post('/reset-password', authResetPasswordLimiter, requireAdminRole, authController.resetPassword);
 
-// --- Config details endpoint to retrieve dynamic env credentials on login card ---
-router.get('/config', (req, res) => {
-    return res.status(200).json({
-        superAdminUser: process.env.SUPER_ADMIN_USER,
-        superAdminPass: process.env.SUPER_ADMIN_PASS,
-        defaultAdminUser: process.env.DEFAULT_ADMIN_USER,
-        defaultAdminPass: process.env.DEFAULT_ADMIN_PASS,
-        defaultStaffUser: process.env.DEFAULT_STAFF_USER,
-        defaultStaffPass: process.env.DEFAULT_STAFF_PASS
-    });
-});
+// SECURITY: /config endpoint removed — it previously leaked ALL admin credentials publicly.
+// Default usernames (NOT passwords) are available only to authenticated master admins if needed.
 
 module.exports = router;
+module.exports.verifyHelpdeskToken = verifyHelpdeskToken;
+module.exports.requireAdminRole = requireAdminRole;

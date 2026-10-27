@@ -3,6 +3,19 @@ const { Parser } = require('json2csv');
 const { readTickets, writeTickets, readSubscriptions, getSubscriptionForSchool, readTags, writeTags } = require('../utils/dbHelper');
 const https = require('https');
 
+/**
+ * Escapes HTML special characters to prevent XSS in HTML-parsed messages (e.g. Telegram).
+ */
+function escapeHtml(str) {
+    if (!str || typeof str !== 'string') return str || '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Helper to extract school key from headers or request parameters
 const getSchool = (req) => {
     const school = req.headers['x-school-key'] || req.query.school || (req.body && req.body.school);
@@ -334,43 +347,43 @@ exports.sendNotification = async (req, res) => {
     let telegramError = null;
     let whatsappError = null;
 
-    const activeTelegramToken = (telegramBotToken && telegramBotToken.trim()) ||
+    const activeTelegramToken = (telegramBotToken && !telegramBotToken.startsWith('●') && telegramBotToken.trim()) ||
         (process.env.HELPDESK_TELEGRAM_BOT_TOKEN && process.env.HELPDESK_TELEGRAM_BOT_TOKEN.trim());
     const activeTelegramChatId = (telegramChatId && telegramChatId.trim()) ||
         (process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID && process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID.trim());
 
     const activeWhatsappPhone = (whatsappPhone && whatsappPhone.trim()) || (process.env.DEFAULT_WHATSAPP_PHONE && process.env.DEFAULT_WHATSAPP_PHONE.trim());
-    const activeWhatsappApiKey = (whatsappApiKey && whatsappApiKey.trim()) || (process.env.DEFAULT_WHATSAPP_API_KEY && process.env.DEFAULT_WHATSAPP_API_KEY.trim());
+    const activeWhatsappApiKey = (whatsappApiKey && !whatsappApiKey.startsWith('●') && whatsappApiKey.trim()) || (process.env.DEFAULT_WHATSAPP_API_KEY && process.env.DEFAULT_WHATSAPP_API_KEY.trim());
 
     // Build rich Telegram message based on alert type
     const buildTelegramMessage = () => {
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const schoolTag = school ? `🏫 ${school}` : '';
+        const schoolTag = school ? `🏫 ${escapeHtml(school)}` : '';
 
         if (alertType === 'NEW_TICKET' && ticket) {
             const lines = [
                 `🚨 <b>New Complaint Registered</b>`,
                 ``,
                 `━━━━━━━━━━━━━━━━━━━━━`,
-                `🏫 <b>Campus:</b> ${school || 'N/A'}`,
-                `🎫 <b>Ticket:</b> <code>${ticket.token || 'N/A'}</code>`,
+                `🏫 <b>Campus:</b> ${escapeHtml(school) || 'N/A'}`,
+                `🎫 <b>Ticket:</b> <code>${escapeHtml(ticket.token) || 'N/A'}</code>`,
                 `📅 <b>Date:</b> ${dateStr}`,
                 `🕐 <b>Time:</b> ${timeStr}`,
                 `━━━━━━━━━━━━━━━━━━━━━`,
                 ``,
-                `📋 <b>Category:</b> ${ticket.category || 'General'}`,
-                `📝 <b>Subject:</b> ${ticket.subject || 'No Subject'}`,
-                `👤 <b>Reported By:</b> ${ticket.userName || ticket.reportedBy || 'Unknown'}`,
-                `📍 <b>Floor:</b> ${ticket.floor || 'N/A'}`,
-                `🚪 <b>Room/Lab:</b> ${ticket.roomNumber || 'N/A'}`,
+                `📋 <b>Category:</b> ${escapeHtml(ticket.category) || 'General'}`,
+                `📝 <b>Subject:</b> ${escapeHtml(ticket.subject) || 'No Subject'}`,
+                `👤 <b>Reported By:</b> ${escapeHtml(ticket.userName || ticket.reportedBy) || 'Unknown'}`,
+                `📍 <b>Floor:</b> ${escapeHtml(ticket.floor) || 'N/A'}`,
+                `🚪 <b>Room/Lab:</b> ${escapeHtml(ticket.roomNumber) || 'N/A'}`,
             ];
             if (ticket.description && ticket.description !== ticket.subject) {
-                lines.push(`💬 <b>Description:</b> ${ticket.description}`);
+                lines.push(`💬 <b>Description:</b> ${escapeHtml(ticket.description)}`);
             }
             if (ticket.userPhone) {
-                lines.push(`📞 <b>Contact:</b> ${ticket.userPhone}`);
+                lines.push(`📞 <b>Contact:</b> ${escapeHtml(ticket.userPhone)}`);
             }
             lines.push(``);
             lines.push(`⚡ <b>Status:</b> 🟡 PENDING`);
@@ -386,21 +399,21 @@ exports.sendNotification = async (req, res) => {
                 `🔄 <b>Ticket Status Updated</b>`,
                 ``,
                 `━━━━━━━━━━━━━━━━━━━━━`,
-                `🏫 <b>Campus:</b> ${school || 'N/A'}`,
-                `🎫 <b>Ticket:</b> <code>${ticket.token || 'N/A'}</code>`,
+                `🏫 <b>Campus:</b> ${escapeHtml(school) || 'N/A'}`,
+                `🎫 <b>Ticket:</b> <code>${escapeHtml(ticket.token) || 'N/A'}</code>`,
                 `📅 <b>Date:</b> ${dateStr}`,
                 `🕐 <b>Time:</b> ${timeStr}`,
                 `━━━━━━━━━━━━━━━━━━━━━`,
                 ``,
-                `📋 <b>Category:</b> ${ticket.category || 'General'}`,
-                `📝 <b>Subject:</b> ${ticket.subject || 'No Subject'}`,
-                `⚡ <b>Status:</b> ${statusEmoji} ${statusLabel}`,
+                `📋 <b>Category:</b> ${escapeHtml(ticket.category) || 'General'}`,
+                `📝 <b>Subject:</b> ${escapeHtml(ticket.subject) || 'No Subject'}`,
+                `⚡ <b>Status:</b> ${statusEmoji} ${escapeHtml(statusLabel)}`,
             ];
             if (ticket.adminRemark) {
-                lines.push(`🛠️ <b>Action:</b> ${ticket.adminRemark}`);
+                lines.push(`🛠️ <b>Action:</b> ${escapeHtml(ticket.adminRemark)}`);
             }
             if (ticket.status === 'CLOSED' && ticket.closedBy) {
-                lines.push(`👨‍💻 <b>Closed By:</b> ${ticket.closedBy}`);
+                lines.push(`👨‍💻 <b>Closed By:</b> ${escapeHtml(ticket.closedBy)}`);
             }
             if (ticket.resolutionTimeMinutes) {
                 const hrs = Math.floor(ticket.resolutionTimeMinutes / 60);
@@ -419,16 +432,16 @@ exports.sendNotification = async (req, res) => {
                 `✅ <b>Ticket Resolved</b>`,
                 ``,
                 `━━━━━━━━━━━━━━━━━━━━━`,
-                `🏫 <b>Campus:</b> ${school || 'N/A'}`,
-                `🎫 <b>Ticket:</b> <code>${ticket.token || 'N/A'}</code>`,
+                `🏫 <b>Campus:</b> ${escapeHtml(school) || 'N/A'}`,
+                `🎫 <b>Ticket:</b> <code>${escapeHtml(ticket.token) || 'N/A'}</code>`,
                 `📅 <b>Date:</b> ${dateStr}`,
                 `🕐 <b>Time:</b> ${timeStr}`,
                 `━━━━━━━━━━━━━━━━━━━━━`,
                 ``,
-                `📋 <b>Category:</b> ${ticket.category || 'General'}`,
-                `📝 <b>Subject:</b> ${ticket.subject || 'No Subject'}`,
-                `👨‍💻 <b>Closed By:</b> ${ticket.closedBy || 'IT Admin'}`,
-                `🛠️ <b>Work Done:</b> ${ticket.adminRemark || 'No remarks'}`,
+                `📋 <b>Category:</b> ${escapeHtml(ticket.category) || 'General'}`,
+                `📝 <b>Subject:</b> ${escapeHtml(ticket.subject) || 'No Subject'}`,
+                `👨‍💻 <b>Closed By:</b> ${escapeHtml(ticket.closedBy) || 'IT Admin'}`,
+                `🛠️ <b>Work Done:</b> ${escapeHtml(ticket.adminRemark) || 'No remarks'}`,
             ];
             if (ticket.resolutionTimeMinutes) {
                 const hrs = Math.floor(ticket.resolutionTimeMinutes / 60);
@@ -445,16 +458,16 @@ exports.sendNotification = async (req, res) => {
 
         // Fallback: General / Test message
         const lines = [
-            `🔔 <b>${title}</b>`,
+            `🔔 <b>${escapeHtml(title)}</b>`,
             ``,
             `━━━━━━━━━━━━━━━━━━━━━`,
         ];
-        if (school) lines.push(`🏫 <b>Campus:</b> ${school}`);
+        if (school) lines.push(`🏫 <b>Campus:</b> ${escapeHtml(school)}`);
         lines.push(`📅 <b>Date:</b> ${dateStr}`);
         lines.push(`🕐 <b>Time:</b> ${timeStr}`);
         lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
         lines.push(``);
-        lines.push(message);
+        lines.push(escapeHtml(message));
         lines.push(``);
         lines.push(`<i>LogBook+ IT Helpdesk</i>`);
         return lines.join('\n');
@@ -562,13 +575,20 @@ exports.sendNotification = async (req, res) => {
 
 exports.getNotificationDefaults = (req, res) => {
     try {
+        const hasTelegramToken = Boolean((process.env.HELPDESK_TELEGRAM_BOT_TOKEN || '').trim());
+        const telegramChatId = (process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID || '').trim();
+        const hasWhatsappKey = Boolean((process.env.DEFAULT_WHATSAPP_API_KEY || '').trim());
+        const whatsappPhone = (process.env.DEFAULT_WHATSAPP_PHONE || '').trim();
+
         return res.status(200).json({
             success: true,
             defaults: {
-                telegramBotToken: (process.env.HELPDESK_TELEGRAM_BOT_TOKEN || '').trim(),
-                telegramChatId: (process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID || '').trim(),
-                whatsappPhone: (process.env.DEFAULT_WHATSAPP_PHONE || '').trim(),
-                whatsappApiKey: (process.env.DEFAULT_WHATSAPP_API_KEY || '').trim()
+                telegramConfigured: hasTelegramToken,
+                telegramBotToken: hasTelegramToken ? '●●●●●●●●' : '',
+                telegramChatId: telegramChatId,
+                whatsappConfigured: hasWhatsappKey,
+                whatsappPhone: whatsappPhone,
+                whatsappApiKey: hasWhatsappKey ? '●●●●●●●●' : ''
             }
         });
     } catch (err) {

@@ -1,5 +1,8 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { readUsers, writeUsers, readSubscriptions, getSubscriptionForSchool, readTickets, writeTickets } = require('../utils/dbHelper');
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Helper to extract school key from headers or request parameters
 const getSchool = (req) => {
@@ -61,12 +64,22 @@ exports.login = async (req, res) => {
         if (isMatch) {
             const assignedRole = isSuperUser ? 'SUPER_ADMIN' : 'ADMIN';
             const displayName = user?.fullName || (isSuperUser ? 'Super Administrator' : normUser);
+            const finalRole = user?.role || assignedRole;
+
+            // Issue a signed JWT with verified role embedded
+            const helpdeskToken = jwt.sign(
+                { helpdeskUser: true, username: normUser, role: finalRole, school: targetSchool },
+                JWT_SECRET,
+                { expiresIn: '8h' }
+            );
+
             return res.status(200).json({
                 success: true,
                 message: `${isSuperUser ? 'Super Admin' : 'Admin'} login successful.`,
+                helpdeskToken,
                 data: {
                     username: normUser,
-                    role: user?.role || assignedRole,
+                    role: finalRole,
                     fullName: displayName,
                     school: targetSchool,
                     subscription: schoolSub
@@ -116,9 +129,17 @@ exports.login = async (req, res) => {
         return res.status(401).json({ success: false, error: 'Invalid username, password, or school selection.' });
     }
 
+    // Issue a signed JWT with verified role embedded
+    const helpdeskToken = jwt.sign(
+        { helpdeskUser: true, username: user.username, role: user.role, school: targetSchool },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+    );
+
     return res.status(200).json({
         success: true,
         message: 'Login successful.',
+        helpdeskToken,
         data: {
             username: user.username,
             role: user.role,

@@ -183,21 +183,6 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
     const [loginCredentials, setLoginCredentials] = useState({ username: '', password: '', school: DEFAULT_SCHOOL_CODE });
     const [loginError, setLoginError] = useState('');
     const [selectedSchool, setSelectedSchool] = useState(DEFAULT_SCHOOL_CODE);
-    const [defaultCreds, setDefaultCreds] = useState(null);
-
-    // Fetch dynamic credentials configuration
-    useEffect(() => {
-        const fetchConfig = async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/auth/config`);
-                const data = await res.json();
-                setDefaultCreds(data);
-            } catch (err) {
-                console.error('Failed to load credentials config:', err);
-            }
-        };
-        fetchConfig();
-    }, []);
 
     // Live Clock State
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -268,7 +253,10 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 try {
                     setMasterLoading(true);
                     const res = await fetch(`${API_BASE_URL}/master/subscriptions`, {
-                        headers: { 'x-caller-role': 'SUPER_ADMIN' }
+                        headers: {
+                            'x-caller-role': 'SUPER_ADMIN',
+                            ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+                        }
                     });
                     const data = await res.json();
                     if (data.success) {
@@ -381,10 +369,10 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                         const storedRaw = localStorage.getItem('it_support_notifications_config');
                         const stored = storedRaw ? JSON.parse(storedRaw) : {};
                         return {
-                            telegramEnabled: stored.telegramEnabled !== undefined ? !!stored.telegramEnabled : (!!data.defaults.telegramBotToken),
+                            telegramEnabled: stored.telegramEnabled !== undefined ? !!stored.telegramEnabled : (!!data.defaults.telegramConfigured || !!data.defaults.telegramBotToken),
                             telegramBotToken: stored.telegramBotToken || data.defaults.telegramBotToken || '',
                             telegramChatId: stored.telegramChatId || data.defaults.telegramChatId || '',
-                            whatsappEnabled: stored.whatsappEnabled !== undefined ? !!stored.whatsappEnabled : (!!data.defaults.whatsappPhone),
+                            whatsappEnabled: stored.whatsappEnabled !== undefined ? !!stored.whatsappEnabled : (!!data.defaults.whatsappConfigured || !!data.defaults.whatsappPhone),
                             whatsappPhone: stored.whatsappPhone || data.defaults.whatsappPhone || '',
                             whatsappApiKey: stored.whatsappApiKey || data.defaults.whatsappApiKey || ''
                         };
@@ -412,7 +400,10 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         try {
             const res = await fetch(`${API_BASE_URL}/tickets/send-notification`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+                },
                 body: JSON.stringify({
                     telegramEnabled: settingsForm.telegramEnabled,
                     telegramBotToken: settingsForm.telegramBotToken,
@@ -488,7 +479,10 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             try {
                 const res = await fetch(`${API_BASE_URL}/tickets/send-notification`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+                    },
                     body: JSON.stringify({
                         telegramEnabled: settingsForm.telegramEnabled,
                         telegramBotToken: settingsForm.telegramBotToken,
@@ -692,7 +686,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             const statsRes = await fetch(`${API_BASE_URL}/tickets/dashboard?username=${session.username}&role=${session.role}`, {
                 headers: {
                     'x-school-key': activeSchool,
-                    'x-caller-role': session.role
+                    'x-caller-role': session.role,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 }
             });
             const statsResult = await statsRes.json();
@@ -715,7 +710,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 const usersRes = await fetch(`${API_BASE_URL}/auth/users`, {
                     headers: {
                         'x-school-key': activeSchool,
-                        'x-caller-role': session.role
+                        'x-caller-role': session.role,
+                        ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                     }
                 });
                 const usersResult = await usersRes.json();
@@ -739,7 +735,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             const statsRes = await fetch(`${API_BASE_URL}/tickets/dashboard?username=${session.username}&role=${session.role}`, {
                 headers: {
                     'x-school-key': activeSchool,
-                    'x-caller-role': session.role
+                    'x-caller-role': session.role,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 }
             });
             const statsResult = await statsRes.json();
@@ -805,8 +802,12 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             });
             const result = await res.json();
             if (result.success) {
-                localStorage.setItem('it_support_session', JSON.stringify(result.data));
-                setSession(result.data);
+                const sessionData = {
+                    ...result.data,
+                    token: result.helpdeskToken
+                };
+                localStorage.setItem('it_support_session', JSON.stringify(sessionData));
+                setSession(sessionData);
                 if (result.data.subscription) {
                     setCurrentSubscription(result.data.subscription);
                 }
@@ -857,7 +858,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 headers: {
                     'Content-Type': 'application/json',
                     'x-school-key': activeSchool,
-                    'x-caller-role': session.role
+                    'x-caller-role': session.role,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 },
                 body: JSON.stringify({
                     username: session.username,
@@ -945,7 +947,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 headers: {
                     'Content-Type': 'application/json',
                     'x-school-key': activeSchool,
-                    'x-caller-role': session.role
+                    'x-caller-role': session.role,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 },
                 body: JSON.stringify({
                     role: editBadgeForm.role,
@@ -1040,7 +1043,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-school-key': activeSchool
+                    'x-school-key': activeSchool,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 },
                 body: JSON.stringify({ status, adminRemark: remark })
             });
@@ -1093,7 +1097,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-school-key': activeSchool
+                    'x-school-key': activeSchool,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 },
                 body: JSON.stringify({ adminRemark, closedBy: session.fullName })
             });
@@ -1121,7 +1126,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                 headers: {
                     'Content-Type': 'application/json',
                     'x-school-key': activeSchool,
-                    'x-caller-role': session.role
+                    'x-caller-role': session.role,
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                 },
                 body: JSON.stringify(newUserForm)
             });
@@ -1153,7 +1159,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                         headers: {
                             'x-school-key': activeSchool,
                             'x-caller-role': session.role,
-                            'x-caller-username': session.username
+                            'x-caller-username': session.username,
+                            ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
                         }
                     });
                     const result = await res.json();
@@ -1179,8 +1186,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         });
     };
 
-    // Export CSV report
-    const handleDownloadCSV = () => {
+    // Export CSV report with authenticated fetch
+    const handleDownloadCSV = async () => {
         const activeSchool = session.role === 'SUPER_ADMIN' ? selectedSchool : (session.school);
         let csvUrl = `${API_BASE_URL}/tickets/reports/csv?status=${exportStatus}&school=${activeSchool}`;
         if (exportCategory !== 'ALL') csvUrl += `&category=${exportCategory}`;
@@ -1204,8 +1211,31 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
         if (start) csvUrl += `&startDate=${start}`;
         if (end) csvUrl += `&endDate=${end}`;
 
-        window.open(csvUrl, '_blank');
-        setIsExportModalOpen(false);
+        try {
+            const res = await fetch(csvUrl, {
+                headers: {
+                    ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+                }
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                alert(errData.error || 'Failed to download report.');
+                return;
+            }
+            const blob = await res.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `tickets_${activeSchool}_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+            alert('Network error downloading report.');
+        } finally {
+            setIsExportModalOpen(false);
+        }
     };
 
     const openExportModal = () => {

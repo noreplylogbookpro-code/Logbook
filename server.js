@@ -31,11 +31,49 @@ const PORT = process.env.PORT || 8080;
 // --- Security / Proxy Configuration ---
 app.set('trust proxy', 1);
 
+const helmet = require('helmet');
 const compression = require('compression');
 
+// --- CORS Configuration: Whitelist allowed origins ---
+const ALLOWED_ORIGINS = [
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'https://logbookplus.co.in',
+    'https://www.logbookplus.co.in',
+    'https://master.logbookplus.co.in',
+    'https://helpdesk.logbookplus.co.in',
+].filter(Boolean);
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
 // --- Global Middleware Setup ---
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://api.telegram.org", "https://api.callmebot.com"],
+            frameAncestors: ["'none'"],
+        }
+    },
+    crossOriginEmbedderPolicy: false,
+}));
 app.use(compression());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use((req, res, next) => {
     res.setHeader('serveo-skip-browser-warning', 'true');
     next();
@@ -92,8 +130,8 @@ app.use((req, res, next) => {
 
         const isLogoutRequest = url.includes('/logout');
         const activeUser = req.tokenPayload?.username || req.headers['x-caller-username'] || req.body?.username || req.query?.username || req.body?.email;
-        const callerRole = req.headers['x-caller-role'] || req.body?.role || 'USER';
-        const targetSchool = req.headers['x-school-key'] || req.body?.school || 'LOGBOOK';
+        const callerRole = req.tokenPayload?.role || req.helpdeskAuth?.role || 'USER';
+        const targetSchool = req.helpdeskAuth?.school || req.headers['x-school-key'] || req.body?.school || 'LOGBOOK';
 
         if (isLogoutRequest && activeUser && typeof activeUser === 'string') {
             markUserOffline(activeUser);
@@ -311,9 +349,32 @@ async function migrateTwoFactorSecrets() {
     }
 }
 
+// --- Security Posture Check ---
+function auditSecurityPosture() {
+    const defaultInsecurePasswords = ['123456', 'admin123', 'staff123', 'password', 'admin'];
+    const warnings = [];
+    if (defaultInsecurePasswords.includes((process.env.MASTER_PASS || '').trim())) {
+        warnings.push("MASTER_PASS is using an insecure default value! Update it in your .env before launching.");
+    }
+    if (defaultInsecurePasswords.includes((process.env.SUPER_ADMIN_PASS || '').trim())) {
+        warnings.push("SUPER_ADMIN_PASS is using an insecure default value! Update it in your .env before launching.");
+    }
+    if (defaultInsecurePasswords.includes((process.env.DEFAULT_ADMIN_PASS || '').trim())) {
+        warnings.push("DEFAULT_ADMIN_PASS is using an insecure default value! Update it in your .env before launching.");
+    }
+    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
+        warnings.push("JWT_SECRET is short or missing! Ensure you generate a strong 256-bit secret key.");
+    }
+    for (const warn of warnings) {
+        logServerEvent('alarm', `[SECURITY AUDIT] ${warn}`);
+        console.warn(`\x1b[33m⚠️  [SECURITY AUDIT] ${warn}\x1b[0m`);
+    }
+}
+
 // --- Bootstrap Server ---
 app.listen(PORT, '0.0.0.0', async () => {
     logServerEvent('info', `Server started successfully and running at http://localhost:${PORT}`);
+    auditSecurityPosture();
     await migrateTwoFactorSecrets();
     const restored = await initSessionsFromLogs(logsDb);
     if (restored > 0) {

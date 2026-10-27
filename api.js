@@ -98,6 +98,41 @@ router.use((req, res, next) => {
     next();
 });
 
+// --- Master / Admin Authentication Middleware ---
+// Accepts either:
+// 1. Admin API Key via 'X-Admin-Key' or 'X-API-Key' HTTP headers (query strings blocked to prevent log leaks)
+// 2. Bearer JWT Token for Master Admin (isMaster: true), SUPER_ADMIN, or ADMIN
+const isAdminOrMasterAuth = (req, res, next) => {
+    // 1. API Key check (Headers only to avoid query-string logging in server/proxy logs)
+    const apiKey = req.headers['x-admin-key'] || req.headers['x-api-key'];
+
+    const expectedKey = process.env.ADMIN_API_KEY || process.env.MASTER_PASS;
+    if (apiKey && expectedKey && (apiKey === expectedKey || apiKey === process.env.ADMIN_API_KEY)) {
+        req.isAdmin = true;
+        return next();
+    }
+
+    // 2. JWT Bearer token check
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            if (decoded && (decoded.isMaster || decoded.role === 'SUPER_ADMIN' || decoded.role === 'ADMIN' || (decoded.helpdeskUser && (decoded.role === 'SUPER_ADMIN' || decoded.role === 'ADMIN')))) {
+                req.tokenPayload = decoded;
+                req.isAdmin = true;
+                return next();
+            }
+        } catch (e) {
+            // Token invalid or expired
+        }
+    }
+
+    return res.status(401).json({
+        error: "Admin authentication required. Provide a valid Bearer token or X-Admin-Key header."
+    });
+};
+
 // Helpdesk Master Control API Endpoints
 const handleGetSubscriptions = (req, res) => {
     try {
@@ -153,10 +188,10 @@ const handleToggleSubscription = (req, res) => {
     }
 };
 
-router.get('/v1/master/subscriptions', handleGetSubscriptions);
-router.get('/master/subscriptions', handleGetSubscriptions);
-router.post('/v1/master/subscriptions/toggle', handleToggleSubscription);
-router.post('/master/subscriptions/toggle', handleToggleSubscription);
+router.get('/v1/master/subscriptions', isAdminOrMasterAuth, handleGetSubscriptions);
+router.get('/master/subscriptions', isAdminOrMasterAuth, handleGetSubscriptions);
+router.post('/v1/master/subscriptions/toggle', isAdminOrMasterAuth, handleToggleSubscription);
+router.post('/master/subscriptions/toggle', isAdminOrMasterAuth, handleToggleSubscription);
 
 // Sub-router mounts
 router.use('/v1/tickets', ticketRoutes);
@@ -283,12 +318,22 @@ async function sendOrDecryptFile(filePath, filename, res) {
     }
 }
 
-// Storage Setup
+// Storage Setup & Path Traversal Prevention
 const ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
+
+const getSafeUploadDir = (rawId) => {
+    const safeId = path.basename(String(rawId || 'default')).replace(/[^a-zA-Z0-9_-]/g, '');
+    const uploadsDir = path.resolve(__dirname, 'uploads');
+    const targetDir = path.resolve(uploadsDir, safeId);
+    if (!targetDir.startsWith(uploadsDir)) {
+        return path.resolve(uploadsDir, 'default');
+    }
+    return targetDir;
+};
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const userPath = path.join(__dirname, 'uploads', req.userId);
+        const userPath = getSafeUploadDir(req.userId);
         fs.ensureDirSync(userPath);
         cb(null, userPath);
     },
@@ -316,7 +361,7 @@ const upload = multer({
 
 const avatarStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const userPath = path.join(__dirname, 'uploads', req.userId);
+        const userPath = getSafeUploadDir(req.userId);
         fs.ensureDirSync(userPath);
         cb(null, userPath);
     },
@@ -1530,45 +1575,7 @@ router.delete('/master/changelogs/:id', isMasterAuth, async (req, res) => {
 
 // --- Developer Note / Mobile Announcement Management Endpoints ---
 
-/**
- * Middleware: Admin Authentication for Developer Notes & Administrative Tools
- * Accepts either:
- * 1. Admin API Key via 'X-Admin-Key', 'X-API-Key', or query parameter '?adminKey=' / '?apiKey='
- * 2. Bearer JWT Token for Master Admin (isMaster: true) or User with role 'SUPER_ADMIN'/'ADMIN'
- */
-const isAdminOrMasterAuth = (req, res, next) => {
-    // 1. API Key check
-    const apiKey = req.headers['x-admin-key'] ||
-        req.headers['x-api-key'] ||
-        req.query?.adminKey ||
-        req.query?.apiKey;
-
-    const expectedKey = process.env.ADMIN_API_KEY || process.env.MASTER_PASS;
-    if (apiKey && expectedKey && (apiKey === expectedKey || apiKey === process.env.ADMIN_API_KEY)) {
-        req.isAdmin = true;
-        return next();
-    }
-
-    // 2. JWT Bearer token check
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            if (decoded && (decoded.isMaster || decoded.role === 'SUPER_ADMIN' || decoded.role === 'ADMIN')) {
-                req.tokenPayload = decoded;
-                req.isAdmin = true;
-                return next();
-            }
-        } catch (e) {
-            // Token invalid or expired
-        }
-    }
-
-    return res.status(401).json({
-        error: "Admin authentication required. Provide a valid Bearer token or X-Admin-Key header."
-    });
-};
+// Note: isAdminOrMasterAuth is defined centrally at the top of this module and enforces header-only API key and JWT authentication.
 
 /**
  * Public Endpoint: GET /api/developer-note
@@ -1915,8 +1922,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
 
     const { username, email, password, securityQuestion, securityAnswer } = req.body;
 
-    if (!username || !email || !password) {
-        return res.status(400).json({ error: "Username, email, and password are required." });
+    if (!username || !email || !password || typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ error: "Username, email, and password are required and must be valid strings." });
     }
     if (password.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters long." });
@@ -1970,7 +1977,9 @@ router.post('/signup', signupLimiter, async (req, res) => {
 
 router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ error: "Username and password are required and must be valid strings." });
+    }
 
     const cleanUser = username.trim().toLowerCase();
     try {
@@ -2200,7 +2209,7 @@ router.post('/backup', isAuthenticated, isSubscribed, checkQuota, upload.single(
 });
 
 async function getUserBackupDir(req) {
-    const primaryDir = path.join(__dirname, 'uploads', req.userId);
+    const primaryDir = getSafeUploadDir(req.userId);
     if (await fs.pathExists(primaryDir)) {
         return primaryDir;
     }
@@ -2208,14 +2217,14 @@ async function getUserBackupDir(req) {
         const user = await db.findOne({ _id: req.userId });
         if (user) {
             if (user.username) {
-                const usernameDir = path.join(__dirname, 'uploads', user.username);
+                const usernameDir = getSafeUploadDir(user.username);
                 if (await fs.pathExists(usernameDir)) {
                     await fs.copy(usernameDir, primaryDir);
                     return primaryDir;
                 }
             }
             if (user.email) {
-                const emailDir = path.join(__dirname, 'uploads', user.email);
+                const emailDir = getSafeUploadDir(user.email);
                 if (await fs.pathExists(emailDir)) {
                     await fs.copy(emailDir, primaryDir);
                     return primaryDir;
