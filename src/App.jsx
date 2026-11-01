@@ -456,7 +456,7 @@ function AppContent() {
                       borderColor: 'var(--border)',
                     }}
                   >
-                    <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
+                    <div className="w-full max-w-7xl mx-auto space-y-6">
                       <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
                       <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="btn-primary-unified inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer">
                         {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
@@ -496,7 +496,7 @@ function AppContent() {
           {/* Fading border top */}
           <div className="absolute top-0 inset-x-0 h-[1px]" style={{ background: 'linear-gradient(to right, transparent, var(--border), transparent)' }} />
 
-          <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 mb-16 relative z-10">
+          <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 mb-16 relative z-10">
             {/* Brand & Newsletter */}
             <div className="lg:col-span-5 space-y-6 text-left">
               <a href="/" className="flex items-center gap-3">
@@ -625,7 +625,7 @@ function AppContent() {
 
           {/* Apps & Socials */}
           <div
-            className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10"
+            className="w-full max-w-7xl mx-auto pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-6 relative z-10"
             style={{ borderColor: 'var(--border)' }}
           >
             <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -660,7 +660,7 @@ function AppContent() {
 
           {/* Copyright */}
           <div
-            className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center text-xs gap-4 relative z-10"
+            className="w-full max-w-7xl mx-auto mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center text-xs gap-4 relative z-10"
             style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
           >
             <span>&copy; {new Date().getFullYear()} Logbook Plus. {t('allRightsReserved')}</span>

@@ -482,28 +482,40 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const ActiveIcon = DocInfo?.icon || ShieldAlert;
 
   return (
-    <div className="py-8 sm:py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1100px] 2xl:max-w-[1300px] mx-auto px-4 sm:px-6 md:px-12 relative text-left">
-      
+    <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left">
+      {/* Ambient background glow */}
+      <div className="absolute top-10 left-1/4 w-80 h-80 rounded-full blur-[100px] pointer-events-none -z-10 bg-indigo-500/10 dark:bg-indigo-500/15" />
+      <div className="absolute top-20 right-1/4 w-80 h-80 rounded-full blur-[100px] pointer-events-none -z-10 bg-blue-500/10 dark:bg-blue-500/15" />
+
+      {/* Centered Status Pill Badge */}
+      <div className="max-w-4xl mx-auto w-full mb-6 flex">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs bg-zinc-100 dark:bg-zinc-900/80 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 relative flex">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          </span>
+          Statutory Document • DPDP Act (India)
+        </div>
+      </div>
+
       {/* Main Standalone Policy Content Container */}
       <motion.div
         key={currentDocKey}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-3xl border p-6 sm:p-8 md:p-12 space-y-6 sm:space-y-8 shadow-sm"
-        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+        className="max-w-4xl mx-auto w-full rounded-3xl border p-6 sm:p-8 md:p-12 space-y-6 sm:space-y-8 shadow-sm backdrop-blur-xl bg-white/80 dark:bg-zinc-950/80 border-zinc-200/90 dark:border-zinc-800 transition-all duration-300 hover:shadow-xl"
       >
         {/* Document Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6 sm:pb-8" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6 sm:pb-8 border-zinc-200/80 dark:border-zinc-800">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-blue-500/10 flex items-center justify-center text-accent-blue border border-blue-500/20 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-accent-blue border border-blue-500/20 shrink-0 transition-transform duration-300 hover:scale-105">
               <ActiveIcon className="w-6 h-6" />
             </div>
             <div>
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent-blue block">
-                Statutory Document
+                Official Governance
               </span>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-transparent">
                 {DocInfo.title}
               </h1>
             </div>
@@ -521,7 +533,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         </div>
 
         {/* Footer verification note */}
-        <div className="pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+        <div className="pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono border-zinc-200/80 dark:border-zinc-800" style={{ color: 'var(--text-muted)' }}>
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>Audited & DPDP Compliant (Republic of India)</span>

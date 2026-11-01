@@ -358,24 +358,38 @@ export default function LoginView({ onNavigate }) {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-14 md:py-20">
+    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-14 md:py-20 relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full blur-[100px] pointer-events-none -z-10 bg-indigo-500/10 dark:bg-indigo-500/15" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-[100px] pointer-events-none -z-10 bg-blue-500/10 dark:bg-blue-500/15" />
+
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-[440px] sm:max-w-[480px] md:max-w-[500px] lg:max-w-[520px] card-unified space-y-6 sm:space-y-7 relative overflow-hidden backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-9"
+        className="w-full max-w-[440px] sm:max-w-[480px] md:max-w-[500px] lg:max-w-[520px] space-y-6 sm:space-y-7 relative overflow-hidden backdrop-blur-xl border border-zinc-200/90 dark:border-zinc-800 shadow-xl hover:shadow-2xl rounded-3xl p-6 sm:p-8 md:p-9 bg-white/80 dark:bg-zinc-950/80 transition-all duration-300"
       >
         <div className="absolute -top-24 -left-24 w-56 h-56 rounded-full bg-accent-blue/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-56 h-56 rounded-full bg-accent-purple/15 blur-3xl pointer-events-none" />
 
+        {/* Status Pill Badge */}
+        <div className="flex justify-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs bg-zinc-100 dark:bg-zinc-900/80 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 relative flex">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            </span>
+            Sovereign Web Vault • 2FA Ready
+          </div>
+        </div>
+
         {/* Branding header */}
         <div className="flex flex-col items-center text-center space-y-2.5 relative z-10">
-          <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-900 dark:text-zinc-100 shadow-sm">
+          <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-accent-blue shadow-sm transition-transform duration-300 hover:scale-105">
             <Shield className="w-6.5 h-6.5 sm:w-7 sm:h-7" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
-              Logbook <span className="font-semibold text-zinc-500">Plus</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-transparent flex items-center justify-center gap-2">
+              Logbook Plus
             </h2>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">{t('accessVaults')}</p>
           </div>
@@ -884,6 +898,12 @@ export default function LoginView({ onNavigate }) {
             </div>
           </div>
         )}
+
+        {/* Sovereign Security Footer Badge */}
+        <div className="pt-2 text-center text-[11px] font-mono text-zinc-400 dark:text-zinc-500 flex items-center justify-center gap-2 border-t border-zinc-200/60 dark:border-zinc-800/80">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Client-Side AES-256 • Zero-Knowledge Vault</span>
+        </div>
       </motion.div>
     </div>
   );

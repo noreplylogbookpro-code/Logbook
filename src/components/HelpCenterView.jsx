@@ -111,7 +111,7 @@ export default function HelpCenterView({ onNavigate }) {
   });
 
   return (
-    <div className="py-8 sm:py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1200px] 2xl:max-w-[1300px] mx-auto px-4 sm:px-6 md:px-8 relative text-left">
+    <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left">
       {/* Centered Header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}

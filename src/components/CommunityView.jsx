@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, MessageSquare, ShieldAlert, Heart, ExternalLink, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, ShieldAlert, Heart, ExternalLink, ArrowRight, Sparkles } from 'lucide-react';
 
 const GithubIcon = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -16,7 +16,8 @@ export default function CommunityView({ onNavigate }) {
       description: 'Join discussions with other privacy advocates, ask technical questions, discuss local-first architectures, and suggest new product features.',
       action: 'Join Discord Server',
       href: 'https://discord.gg/logbookplus',
-      isExternal: true
+      isExternal: true,
+      tag: 'Live Chat & Support'
     },
     {
       icon: GithubIcon,
@@ -24,7 +25,8 @@ export default function CommunityView({ onNavigate }) {
       description: 'Audit our source code, report reproducible bugs, review open pull requests, and contribute to documentation and localization translations.',
       action: 'View GitHub Repo',
       href: 'https://github.com/noreplylogbookpro-code/Logbook',
-      isExternal: true
+      isExternal: true,
+      tag: 'Open Source Code'
     },
     {
       icon: ShieldAlert,
@@ -32,68 +34,94 @@ export default function CommunityView({ onNavigate }) {
       description: 'We welcome reports from independent cybersecurity researchers. Review our bug disclosure policies and submit findings directly to our security engineering team.',
       action: 'Report Vulnerability',
       href: 'mailto:support@logbookplus.co.in?subject=Security%20Vulnerability%20Report',
-      isExternal: true
+      isExternal: true,
+      tag: 'Bug Bounty & Audit'
     }
   ];
 
   return (
-    <div className="py-8 sm:py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1200px] 2xl:max-w-[1400px] mx-auto px-4 sm:px-6 md:px-12 relative text-left">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-3xl space-y-4 mb-10 sm:mb-14"
-      >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono bg-blue-500/10 text-accent-blue border border-blue-500/20">
-          <Users className="w-3.5 h-3.5" />
-          Open Collaboration
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
-          Community & Channels
-        </h1>
-        <p className="text-sm sm:text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          Connect with the community, explore open source repositories, report bugs, and collaborate on sovereign personal financial tools.
-        </p>
-      </motion.div>
+    <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left overflow-hidden">
+      
+      {/* Ambient Background Glow Blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-blue-500/5 dark:bg-blue-600/10 blur-[100px] animate-pulse" />
+        <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-600/10 blur-[100px]" />
+      </div>
 
-      {/* Channels Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 sm:mb-16">
-        {channels.map((ch, i) => (
-          <motion.div
-            key={ch.title}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            className="p-6 sm:p-7 rounded-2xl border flex flex-col justify-between space-y-4"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-          >
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-accent-blue flex items-center justify-center border border-blue-500/20">
-                <ch.icon className="w-5 h-5" />
+      <div className="relative z-10 w-full space-y-12 sm:space-y-16">
+        
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="space-y-4 text-center sm:text-left"
+        >
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs"
+               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+            </span>
+            <span>Open Collaboration &bull; GitHub &bull; Discord Community</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1]" style={{ color: 'var(--text-primary)' }}>
+            Community <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-transparent">
+              & Open Channels.
+            </span>
+          </h1>
+
+          <p className="text-base sm:text-lg leading-relaxed max-w-2xl" style={{ color: 'var(--text-muted)' }}>
+            Connect with other privacy advocates, audit open-source repositories, report security vulnerabilities, and collaborate on sovereign personal financial tools.
+          </p>
+        </motion.div>
+
+        {/* Channels Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          {channels.map((ch, i) => (
+            <motion.div
+              key={ch.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+              className="p-7 sm:p-8 rounded-3xl border flex flex-col justify-between space-y-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group"
+              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl border flex items-center justify-center transition-all group-hover:scale-110 shadow-xs"
+                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+                  <ch.icon className="w-6 h-6 text-accent-blue" />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-accent-blue block">
+                    {ch.tag}
+                  </span>
+                  <h3 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    {ch.title}
+                  </h3>
+                </div>
+                <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {ch.description}
+                </p>
               </div>
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-                {ch.title}
-              </h3>
-              <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                {ch.description}
-              </p>
-            </div>
 
-            <div className="pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-              <a
-                href={ch.href}
-                target={ch.isExternal ? '_blank' : '_self'}
-                rel={ch.isExternal ? 'noopener noreferrer' : ''}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-blue hover:underline"
-              >
-                <span>{ch.action}</span>
-                {ch.isExternal ? <ExternalLink className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              </a>
-            </div>
-          </motion.div>
-        ))}
+              <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                <a
+                  href={ch.href}
+                  target={ch.isExternal ? '_blank' : '_self'}
+                  rel={ch.isExternal ? 'noopener noreferrer' : ''}
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-accent-blue hover:underline"
+                >
+                  <span>{ch.action}</span>
+                  {ch.isExternal ? <ExternalLink className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                </a>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );

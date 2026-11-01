@@ -33,6 +33,9 @@ module.exports = {
           pink: '#ec4899',
         }
       },
+      backgroundImage: {
+        'gradient-blue': 'linear-gradient(to right, #2563eb, #3b82f6, #93c5fd)',
+      },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],

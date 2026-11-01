@@ -1,161 +1,298 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Lock, ArrowRight, Coffee, ShoppingBag, ArrowDownLeft, ArrowUpRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 
 export default function Hero() {
   const { t } = useLanguage();
 
   return (
-    <section className="relative min-h-[84vh] flex flex-col justify-center px-4 md:px-8 py-16 md:py-24" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 items-center">
+    <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
 
-        {/* Text Content */}
+      {/* Ambient Background Glow Blobs (Clean Neutral Blue/Indigo) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-24 -left-24 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-blue-500/5 dark:bg-blue-600/10 blur-[90px] sm:blur-[120px] animate-pulse" />
+        <div className="absolute top-1/3 -right-24 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-indigo-500/5 dark:bg-indigo-600/10 blur-[90px] sm:blur-[120px]" />
+        <div className="absolute -bottom-20 left-1/3 w-80 h-80 rounded-full bg-purple-500/5 dark:bg-purple-600/10 blur-[100px]" />
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto flex flex-col items-center text-center relative z-10">
+
+        {/* Status Badge */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="lg:col-span-6 flex flex-col items-start text-left space-y-6"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium mb-8 backdrop-blur-md border shadow-xs"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border)',
+            color: 'var(--text-secondary)'
+          }}
         >
-          {/* Main Title - Solid, crisp, non-gradient */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.12]" style={{ color: 'var(--text-primary)' }}>
-            {t('heroTitle')}
-          </h1>
-
-          {/* Subtitle - grounded, concrete, no buzzwords */}
-          <p className="text-base sm:text-lg max-w-xl leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            {t('heroSubtitle')}
-          </p>
-
-          {/* Action CTAs - Unified common button colors in light and dark mode */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2">
-            <a
-              href="/app/"
-              className="btn-primary-unified px-6 py-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              {t('heroCta')}
-            </a>
-
-            <a
-              href="/pricing/"
-              className="btn-secondary-unified px-6 py-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              {t('pricing')}
-            </a>
-          </div>
-
-          {/* System Spec Detail - Clean editorial list instead of 3 icon boxes */}
-          <div className="pt-8 border-t w-full flex flex-wrap gap-x-8 gap-y-3 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            <div>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Private Database:</span> SQLite3 local vault with client-side AES-256 encryption
-            </div>
-            <div>
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Sync Target:</span> Private WebDAV or personal self-hosted cloud
-            </div>
-          </div>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+          </span>
+          <span>Local First &bull; Client Encrypted &bull; Zero Telemetry</span>
         </motion.div>
 
-        {/* Real Software Interface Preview - High-contrast Private Database for Personal Finance */}
-        <motion.div
-          initial={{ opacity: 0, y: 32, scale: 0.98 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="lg:col-span-6 w-full"
+        {/* Hero Title with Dual-Mode Gradient */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight mb-6 max-w-5xl leading-[1.08] text-center"
+          style={{ color: 'var(--text-light)' }}
         >
+          Expense Intelligence <br className="hidden sm:inline" />
+          <span className="text-gradient-hero">
+            That Stays Yours.
+          </span>
+        </motion.h1>
+
+        {/* Subtitle */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
+          className="text-base sm:text-lg md:text-xl mb-10 max-w-2xl leading-relaxed text-center"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Stop trading your financial behavior for cloud convenience. Take back control with an offline-first, locally encrypted personal ledger engineered for absolute data custody.
+        </motion.p>
+
+        {/* CTA Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto mb-16 sm:mb-20"
+        >
+          <a
+            href="https://play.google.com/store/apps/details?id=com.logbookplus"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-3 shadow-lg cursor-pointer"
+            style={{
+              backgroundColor: 'var(--text-primary)',
+              color: 'var(--bg-base)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+            }}
+          >
+            <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6 l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z" />
+            </svg>
+            <span>Download for Android</span>
+          </a>
+
+          <a
+            href="/app/"
+            className="btn-secondary transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)'
+            }}
+          >
+            <Lock className="w-4 h-4 text-emerald-500" />
+            <span>Launch Web Vault</span>
+            <ArrowRight className="w-4 h-4 ml-1 opacity-70" />
+          </a>
+        </motion.div>
+
+        {/* Interactive / Visual App Dashboard Mockup Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 36, scale: 0.98 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-5xl relative"
+        >
+          {/* Subtle Outer Glow */}
+          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 blur-xl opacity-70 dark:opacity-50 pointer-events-none" />
+
+          {/* Main Glass Shell */}
           <div
-            className="rounded-xl border overflow-hidden shadow-sm"
-            role="region"
-            aria-label="Private Database Personal Finance Preview"
+            className="relative rounded-2xl sm:rounded-3xl border backdrop-blur-xl p-3 sm:p-5 md:p-6 shadow-2xl overflow-hidden text-left"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border)'
             }}
           >
-            {/* Window Header */}
+            {/* Mockup Window Top Header */}
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-rose-400/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-400/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-400/80 inline-block" />
+                <span className="ml-2 text-xs font-mono font-semibold hidden sm:inline-block" style={{ color: 'var(--text-muted)' }}>
+                  vault.logbook.sqlite &bull; AES-256 GCM
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] font-mono px-2.5 py-1 rounded-full border" style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>OFFLINE_FIRST</span>
+              </div>
+            </div>
+
+            {/* Mockup Dashboard Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-4">
+
+              {/* Balance & Spending Bar Chart Preview (8 cols on desktop) */}
+              <div
+                className="md:col-span-7 rounded-2xl border p-5 sm:p-6 flex flex-col justify-between space-y-6"
+                style={{
+                  backgroundColor: 'var(--bg-input)',
+                  borderColor: 'var(--border)'
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
+                      Current Ledger Balance
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                      +14.2% this month
+                    </span>
+                  </div>
+                  <p className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight mt-1" style={{ color: 'var(--text-primary)' }}>
+                    $12,450.00
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Locally aggregated across 4 personal budget accounts
+                  </p>
+                </div>
+
+                {/* Simulated Financial Cashflow Bar Chart */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                    <span>Weekly Inflow / Outflow</span>
+                    <span>100% Client-Computed</span>
+                  </div>
+                  <div className="flex items-end gap-2 sm:gap-3 h-28 w-full pt-3">
+                    {[
+                      { label: 'Mon', h: '38%', active: false },
+                      { label: 'Tue', h: '62%', active: false },
+                      { label: 'Wed', h: '48%', active: false },
+                      { label: 'Thu', h: '82%', active: false },
+                      { label: 'Fri', h: '68%', active: false },
+                      { label: 'Sat', h: '94%', active: true },
+                      { label: 'Sun', h: '55%', active: false }
+                    ].map((bar, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                        <div
+                          className={`w-full rounded-t-lg transition-all duration-300 group-hover:scale-105 ${bar.active
+                            ? 'bg-blue-600 dark:bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]'
+                            : 'bg-zinc-300 dark:bg-zinc-700/80 hover:bg-zinc-400 dark:hover:bg-zinc-600'
+                            }`}
+                          style={{ height: bar.h }}
+                        />
+                        <span className="text-[10px] font-mono font-medium" style={{ color: 'var(--text-muted)' }}>
+                          {bar.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Transactions List (5 cols on desktop) */}
+              <div
+                className="md:col-span-5 rounded-2xl border p-5 sm:p-6 flex flex-col justify-between space-y-4"
+                style={{
+                  backgroundColor: 'var(--bg-input)',
+                  borderColor: 'var(--border)'
+                }}
+              >
+                <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--border)' }}>
+                  <h4 className="text-xs font-mono uppercase tracking-wider font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Recent Transactions
+                  </h4>
+                  <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>3 of 142</span>
+                </div>
+
+                <div className="space-y-3.5 divide-y" style={{ borderColor: 'var(--border)' }}>
+                  {/* Tx 1 */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                        <Coffee className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                          Coffee Roasters
+                        </p>
+                        <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Today &bull; Food & Drinks</p>
+                      </div>
+                    </div>
+                    <span className="text-xs sm:text-sm font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
+                      -$4.50
+                    </span>
+                  </div>
+
+                  {/* Tx 2 */}
+                  <div className="flex items-center justify-between pt-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                        <ShoppingBag className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                          Supermarket Supplies
+                        </p>
+                        <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Yesterday &bull; Grocery</p>
+                      </div>
+                    </div>
+                    <span className="text-xs sm:text-sm font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
+                      -$82.10
+                    </span>
+                  </div>
+
+                  {/* Tx 3 */}
+                  <div className="flex items-center justify-between pt-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                        <ArrowDownLeft className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs sm:text-sm font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                          Direct Deposit Salary
+                        </p>
+                        <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>12 Oct &bull; Income</p>
+                      </div>
+                    </div>
+                    <span className="text-xs sm:text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      +$4,200.00
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t text-center" style={{ borderColor: 'var(--border)' }}>
+                  <a href="/app/" className="text-xs font-bold text-accent-blue hover:underline inline-flex items-center gap-1">
+                    Open Full Database View &rarr;
+                  </a>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Floating E2E Encrypted Badge */}
             <div
-              className="px-4 py-3 border-b flex items-center justify-between text-xs"
+              className="mt-4 sm:mt-5 px-3.5 py-1.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono"
               style={{
                 backgroundColor: 'var(--bg-input)',
-                borderColor: 'var(--border)'
+                borderColor: 'var(--border)',
+                color: 'var(--text-secondary)'
               }}
             >
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400 dark:bg-zinc-600 inline-block" aria-hidden="true" />
-                <span className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
-                  PRIVATE_DATABASE.db
-                </span>
+                <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="font-semibold">AES-256 Zero-Knowledge Vault</span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                <span>LOCAL_ENCRYPTED</span>
-              </div>
-            </div>
-
-            {/* Account Context Bar */}
-            <div className="p-4 border-b flex flex-wrap items-center justify-between gap-4 text-xs font-mono" style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Vault: </span>
-                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Personal Finance (Offline-First)</span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Monthly Surplus: </span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">+₹38,450.00</span>
-              </div>
-            </div>
-
-            {/* Realistic Tabular Records */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono border-collapse" aria-label="Personal Finance Ledger Table">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>
-                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>DATE</th>
-                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>REF #</th>
-                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>CATEGORY & DESCRIPTION</th>
-                    <th scope="col" className="py-2.5 px-4 font-semibold text-right" style={{ color: 'var(--text-muted)' }}>AMOUNT</th>
-                    <th scope="col" className="py-2.5 px-4 font-semibold text-center" style={{ color: 'var(--text-muted)' }}>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                  {[
-                    { date: '2026-11-01', ref: 'TXN-1049', head: 'Salary Credit - Primary Employment', amt: '+₹85,000.00', status: 'VERIFIED' },
-                    { date: '2026-10-31', ref: 'TXN-1048', head: 'Apartment Rent & Society Maintenance', amt: '-₹22,000.00', status: 'SETTLED' },
-                    { date: '2026-10-30', ref: 'TXN-1047', head: 'Groceries & Organic Essentials', amt: '-₹4,620.00', status: 'SETTLED' },
-                    { date: '2026-10-29', ref: 'TXN-1046', head: 'Index Mutual Fund SIP Investment', amt: '-₹15,000.00', status: 'ALLOCATED' },
-                    { date: '2026-10-28', ref: 'TXN-1045', head: 'High-Speed Fiber & Utilities', amt: '-₹1,430.00', status: 'SETTLED' },
-                  ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                      <td className="py-2.5 px-4" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
-                      <td className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.ref}</td>
-                      <td className="py-2.5 px-4 font-sans text-xs" style={{ color: 'var(--text-primary)' }}>{row.head}</td>
-                      <td className={`py-2.5 px-4 text-right font-semibold ${row.amt.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
-                        {row.amt}
-                      </td>
-                      <td className="py-2.5 px-4 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" style={{ color: 'var(--text-secondary)' }}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer Summary */}
-            <div
-              className="px-4 py-3 border-t flex items-center justify-between text-xs"
-              style={{
-                backgroundColor: 'var(--bg-input)',
-                borderColor: 'var(--border)'
-              }}
-            >
-              <div className="flex items-center gap-4 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                <span>Records: 5 Verified in Private Database</span>
-                <span>SHA-256 Digest: e8f2...91b0</span>
-              </div>
-              <span className="font-semibold text-xs text-blue-600 dark:text-blue-400">
-                Local Encrypted Database
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hidden sm:inline-block">
+                &bull; Zero Plaintext Transmission
               </span>
             </div>
           </div>

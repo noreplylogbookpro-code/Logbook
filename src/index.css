@@ -107,6 +107,9 @@
   --text-light: #2563eb;
   --text-dark: #ffffff;
 
+  /* Gradients */
+  --gradient-blue: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
+  --background-gradient: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
   /* Buttons - Light mode */
   --btn-primary-bg: #2563eb;
   --btn-primary-text: #ffffff;
@@ -190,6 +193,11 @@
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --text-placeholder: #64748b;
+  --text-light: #3b82f6;
+
+  /* Gradients */
+  --gradient-blue: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
+  --background-gradient: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
 
   /* Buttons - Dark mode */
   --btn-primary-bg: #3b82f6;
@@ -541,6 +549,32 @@ a {
    ========================================================= */
 
 @layer utilities {
+  /* Unified Blue Gradient (from-blue-600 via-blue-500 to-blue-300) */
+  .bg-gradient-blue {
+    background-image: var(--gradient-blue, linear-gradient(to right, #2563eb, #3b82f6, #93c5fd));
+  }
+
+  .text-gradient-blue {
+    background-image: var(--gradient-blue, linear-gradient(to right, #2563eb, #3b82f6, #93c5fd));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Dual-mode hero text gradient (Blue gradient in light, neutral zinc in dark) */
+  .text-gradient-hero {
+    background-image: var(--gradient-blue, linear-gradient(to right, #2563eb, #3b82f6, #93c5fd));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .dark .text-gradient-hero {
+    background-image: linear-gradient(to right, #ffffff, #e4e4e7, #71717a);
+  }
+
   .glass-card {
     background: var(--bg-card);
     border: 1px solid var(--border);

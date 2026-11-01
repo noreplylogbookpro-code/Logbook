@@ -1,92 +1,131 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Database, EyeOff, Activity, Check, ShieldCheck, Server, Lock } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 
 export default function BentoFeatures() {
   const { t } = useLanguage();
 
-  const pillars = [
+  const features = [
     {
-      title: 'Private Local Database (SQLite3)',
-      category: 'DATA CUSTODY',
-      desc: 'Your personal income, expenses, and transaction logs live directly in a private encrypted SQLite database stored on your physical device. Zero tracking, zero telemetry, zero surveillance.',
-      detail: 'Local SQLite3 vault · Strict client custody · Complete offline autonomy'
+      icon: Database,
+      title: 'Local Encrypted DB',
+      desc: 'Your financial history never leaves your device unencrypted. We utilize AES-256 local database encryption on top of standard platform security. You hold the keys.',
+      badgeType: 'code',
+      codePrefix: 'const status = ',
+      codeHighlight: '"Encrypted";'
     },
     {
-      title: 'Zero-Knowledge Client Encryption',
-      category: 'CRYPTOGRAPHIC PRIVACY',
-      desc: 'Financial entries and receipt notes are locally encrypted with AES-256 GCM using keys derived from your passphrase. No third party or remote server can decrypt your records.',
-      detail: 'AES-256 client cipher · PBKDF2 passphrase hashing · Zero plaintext exposure'
+      icon: EyeOff,
+      title: 'Zero Tracker SDKs',
+      desc: 'No Google Analytics. No Facebook Pixels. No crashlytics tools that phone home. The app binary is entirely clean of third-party telemetry, ad beacons, and surveillance.',
+      badgeType: 'code',
+      codePrefix: 'export default ',
+      codeHighlight: 'OfflineOnly;'
     },
     {
-      title: 'Personal Cash Flow & Budget Control',
-      category: 'FINANCIAL INTELLIGENCE',
-      desc: 'Categorize spending, monitor monthly surplus, track savings goals, and understand personal cash flow without exposing your bank accounts to third-party data aggregators.',
-      detail: 'Granular budget heads · Instant offline balance summaries · Verified transaction trails'
-    },
-    {
-      title: 'Sovereign Multi-Target Sync',
-      category: 'DATA INDEPENDENCE',
-      desc: 'Easily backup and restore your encrypted private database to your personal WebDAV or self-hosted server. You maintain absolute ownership with no proprietary lock-in.',
-      detail: 'WebDAV & self-host ready · One-click recovery · Portable JSON/CSV exports'
+      icon: Activity,
+      title: 'Transparent Cash Flow',
+      desc: 'Gain unparalleled insights into your spending habits with powerful, locally computed analytics. Full control, categorization, and reporting without cloud lag.',
+      badgeType: 'check',
+      checkText: '100% On-Device'
     }
   ];
 
   return (
-    <section className="py-20 px-4 md:px-8 border-t" style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)' }}>
-      <div className="w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto">
-        
+    <section className="py-20 sm:py-28 px-4 sm:px-6 md:px-8 border-t relative overflow-hidden" style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+
+      {/* Background Soft Glow */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute bottom-0 right-10 w-96 h-96 rounded-full bg-blue-500/5 dark:bg-blue-600/5 blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto relative z-10">
+
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-2xl mb-14 text-left space-y-3"
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-3xl mb-14 sm:mb-20 text-center mx-auto space-y-4"
         >
-          <span className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-muted)' }}>
-            System Architecture
-          </span>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Engineered for personal finance with complete private data custody.
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono bg-blue-500/10 text-accent-blue border border-blue-500/20">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Sovereign Architecture
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-light)' }}>
+            Radical Privacy by Design
           </h2>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Logbook Plus replaces cloud-tracking fintech apps with an offline-first private database, giving you 100% control over your financial records.
+          <p className="text-base sm:text-lg leading-relaxed max-w-2xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+            Your financial behavior is the most sensitive data you own. Logbook Plus is engineered from the ground up to ensure nobody sees it but you.
           </p>
         </motion.div>
 
-        {/* Structured 2x2 Architectural Grid (No icon boxes, no blur, no gradients) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {pillars.map((pillar, idx) => (
+        {/* 3 Prominent Bento Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          {features.map((feat, idx) => (
             <motion.div
-              key={idx}
+              key={feat.title}
               initial={{ opacity: 0, y: 28 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="p-8 rounded-xl border flex flex-col justify-between space-y-6 transition-colors"
+              className="p-8 sm:p-9 rounded-3xl border flex flex-col justify-between space-y-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border)'
               }}
             >
-              <div className="space-y-3">
-                <span className="text-[11px] font-semibold tracking-wider font-mono px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" style={{ color: 'var(--text-secondary)' }}>
-                  {pillar.category}
-                </span>
-                <h3 className="text-xl md:text-2xl font-bold pt-1" style={{ color: 'var(--text-primary)' }}>
-                  {pillar.title}
+              <div className="space-y-4 text-left">
+                {/* Icon Box */}
+                <div
+                  className="w-14 h-14 rounded-2xl border flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-xs"
+                  style={{
+                    backgroundColor: 'var(--bg-input)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  <feat.icon className="w-6 h-6 text-accent-blue" />
+                </div>
+
+                <h3 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  {feat.title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  {pillar.desc}
+
+                <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {feat.desc}
                 </p>
               </div>
 
-              <div
-                className="pt-4 border-t font-mono text-xs flex items-center justify-between"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-              >
-                <span>{pillar.detail}</span>
+              {/* Code Pill Footer */}
+              <div className="pt-4 border-t text-left" style={{ borderColor: 'var(--border)' }}>
+                {feat.badgeType === 'code' ? (
+                  <div
+                    className="font-mono text-xs px-3 py-1.5 rounded-xl border inline-flex items-center gap-1 shadow-2xs"
+                    style={{
+                      backgroundColor: 'var(--bg-input)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-muted)'
+                    }}
+                  >
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{feat.codePrefix}</span>
+                    <span className="text-amber-600 dark:text-amber-300 font-bold">{feat.codeHighlight}</span>
+                  </div>
+                ) : (
+                  <div
+                    className="font-mono text-xs px-3 py-1.5 rounded-xl border inline-flex items-center gap-1.5 shadow-2xs"
+                    style={{
+                      backgroundColor: 'var(--bg-input)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-500 font-bold" />
+                    <span className="font-semibold">{feat.checkText}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

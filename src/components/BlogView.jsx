@@ -55,14 +55,22 @@ export default function BlogView({ onNavigate }) {
   });
 
   return (
-    <div className="py-8 sm:py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1300px] 2xl:max-w-[1500px] mx-auto px-4 sm:px-6 md:px-12 relative text-left">
+    <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left overflow-hidden">
+      
+      {/* Ambient Background Glow Blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-24 -left-24 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-blue-500/10 dark:bg-blue-600/10 blur-[100px] animate-pulse" />
+        <div className="absolute top-1/2 -right-24 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-indigo-500/10 dark:bg-indigo-600/10 blur-[100px]" />
+      </div>
+
+      <div className="relative z-10">
       {selectedBlog ? (
         /* Blog Reader View */
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="max-w-3xl mx-auto space-y-6"
+          className="max-w-4xl mx-auto space-y-6"
         >
           <button
             onClick={() => {
@@ -148,22 +156,29 @@ export default function BlogView({ onNavigate }) {
         </motion.div>
       ) : (
         /* Blog List View */
-        <div className="space-y-8 sm:space-y-12">
+        <div className="space-y-8 sm:space-y-12 w-full">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="max-w-3xl space-y-3"
+            className="space-y-4 text-center sm:text-left"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono bg-blue-500/10 text-accent-blue border border-blue-500/20">
-              <Sparkles className="w-3.5 h-3.5" />
-              Engineering & Privacy
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs"
+                 style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+              </span>
+              <span>Engineering Journal &bull; Cryptography &bull; Local-First Architecture</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
-              Logbook Tech Blog
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1]" style={{ color: 'var(--text-primary)' }}>
+              Logbook Tech Blog <br className="hidden sm:inline" />
+              <span className="bg-gradient-to-r from-zinc-950 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-200 dark:to-zinc-500 bg-clip-text text-transparent">
+                Architecture & Privacy.
+              </span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl" style={{ color: 'var(--text-muted)' }}>
               Deep dives into sovereign offline architectures, client-side cryptographic vaults, and local-first personal cloud innovations.
             </p>
           </motion.div>
@@ -291,6 +306,7 @@ export default function BlogView({ onNavigate }) {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
