@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '../useLanguage.js';
 
 export default function BentoFeatures() {
@@ -36,7 +37,13 @@ export default function BentoFeatures() {
       <div className="w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto">
         
         {/* Section Header */}
-        <div className="max-w-2xl mb-14 text-left space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-2xl mb-14 text-left space-y-3"
+        >
           <span className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-muted)' }}>
             System Architecture
           </span>
@@ -46,13 +53,17 @@ export default function BentoFeatures() {
           <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             Logbook Plus replaces cloud-tracking fintech apps with an offline-first private database, giving you 100% control over your financial records.
           </p>
-        </div>
+        </motion.div>
 
         {/* Structured 2x2 Architectural Grid (No icon boxes, no blur, no gradients) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {pillars.map((pillar, idx) => (
-            <div
+            <motion.div
               key={idx}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.5, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
               className="p-8 rounded-xl border flex flex-col justify-between space-y-6 transition-colors"
               style={{
                 backgroundColor: 'var(--bg-surface)',
@@ -77,7 +88,7 @@ export default function BentoFeatures() {
               >
                 <span>{pillar.detail}</span>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 

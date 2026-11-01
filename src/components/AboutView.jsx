@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '../useLanguage.js';
 
 export default function AboutView() {
@@ -8,7 +9,13 @@ export default function AboutView() {
     <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto px-4 sm:px-8 md:px-12 relative text-left">
       
       {/* Editorial Overview */}
-      <div className="max-w-3xl space-y-4 mb-16">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="max-w-3xl space-y-4 mb-16"
+      >
         <span className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-muted)' }}>
           {t('ourPhilosophy')}
         </span>
@@ -18,11 +25,15 @@ export default function AboutView() {
         <p className="text-base md:text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           {t('philosophySubtitle')}
         </p>
-      </div>
+      </motion.div>
 
       {/* Mission & Purpose - Clean 2-column layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
           className="p-8 rounded-xl border space-y-4"
           style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
@@ -35,9 +46,13 @@ export default function AboutView() {
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             {t('missionDesc')}
           </p>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.5, delay: 0.12, ease: 'easeOut' }}
           className="p-8 rounded-xl border space-y-4"
           style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
         >
@@ -50,7 +65,7 @@ export default function AboutView() {
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             {t('sovereigntyDesc')}
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {/* Core Engineering Principles - Systematic 2x2 grid instead of 3 icon boxes in a row */}

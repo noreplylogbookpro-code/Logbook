@@ -100,10 +100,12 @@
   --border-focus: #2563eb;
 
   /* Text */
-  --text-primary: #0f172a;
+  --text-primary: #000000;
   --text-secondary: #334155;
   --text-muted: #475569;
   --text-placeholder: #64748b;
+  --text-light: #2563eb;
+  --text-dark: #ffffff;
 
   /* Buttons - Light mode */
   --btn-primary-bg: #2563eb;
@@ -480,6 +482,23 @@ a {
     background-size: 1rem 1rem;
     cursor: pointer;
     transition: border-color 0.15s ease;
+  }
+
+  .dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-radius: 0.75rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
 
   .dropdown-item:hover,

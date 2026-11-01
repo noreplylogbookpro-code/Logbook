@@ -2816,7 +2816,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Manage Blog Posts</h3>
                 <button
                   onClick={() => openBlogEditModal(null)}
-                  className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  className="btn-primary"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Create Post
@@ -2903,7 +2903,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 </div>
                 <button
                   onClick={() => openChangelogEditModal(null)}
-                  className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  className="btn-primary"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   New Release Note
@@ -2995,14 +2995,14 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                     href="/api/developer-note"
                     target="_blank"
                     rel="noreferrer"
-                    className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-white/10 transition-all flex items-center gap-1.5"
+                    className="btn-secondary-unified"
                   >
                     <Eye className="w-3.5 h-3.5 text-accent-blue" />
                     View Live JSON
                   </a>
                   <button
                     onClick={() => openNoteEditModal(null)}
-                    className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="btn-primary-unified"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     New Announcement
@@ -3051,8 +3051,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                             <div
                               key={note._id || note.id}
                               className={`p-3.5 rounded-xl border transition-all ${isAct
-                                  ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/5'
-                                  : 'border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75'
+                                ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/5'
+                                : 'border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/30 opacity-75'
                                 }`}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -3060,8 +3060,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span
                                       className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${isAct
-                                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                          : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                        : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
                                         }`}
                                     >
                                       {isAct ? 'Active' : 'Inactive'}
@@ -3100,8 +3100,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                                   <button
                                     onClick={() => handleToggleNote(note.id || note._id)}
                                     className={`px-2 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${isAct
-                                        ? 'bg-zinc-200 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-700 dark:text-zinc-300 border-transparent'
-                                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
+                                      ? 'bg-zinc-200 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-700 dark:text-zinc-300 border-transparent'
+                                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
                                       }`}
                                     title={isAct ? 'Deactivate note' : 'Activate note'}
                                   >
@@ -3254,8 +3254,8 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   <button
                     onClick={() => setIsLogsPaused(prev => !prev)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${isLogsPaused
-                        ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
-                        : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                      ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-white/5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
                       }`}
                     title={isLogsPaused ? "Resume Live Logs Streaming" : "Pause Live Logs Streaming"}
                   >
@@ -4015,13 +4015,48 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
         )}
 
         {activeModal && (
-          <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex ${activeModal === 'editBlog' ? 'items-end p-0 sm:p-4' : 'items-center justify-center p-3 sm:p-4'}`}>
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setActiveModal(null);
+                setActionError('');
+                setActionSuccess('');
+              }
+            }}
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex ${
+              activeModal === 'editBlog' || activeModal === 'editChangelog' || activeModal === 'editNote'
+                ? 'justify-end p-0'
+                : 'items-center justify-center p-3 sm:p-4'
+            }`}
+          >
             <motion.div
-              initial={activeModal === 'editBlog' ? { y: '100%', opacity: 0 } : { scale: 0.95, opacity: 0 }}
-              animate={activeModal === 'editBlog' ? { y: 0, opacity: 1 } : { scale: 1, opacity: 1 }}
-              exit={activeModal === 'editBlog' ? { y: '100%', opacity: 0 } : { scale: 0.95, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={`w-full ${activeModal === 'editBlog' ? 'max-w-5xl h-[90vh] rounded-t-3xl sm:rounded-3xl' : activeModal === 'editChangelog' ? 'max-w-2xl max-h-[90vh]' : 'max-w-md'} card-unified space-y-4 relative overflow-hidden bg-white dark:bg-zinc-950 text-left border border-zinc-200 dark:border-white/5 flex flex-col`}
+              initial={
+                activeModal === 'editBlog' || activeModal === 'editChangelog' || activeModal === 'editNote'
+                  ? { x: '100%', opacity: 0 }
+                  : { scale: 0.95, opacity: 0 }
+              }
+              animate={
+                activeModal === 'editBlog' || activeModal === 'editChangelog' || activeModal === 'editNote'
+                  ? { x: 0, opacity: 1 }
+                  : { scale: 1, opacity: 1 }
+              }
+              exit={
+                activeModal === 'editBlog' || activeModal === 'editChangelog' || activeModal === 'editNote'
+                  ? { x: '100%', opacity: 0 }
+                  : { scale: 0.95, opacity: 0 }
+              }
+              transition={
+                activeModal === 'editBlog' || activeModal === 'editChangelog' || activeModal === 'editNote'
+                  ? { type: 'spring', damping: 28, stiffness: 240 }
+                  : { type: 'spring', damping: 25, stiffness: 200 }
+              }
+              className={`w-full ${
+                activeModal === 'editBlog'
+                  ? 'max-w-5xl h-full rounded-none sm:rounded-l-3xl border-l border-zinc-200 dark:border-white/10 p-5 sm:p-6'
+                  : activeModal === 'editChangelog' || activeModal === 'editNote'
+                    ? 'max-w-2xl h-full rounded-none sm:rounded-l-3xl border-l border-zinc-200 dark:border-white/10 p-5 sm:p-6'
+                    : 'max-w-md card-unified rounded-2xl border border-zinc-200 dark:border-white/5 p-5 sm:p-6'
+              } space-y-4 relative overflow-hidden bg-white dark:bg-zinc-950 text-left shadow-2xl flex flex-col`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/2 to-transparent pointer-events-none" />
 
@@ -4177,268 +4212,284 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
 
               {/* EDIT CHANGELOG MODAL CONTENT */}
               {activeModal === 'editChangelog' && (
-                <form onSubmit={handleChangelogFormSubmit} className="space-y-4 overflow-y-auto max-h-[75vh] pr-1 text-left">
-                  <div className="grid grid-cols-2 gap-3">
+                <form onSubmit={handleChangelogFormSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-left">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Version tag *</label>
+                        <input
+                          type="text"
+                          value={changelogVersion}
+                          onChange={(e) => setChangelogVersion(e.target.value)}
+                          placeholder="v2.1.0"
+                          className="input-unified"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Date / Label *</label>
+                        <input
+                          type="text"
+                          value={changelogDate}
+                          onChange={(e) => setChangelogDate(e.target.value)}
+                          placeholder="December 2025"
+                          className="input-unified"
+                          required
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Version tag *</label>
+                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Summary</label>
                       <input
                         type="text"
-                        value={changelogVersion}
-                        onChange={(e) => setChangelogVersion(e.target.value)}
-                        placeholder="v2.1.0"
+                        value={changelogDescription}
+                        onChange={(e) => setChangelogDescription(e.target.value)}
+                        placeholder="Major Cloud Sync & Security Release"
                         className="input-unified"
-                        required
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Date / Label *</label>
-                      <input
-                        type="text"
-                        value={changelogDate}
-                        onChange={(e) => setChangelogDate(e.target.value)}
-                        placeholder="December 2025"
-                        className="input-unified"
+                      <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Bullet Points (One per line)</label>
+                      <textarea
+                        value={changelogItemsText}
+                        onChange={(e) => setChangelogItemsText(e.target.value)}
+                        rows={7}
+                        placeholder={"Added cloud backup support\nAdded 2FA authentication\nFixed UI alignment issue"}
+                        className="input-unified font-mono text-xs"
                         required
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
+                      <div className="text-left">
+                        <span className="text-sm font-semibold text-zinc-800 dark:text-white block">Mark as Major Release</span>
+                        <span className="text-xs text-zinc-500">Highlight this release with special badge styling</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={changelogIsMajor}
+                        onChange={(e) => setChangelogIsMajor(e.target.checked)}
+                        className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple cursor-pointer"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Release Summary</label>
-                    <input
-                      type="text"
-                      value={changelogDescription}
-                      onChange={(e) => setChangelogDescription(e.target.value)}
-                      placeholder="Major Cloud Sync & Security Release"
-                      className="input-unified"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[13px] font-bold text-zinc-500 uppercase block pl-1">Bullet Points (One per line)</label>
-                    <textarea
-                      value={changelogItemsText}
-                      onChange={(e) => setChangelogItemsText(e.target.value)}
-                      rows={5}
-                      placeholder={"Added cloud backup support\nAdded 2FA authentication\nFixed UI alignment issue"}
-                      className="input-unified font-mono text-xs"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
-                    <div className="text-left">
-                      <span className="text-sm font-semibold text-zinc-800 dark:text-white block">Mark as Major Release</span>
-                      <span className="text-xs text-zinc-500">Highlight this release with special badge styling</span>
+                  <div className="border-t border-zinc-200 dark:border-white/5 pt-3 mt-3 flex items-center justify-between gap-3 bg-white dark:bg-zinc-950 shrink-0">
+                    <span className="text-xs text-zinc-500 font-mono">
+                      {selectedChangelogId ? `Editing: ${changelogVersion || selectedChangelogId}` : 'New Release'}
+                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveModal(null)}
+                        className="btn-secondary-unified px-4 py-2 text-sm font-semibold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-primary-unified px-5 py-2 text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                        <span>{selectedChangelogId ? 'Update Release' : 'Publish Release'}</span>
+                      </button>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={changelogIsMajor}
-                      onChange={(e) => setChangelogIsMajor(e.target.checked)}
-                      className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal(null)}
-                      className="w-1/2 btn-secondary-unified py-2"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5"
-                    >
-                      {selectedChangelogId ? 'Update Release' : 'Publish Release'}
-                    </button>
                   </div>
                 </form>
               )}
 
               {/* EDIT DEVELOPER NOTE MODAL CONTENT */}
               {activeModal === 'editNote' && (
-                <form onSubmit={handleNoteFormSubmit} className="space-y-4 overflow-y-auto max-h-[75vh] pr-1 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={noteTitle}
-                      onChange={(e) => setNoteTitle(e.target.value)}
-                      placeholder="Welcome to Logbook Plus v2.0!"
-                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                <form onSubmit={handleNoteFormSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-left">
                     <div className="space-y-1">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Badge</label>
-                      <select
-                        value={['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge) ? noteBadge : 'Custom'}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === 'Custom') {
-                            setIsCustomBadge(true);
-                            if (['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge)) {
-                              setNoteBadge('');
-                            }
-                          } else {
-                            setIsCustomBadge(false);
-                            setNoteBadge(val);
-                          }
-                        }}
-                        className="w-full input-field-unified text-sm px-3 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100"
-                      >
-                        <option value="Announcement">📢 Announcement</option>
-                        <option value="Update">🚀 Update</option>
-                        <option value="Security">🛡️ Security Alert</option>
-                        <option value="Urgent">⚠️ Urgent</option>
-                        <option value="Maintenance">🔧 Maintenance</option>
-                        <option value="Feature">✨ New Feature</option>
-                        <option value="Patch">🩹 Patch</option>
-                        <option value="Custom">✏️ Custom Badge...</option>
-                      </select>
-                      {isCustomBadge && (
-                        <input
-                          type="text"
-                          autoFocus
-                          value={noteBadge}
-                          onChange={(e) => setNoteBadge(e.target.value)}
-                          placeholder="Type custom badge (e.g. Critical)"
-                          className="w-full input-field-unified text-sm px-3.5 py-2 rounded-xl mt-1.5"
-                        />
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Target App Version</label>
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Title *</label>
                       <input
                         type="text"
-                        value={noteVersion}
-                        onChange={(e) => setNoteVersion(e.target.value)}
-                        placeholder="2.0.20 (optional)"
-                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl font-mono"
+                        required
+                        value={noteTitle}
+                        onChange={(e) => setNoteTitle(e.target.value)}
+                        placeholder="Welcome to Logbook Plus v2.0!"
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Display Date</label>
-                      <button
-                        type="button"
-                        onClick={() => setNoteDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}
-                        className="text-[11px] text-accent-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
-                      >
-                        <Clock className="w-3 h-3" /> Today
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="relative flex items-center">
-                        <Calendar className="w-4 h-4 text-zinc-400 absolute left-3 pointer-events-none" />
-                        <input
-                          type="date"
-                          value={formatDateForInput(noteDate)}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Badge</label>
+                        <select
+                          value={['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge) ? noteBadge : 'Custom'}
                           onChange={(e) => {
-                            if (e.target.value) {
-                              setNoteDate(formatInputToDisplayDate(e.target.value));
+                            const val = e.target.value;
+                            if (val === 'Custom') {
+                              setIsCustomBadge(true);
+                              if (['Announcement', 'Update', 'Security', 'Urgent', 'Maintenance', 'Feature', 'Patch'].includes(noteBadge)) {
+                                setNoteBadge('');
+                              }
+                            } else {
+                              setIsCustomBadge(false);
+                              setNoteBadge(val);
                             }
                           }}
-                          className="w-full input-field-unified text-sm pl-9 pr-3.5 py-2.5 rounded-xl cursor-pointer"
+                          className="w-full input-field-unified text-sm px-3 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100"
+                        >
+                          <option value="Announcement">📢 Announcement</option>
+                          <option value="Update">🚀 Update</option>
+                          <option value="Security">🛡️ Security Alert</option>
+                          <option value="Urgent">⚠️ Urgent</option>
+                          <option value="Maintenance">🔧 Maintenance</option>
+                          <option value="Feature">✨ New Feature</option>
+                          <option value="Patch">🩹 Patch</option>
+                          <option value="Custom">✏️ Custom Badge...</option>
+                        </select>
+                        {isCustomBadge && (
+                          <input
+                            type="text"
+                            autoFocus
+                            value={noteBadge}
+                            onChange={(e) => setNoteBadge(e.target.value)}
+                            placeholder="Type custom badge (e.g. Critical)"
+                            className="w-full input-field-unified text-sm px-3.5 py-2 rounded-xl mt-1.5"
+                          />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Target App Version</label>
+                        <input
+                          type="text"
+                          value={noteVersion}
+                          onChange={(e) => setNoteVersion(e.target.value)}
+                          placeholder="2.0.20 (optional)"
+                          className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl font-mono"
                         />
                       </div>
-                      <input
-                        type="text"
-                        value={noteDate}
-                        onChange={(e) => setNoteDate(e.target.value)}
-                        placeholder="Oct 19, 2026"
-                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
-                        title="Display text sent to Android & Web Vault"
-                      />
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Announcement Message *</label>
-                    <textarea
-                      required
-                      rows={5}
-                      value={noteMessage}
-                      onChange={(e) => setNoteMessage(e.target.value)}
-                      placeholder="Enter the full message to display in the Android dialog..."
-                      className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl leading-relaxed"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button URL</label>
-                      <input
-                        type="text"
-                        value={noteActionUrl}
-                        onChange={(e) => setNoteActionUrl(e.target.value)}
-                        placeholder="https://logbookplus.co.in/whats-new"
-                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Display Date</label>
+                        <button
+                          type="button"
+                          onClick={() => setNoteDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}
+                          className="text-[11px] text-accent-blue hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                        >
+                          <Clock className="w-3 h-3" /> Today
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="relative flex items-center">
+                          <Calendar className="w-4 h-4 text-zinc-400 absolute left-3 pointer-events-none" />
+                          <input
+                            type="date"
+                            value={formatDateForInput(noteDate)}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setNoteDate(formatInputToDisplayDate(e.target.value));
+                              }
+                            }}
+                            className="w-full input-field-unified text-sm pl-9 pr-3.5 py-2.5 rounded-xl cursor-pointer"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          value={noteDate}
+                          onChange={(e) => setNoteDate(e.target.value)}
+                          placeholder="Oct 19, 2026"
+                          className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                          title="Display text sent to Android & Web Vault"
+                        />
+                      </div>
                     </div>
+
                     <div className="space-y-1">
-                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button Label</label>
-                      <input
-                        type="text"
-                        value={noteActionText}
-                        onChange={(e) => setNoteActionText(e.target.value)}
-                        placeholder="Read More"
-                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                      <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Announcement Message *</label>
+                      <textarea
+                        required
+                        rows={6}
+                        value={noteMessage}
+                        onChange={(e) => setNoteMessage(e.target.value)}
+                        placeholder="Enter the full message to display in the Android dialog..."
+                        className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl leading-relaxed"
                       />
                     </div>
-                  </div>
 
-                  <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/5 space-y-2">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={noteIsActive}
-                        onChange={(e) => setNoteIsActive(e.target.checked)}
-                        className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple"
-                      />
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                        Mark Note as Active (Served to mobile app)
-                      </span>
-                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button URL</label>
+                        <input
+                          type="text"
+                          value={noteActionUrl}
+                          onChange={(e) => setNoteActionUrl(e.target.value)}
+                          placeholder="https://logbookplus.co.in/whats-new"
+                          className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[12px] font-bold text-zinc-500 uppercase block pl-0.5">Action Button Label</label>
+                        <input
+                          type="text"
+                          value={noteActionText}
+                          onChange={(e) => setNoteActionText(e.target.value)}
+                          placeholder="Read More"
+                          className="w-full input-field-unified text-sm px-3.5 py-2.5 rounded-xl"
+                        />
+                      </div>
+                    </div>
 
-                    {noteIsActive && !selectedNoteId && (
-                      <label className="flex items-center gap-2.5 cursor-pointer pl-6">
+                    <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-200 dark:border-white/5 space-y-2">
+                      <label className="flex items-center gap-2.5 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={noteMakeExclusive}
-                          onChange={(e) => setNoteMakeExclusive(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded text-accent-purple focus:ring-accent-purple"
+                          checked={noteIsActive}
+                          onChange={(e) => setNoteIsActive(e.target.checked)}
+                          className="w-4 h-4 rounded text-accent-purple focus:ring-accent-purple"
                         />
-                        <span className="text-[11px] text-zinc-500">
-                          Deactivate other active notes so this note is exclusively served
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          Mark Note as Active (Served to mobile app)
                         </span>
                       </label>
-                    )}
+
+                      {noteIsActive && !selectedNoteId && (
+                        <label className="flex items-center gap-2.5 cursor-pointer pl-6">
+                          <input
+                            type="checkbox"
+                            checked={noteMakeExclusive}
+                            onChange={(e) => setNoteMakeExclusive(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded text-accent-purple focus:ring-accent-purple"
+                          />
+                          <span className="text-[11px] text-zinc-500">
+                            Deactivate other active notes so this note is exclusively served
+                          </span>
+                        </label>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveModal(null)}
-                      className="w-1/2 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-1/2 btn-primary-unified py-2 flex items-center justify-center gap-1.5 text-xs font-bold"
-                    >
-                      {selectedNoteId ? 'Update Note' : 'Publish Note'}
-                    </button>
+                  <div className="border-t border-zinc-200 dark:border-white/5 pt-3 mt-3 flex items-center justify-between gap-3 bg-white dark:bg-zinc-950 shrink-0">
+                    <span className="text-xs text-zinc-500 font-mono">
+                      {selectedNoteId ? `Editing: ${noteTitle ? noteTitle.slice(0, 20) + '...' : selectedNoteId}` : 'New Dev Note'}
+                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveModal(null)}
+                        className="btn-secondary-unified px-4 py-2 text-sm font-semibold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-primary-unified px-5 py-2 text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                        <span>{selectedNoteId ? 'Update Note' : 'Publish Note'}</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               )}
@@ -4665,11 +4716,17 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                       {selectedBlogId ? `Editing: ${selectedBlogId}` : 'New Blog Post'}
                     </span>
                     <div className="flex items-center gap-2.5">
-
+                      <button
+                        type="button"
+                        onClick={() => setActiveModal(null)}
+                        className="btn-secondary-unified px-4 py-2 text-sm font-semibold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                       <button
                         type="submit"
                         disabled={loading}
-                        className="btn-primary-unified px-5 py-2 text-sm font-semibold flex items-center gap-1.5"
+                        className="btn-primary-unified px-5 py-2 text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
                       >
                         {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                         <span>{selectedBlogId ? 'Update Post' : 'Publish Post'}</span>

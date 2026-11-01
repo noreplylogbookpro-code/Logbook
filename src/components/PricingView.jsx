@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 
@@ -75,14 +76,20 @@ export default function PricingView() {
     <div className="py-12 md:py-20 w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto px-4 sm:px-8 md:px-12 relative text-left">
 
       {/* Header */}
-      <div className="max-w-2xl mb-12 space-y-3">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="max-w-2xl mb-12 space-y-3"
+      >
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           {t('simplePricing')}
         </h1>
         <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           {t('unlockSecure')}
         </p>
-      </div>
+      </motion.div>
 
       {/* Billing Switch */}
       <div className="flex justify-start mb-12">
@@ -109,9 +116,13 @@ export default function PricingView() {
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch mb-16">
-        {plans.map((plan) => (
-          <div
+        {plans.map((plan, idx) => (
+          <motion.div
             key={plan.name}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.5, delay: idx * 0.12, ease: [0.16, 1, 0.3, 1] }}
             className={`rounded-xl p-8 flex flex-col justify-between border relative ${plan.cardBorder}`}
             style={{ backgroundColor: 'var(--bg-surface)' }}
           >
@@ -173,12 +184,19 @@ export default function PricingView() {
                 {plan.buttonText}
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Transparent Pricing & Anti-Dark Pattern Commitment */}
-      <div className="p-6 md:p-8 rounded-xl border mb-16 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+        className="p-6 md:p-8 rounded-xl border mb-16 space-y-4"
+        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+      >
         <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
           Transparent Pricing · Zero Hidden Fees · No Dark Patterns
         </h3>
@@ -196,7 +214,7 @@ export default function PricingView() {
             The free plan does not ask for payment methods, has no artificial trial countdowns, and will never lock you out of your local private database.
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* FAQ */}
       <div className="max-w-3xl space-y-6">
@@ -207,10 +225,18 @@ export default function PricingView() {
             { q: t('faqQ2'), a: t('faqA2') },
             { q: t('faqQ3'), a: t('faqA3') }
           ].map((item, idx) => (
-            <div key={idx} className="p-6 rounded-xl border space-y-2" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-30px' }}
+              transition={{ duration: 0.45, delay: idx * 0.08, ease: 'easeOut' }}
+              className="p-6 rounded-xl border space-y-2"
+              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            >
               <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.q}</h4>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{item.a}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

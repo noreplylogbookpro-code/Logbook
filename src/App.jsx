@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Hero from './components/Hero.jsx';
 import BentoFeatures from './components/BentoFeatures.jsx';
 import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemTheme } from './hooks/useSystemTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
 import CookieConsentBanner from './components/CookieConsentBanner.jsx';
@@ -9,6 +10,13 @@ import CookieConsentBanner from './components/CookieConsentBanner.jsx';
 const AboutView = lazy(() => import('./components/AboutView.jsx'));
 const PricingView = lazy(() => import('./components/PricingView.jsx'));
 const PolicyView = lazy(() => import('./components/PolicyView.jsx'));
+const BlogView = lazy(() => import('./components/BlogView.jsx'));
+const ChangelogView = lazy(() => import('./components/ChangelogView.jsx'));
+const CareersView = lazy(() => import('./components/CareersView.jsx'));
+const HelpCenterView = lazy(() => import('./components/HelpCenterView.jsx'));
+const ContactView = lazy(() => import('./components/ContactView.jsx'));
+const DocumentationView = lazy(() => import('./components/DocumentationView.jsx'));
+const CommunityView = lazy(() => import('./components/CommunityView.jsx'));
 const LoginView = lazy(() => import('./components/LoginView.jsx'));
 const DashboardView = lazy(() => import('./components/DashboardView.jsx'));
 const MasterView = lazy(() => import('./components/MasterView.jsx'));
@@ -25,6 +33,14 @@ function AppContent() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
+
+  // Trigger smooth loading indicator upon route navigation
+  useEffect(() => {
+    setPageLoading(true);
+    const timer = setTimeout(() => setPageLoading(false), 380);
+    return () => clearTimeout(timer);
+  }, [currentPath]);
 
   // Sync .dark class on <html> element and update browser theme-color
   useEffect(() => {
@@ -112,34 +128,16 @@ function AppContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Keep login status synchronized with localStorage across navigation and initial load
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('authToken'));
-  }, [currentPath]);
+    const hasAuth = !!localStorage.getItem('authToken');
+    setIsLoggedIn(hasAuth);
 
-  // Refresh page gets logout: clear the token when the app initializes/reloads
-  useEffect(() => {
-    let shouldRedirect = false;
     const cleanPath = window.location.pathname.replace(/^\/|\/$/g, '');
-
-    if (localStorage.getItem('authToken')) {
-      localStorage.removeItem('authToken');
-      setIsLoggedIn(false);
-      if (cleanPath === 'app/dashboard' || cleanPath === 'app/dashboard/') {
-        shouldRedirect = true;
-      }
-    }
-
-    if (localStorage.getItem('masterToken')) {
-      localStorage.removeItem('masterToken');
-      if (cleanPath === 'dev' || cleanPath === 'master') {
-        shouldRedirect = true;
-      }
-    }
-
-    if (shouldRedirect) {
+    if ((cleanPath === 'app/dashboard' || cleanPath === 'app/dashboard/') && !hasAuth) {
       navigate('/app/');
     }
-  }, []);
+  }, [currentPath]);
 
   // Timer-based logout: 15 minutes of inactivity
   useEffect(() => {
@@ -219,14 +217,27 @@ function AppContent() {
       view = 'about';
     } else if (cleanPath === 'pricing') {
       view = 'pricing';
+    } else if (cleanPath === 'blog') {
+      view = 'blog';
+    } else if (cleanPath === 'changelog') {
+      view = 'changelog';
+    } else if (cleanPath === 'careers') {
+      view = 'careers';
+    } else if (cleanPath === 'help-center' || cleanPath === 'faq') {
+      view = 'help-center';
+    } else if (cleanPath === 'contact' || cleanPath === 'contact-us') {
+      view = 'contact';
+    } else if (cleanPath === 'documentation' || cleanPath === 'docs') {
+      view = 'documentation';
+    } else if (cleanPath === 'community') {
+      view = 'community';
     } else if (cleanPath === 'app') {
       view = 'login';
     } else if (cleanPath === 'app/dashboard') {
       view = 'dashboard';
     } else if ([
       'security', 'terms', 'privacy', 'cookie', 'cookie-policy', 'cookies', 'refund', 'cloud-backup-policy',
-      'paid-terms', 'delete-account', 'delete-account-policy', 'changelog', 'careers', 'blog',
-      'help-center', 'documentation', 'community', 'contact'
+      'paid-terms', 'delete-account', 'delete-account-policy', 'account-deletion'
     ].includes(cleanPath)) {
       view = 'policy';
       if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
@@ -242,9 +253,21 @@ function AppContent() {
   return (
     <div
       onClick={handleGlobalClick}
-      className="min-h-screen flex flex-col font-sans select-text overflow-x-hidden"
+      className="min-h-screen flex flex-col font-sans select-text overflow-x-hidden relative"
       style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}
     >
+      {/* Top Route Loading Progress Bar */}
+      <AnimatePresence>
+        {pageLoading && (
+          <motion.div
+            initial={{ scaleX: 0, opacity: 1 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 z-[100] origin-left shadow-[0_0_8px_rgba(59,130,246,0.6)]"
+          />
+        )}
+      </AnimatePresence>
       {view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (
         <header
           className={`w-full py-6 px-6 md:px-12 border-b sticky top-0 z-50 ${isMobileMenuOpen ? 'md:backdrop-blur-md' : 'backdrop-blur-md'}`}
@@ -263,7 +286,7 @@ function AppContent() {
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <span className="text-lg font-bold tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}>
-                Logbook <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Plus</span>
+                Logbook <span className="font-semibold" style={{ color: 'var(--text-light)' }}>Plus</span>
               </span>
             </a>
 
@@ -403,37 +426,63 @@ function AppContent() {
         </header>
       )}
 
-      <main className="flex-grow">
+      <main className="flex-grow flex flex-col">
         <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+            <div className="w-9 h-9 border-2 border-accent-blue border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest animate-pulse">Loading View...</span>
           </div>
         }>
-          {view === 'home' && (
-            <>
-              <Hero />
-              <BentoFeatures />
-              <section className="py-24 px-6 md:px-12 bg-input relative text-center border-t border" style={{
-                borderColor: 'var(--border)',
-              }}>
-                <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
-                  <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
-                  <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="btn-primary-unified inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold transition-colors cursor-pointer">
-                    {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </a>
-                </div>
-              </section>
-            </>
-          )}
-          {view === 'about' && <AboutView onNavigate={navigate} />}
-          {view === 'pricing' && <PricingView onNavigate={navigate} />}
-          {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
-          {view === 'login' && <LoginView onNavigate={navigate} />}
-          {view === 'dashboard' && <DashboardView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
-          {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
-          {view === 'devportal' && <DevPortalView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
-          {view === 'helpdesk' && <HelpdeskDashboard onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentPath}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full flex-grow flex flex-col"
+            >
+              {view === 'home' && (
+                <>
+                  <Hero />
+                  <BentoFeatures />
+                  <motion.section
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-50px' }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="py-24 px-6 md:px-12 bg-input relative text-center border-t border"
+                    style={{
+                      borderColor: 'var(--border)',
+                    }}
+                  >
+                    <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
+                      <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
+                      <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="btn-primary-unified inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer">
+                        {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </a>
+                    </div>
+                  </motion.section>
+                </>
+              )}
+              {view === 'about' && <AboutView onNavigate={navigate} />}
+              {view === 'pricing' && <PricingView onNavigate={navigate} />}
+              {view === 'blog' && <BlogView onNavigate={navigate} />}
+              {view === 'changelog' && <ChangelogView onNavigate={navigate} />}
+              {view === 'careers' && <CareersView onNavigate={navigate} />}
+              {view === 'help-center' && <HelpCenterView onNavigate={navigate} />}
+              {view === 'contact' && <ContactView onNavigate={navigate} />}
+              {view === 'documentation' && <DocumentationView onNavigate={navigate} />}
+              {view === 'community' && <CommunityView onNavigate={navigate} />}
+              {view === 'policy' && <PolicyView initialDoc={initialDoc} onNavigate={navigate} />}
+              {view === 'login' && <LoginView onNavigate={navigate} />}
+              {view === 'dashboard' && <DashboardView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+              {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+              {view === 'devportal' && <DevPortalView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+              {view === 'helpdesk' && <HelpdeskDashboard onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+            </motion.div>
+          </AnimatePresence>
         </Suspense>
       </main>
 
@@ -459,7 +508,7 @@ function AppContent() {
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
                 <span className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                  Logbook <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Plus</span>
+                  Logbook <span className="font-semibold" style={{ color: 'var(--text-light)' }}>Plus</span>
                 </span>
               </a>
 
@@ -502,7 +551,7 @@ function AppContent() {
                       <button
                         type="submit"
                         disabled={!newsletterConsent}
-                        className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                        className="btn-primary"
                       >
                         {t('join')}
                       </button>

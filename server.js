@@ -38,20 +38,67 @@ const compression = require('compression');
 // --- CORS Configuration: Whitelist allowed origins ---
 const ALLOWED_ORIGINS = [
     'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
     'https://logbookplus.co.in',
     'https://www.logbookplus.co.in',
     'https://master.logbookplus.co.in',
     'https://helpdesk.logbookplus.co.in',
 ].filter(Boolean);
 
+if (process.env.ALLOWED_ORIGINS) {
+    const extra = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
+    ALLOWED_ORIGINS.push(...extra);
+}
+
+const isAllowedOrigin = (origin) => {
+    // Allow non-browser requests (mobile apps, curl, server-to-server)
+    if (!origin) return true;
+
+    // Direct whitelist match
+    if (ALLOWED_ORIGINS.includes(origin)) return true;
+
+    // Any localhost, loopback, or 0.0.0.0 (with or without port, http or https)
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i.test(origin)) {
+        return true;
+    }
+
+    // Local LAN testing (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    if (
+        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/i.test(origin) ||
+        /^https?:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/i.test(origin) ||
+        /^https?:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+(:\d+)?$/i.test(origin)
+    ) {
+        return true;
+    }
+
+    // All logbookplus.co.in subdomains
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*logbookplus\.co\.in(:\d+)?$/i.test(origin)) {
+        return true;
+    }
+
+    // Dev tunnels (serveo, ngrok, cloudflare)
+    if (
+        origin.endsWith('.serveo.net') ||
+        origin.endsWith('.ngrok-free.app') ||
+        origin.endsWith('.ngrok.io') ||
+        origin.endsWith('.trycloudflare.com')
+    ) {
+        return true;
+    }
+
+    return false;
+};
+
 const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, server-to-server)
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
     credentials: true,

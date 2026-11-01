@@ -33,7 +33,6 @@ logs/
 
 # Backup files
 *.bak
-
 # OS metadata
 .DS_Store
 Thumbs.db
@@ -41,7 +40,8 @@ Thumbs.db
 google_auth/
 #Hosting Platform
 .htaccess
-public/*
+#public assets
+public/
 !public/robots.txt
 !public/sitemap.xml
 !public/index.html

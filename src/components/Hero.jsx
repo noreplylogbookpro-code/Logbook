@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '../useLanguage.js';
 
 export default function Hero() {
@@ -9,7 +10,13 @@ export default function Hero() {
       <div className="w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 items-center">
 
         {/* Text Content */}
-        <div className="lg:col-span-6 flex flex-col items-start text-left space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="lg:col-span-6 flex flex-col items-start text-left space-y-6"
+        >
           {/* Main Title - Solid, crisp, non-gradient */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.12]" style={{ color: 'var(--text-primary)' }}>
             {t('heroTitle')}
@@ -24,14 +31,14 @@ export default function Hero() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2">
             <a
               href="/app/"
-              className="btn-primary-unified px-6 py-3 rounded-lg text-sm transition-colors cursor-pointer"
+              className="btn-primary-unified px-6 py-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
               {t('heroCta')}
             </a>
 
             <a
               href="/pricing/"
-              className="btn-secondary-unified px-6 py-3 rounded-lg text-sm transition-colors cursor-pointer"
+              className="btn-secondary-unified px-6 py-3 rounded-lg text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
               {t('pricing')}
             </a>
@@ -46,10 +53,16 @@ export default function Hero() {
               <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Sync Target:</span> Private WebDAV or personal self-hosted cloud
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Real Software Interface Preview - High-contrast Private Database for Personal Finance */}
-        <div className="lg:col-span-6 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.98 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          className="lg:col-span-6 w-full"
+        >
           <div
             className="rounded-xl border overflow-hidden shadow-sm"
             role="region"
@@ -146,7 +159,7 @@ export default function Hero() {
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

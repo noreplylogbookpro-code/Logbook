@@ -1,7 +1,8 @@
 // middleware/auth.js
+require('dotenv').config({ quiet: true });
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'PnxKdbF0XxJwCcao1yemufCPM0gzyAJXajMh2YtyNbk=';
 
 /**
  * Extracts and verifies JWT from Authorization header

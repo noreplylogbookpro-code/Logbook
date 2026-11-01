@@ -161,11 +161,15 @@ export default function LoginView({ onNavigate }) {
     setErrorMsg('');
     setLoading(true);
 
+    const cleanUsername = (email || '').trim();
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Platform': 'web'
+        },
+        body: JSON.stringify({ username: cleanUsername, password })
       });
       const data = await res.json();
 
@@ -354,36 +358,36 @@ export default function LoginView({ onNavigate }) {
   };
 
   return (
-    <div className="py-12 md:py-20 max-w-md mx-auto px-4 min-h-[75vh] flex items-center justify-center">
+    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-14 md:py-20">
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full card-unified space-y-6 relative overflow-hidden backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8"
+        className="w-full max-w-[440px] sm:max-w-[480px] md:max-w-[500px] lg:max-w-[520px] card-unified space-y-6 sm:space-y-7 relative overflow-hidden backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-9"
       >
-        <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-accent-blue/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-accent-purple/15 blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-56 h-56 rounded-full bg-accent-blue/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-56 h-56 rounded-full bg-accent-purple/15 blur-3xl pointer-events-none" />
 
         {/* Branding header */}
-        <div className="flex flex-col items-center text-center space-y-2 relative z-10">
-          <div className="w-12 h-12 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
-            <Shield className="w-6 h-6" />
+        <div className="flex flex-col items-center text-center space-y-2.5 relative z-10">
+          <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-900 dark:text-zinc-100 shadow-sm">
+            <Shield className="w-6.5 h-6.5 sm:w-7 sm:h-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
               Logbook <span className="font-semibold text-zinc-500">Plus</span>
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{t('accessVaults')}</p>
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">{t('accessVaults')}</p>
           </div>
         </div>
 
         {/* Interactive Mode Navigation Tabs */}
         {mode !== 'mfa' && mode !== 'app_link' && (
-          <div className="flex p-1 rounded-2xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/10 relative z-10">
+          <div className="flex p-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-white/10 relative z-10">
             <button
               type="button"
               onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'login'
+              className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${mode === 'login'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                 }`}
@@ -393,7 +397,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="button"
               onClick={() => { setMode('signup'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'signup'
+              className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${mode === 'signup'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                 }`}
@@ -403,7 +407,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="button"
               onClick={() => { setMode('forgot'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'forgot'
+              className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${mode === 'forgot'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                 }`}
@@ -420,7 +424,7 @@ export default function LoginView({ onNavigate }) {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="p-3.5 rounded-2xl border border-red-500/20 bg-red-500/10 text-red-500 dark:text-red-400 text-xs font-semibold text-center"
+              className="p-3.5 sm:p-4 rounded-2xl border border-red-500/20 bg-red-500/10 text-red-500 dark:text-red-400 text-xs sm:text-sm font-semibold text-center"
             >
               {errorMsg}
             </motion.div>
@@ -431,7 +435,7 @@ export default function LoginView({ onNavigate }) {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold text-center"
+              className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-semibold text-center"
             >
               {successMsg}
             </motion.div>
@@ -440,17 +444,17 @@ export default function LoginView({ onNavigate }) {
 
         {/* LOGIN MODE */}
         {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4 relative z-10">
+          <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5 relative z-10">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('usernameEmail')}</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('usernameEmail')}</label>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                 <input
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Username or email address"
-                  className="input-unified pl-10 pr-4 rounded-xl text-sm"
+                  className="input-unified h-11 sm:h-12 pl-11 pr-4 rounded-xl text-sm sm:text-base"
                   required
                 />
               </div>
@@ -458,32 +462,32 @@ export default function LoginView({ onNavigate }) {
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center px-1">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">{t('password')}</label>
+                <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block">{t('password')}</label>
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
-                  className="text-xs font-bold text-accent-blue hover:underline"
+                  className="text-xs sm:text-[13px] font-bold text-accent-blue hover:underline cursor-pointer"
                 >
                   {t('forgotPassword')}
                 </button>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="input-unified pl-10 pr-10 rounded-xl text-sm"
+                  className="input-unified h-11 sm:h-12 pl-11 pr-11 rounded-xl text-sm sm:text-base"
                   required
                 />
                 {password ? (
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                   </button>
                 ) : null}
               </div>
@@ -492,7 +496,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+              className="w-full btn-primary-unified h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer shadow-lg shadow-blue-500/10"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -508,17 +512,17 @@ export default function LoginView({ onNavigate }) {
 
         {/* SIGNUP MODE */}
         {mode === 'signup' && (
-          <form onSubmit={handleSignup} className="space-y-4 relative z-10">
+          <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5 relative z-10">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('username')}</label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('username')}</label>
+              <div className="relative flex items-center">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Desired username"
-                  className="input-unified pl-10 pr-4 rounded-xl text-sm"
+                  className="input-unified h-11 sm:h-12 pl-11 pr-4 rounded-xl text-sm sm:text-base"
                   required
                 />
               </div>
@@ -528,15 +532,15 @@ export default function LoginView({ onNavigate }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('emailAddress')}</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('emailAddress')}</label>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="input-unified pl-10 pr-4 rounded-xl text-sm"
+                  className="input-unified h-11 sm:h-12 pl-11 pr-4 rounded-xl text-sm sm:text-base"
                   required
                 />
               </div>
@@ -546,31 +550,31 @@ export default function LoginView({ onNavigate }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('password')}</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('password')}</label>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
-                  className="input-unified pl-10 pr-10 rounded-xl text-sm"
+                  className="input-unified h-11 sm:h-12 pl-11 pr-11 rounded-xl text-sm sm:text-base"
                   required
                 />
                 {password ? (
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                   </button>
                 ) : null}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('securityQuestion')}</label>
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('securityQuestion')}</label>
               <CustomSelect
                 value={securityQuestion}
                 onChange={(val) => setSecurityQuestion(val)}
@@ -582,13 +586,13 @@ export default function LoginView({ onNavigate }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('yourAnswer')}</label>
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('yourAnswer')}</label>
               <input
                 type="text"
                 value={securityAnswer}
                 onChange={(e) => setSecurityAnswer(e.target.value)}
                 placeholder={t('secretAnswer')}
-                className="input-unified rounded-xl text-sm"
+                className="input-unified h-11 sm:h-12 px-4 rounded-xl text-sm sm:text-base"
                 required
               />
             </div>
@@ -664,7 +668,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="submit"
               disabled={loading || nameAvailable === false || emailAvailable === false || !ageConfirmed || !termsAccepted}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm disabled:opacity-50"
+              className="w-full btn-primary-unified h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base disabled:opacity-50 transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer shadow-lg shadow-blue-500/10"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
@@ -675,19 +679,19 @@ export default function LoginView({ onNavigate }) {
 
         {/* FORGOT PASSWORD MODE */}
         {mode === 'forgot' && (
-          <div className="space-y-4 relative z-10">
+          <div className="space-y-4 sm:space-y-5 relative z-10">
             {!forgotQuestion ? (
-              <form onSubmit={handleForgotQuestionFetch} className="space-y-4">
+              <form onSubmit={handleForgotQuestionFetch} className="space-y-4 sm:space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('enterUsernameEmail')}</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-400" />
+                  <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('enterUsernameEmail')}</label>
+                  <div className="relative flex items-center">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-zinc-400 pointer-events-none" />
                     <input
                       type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t('usernameEmail')}
-                      className="input-unified pl-10 pr-4 rounded-xl text-sm"
+                      className="input-unified h-11 sm:h-12 pl-11 pr-4 rounded-xl text-sm sm:text-base"
                       required
                     />
                   </div>
@@ -695,7 +699,7 @@ export default function LoginView({ onNavigate }) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full btn-secondary-unified py-3 rounded-xl font-bold text-sm"
+                  className="w-full btn-secondary-unified h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -703,13 +707,13 @@ export default function LoginView({ onNavigate }) {
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleResetPassword} className="space-y-4">
+              <form onSubmit={handleResetPassword} className="space-y-4 sm:space-y-5">
                 <div className="p-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900/60 space-y-1.5">
                   <span className="text-xs font-bold text-accent-blue uppercase tracking-wider flex items-center gap-1.5">
                     <HelpCircle className="w-4 h-4" />
                     {t('securityChallenge')}
                   </span>
-                  <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                  <p className="text-xs sm:text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                     {SECURITY_QUESTIONS.includes(forgotQuestion)
                       ? t('securityQuestion' + (SECURITY_QUESTIONS.indexOf(forgotQuestion) + 1))
                       : forgotQuestion}
@@ -717,35 +721,35 @@ export default function LoginView({ onNavigate }) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('yourAnswer')}</label>
+                  <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('yourAnswer')}</label>
                   <input
                     type="text"
                     value={forgotAnswer}
                     onChange={(e) => setForgotAnswer(e.target.value)}
                     placeholder={t('enterAnswer')}
-                    className="input-unified rounded-xl text-sm"
+                    className="input-unified h-11 sm:h-12 px-4 rounded-xl text-sm sm:text-base"
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('newPassword')}</label>
-                  <div className="relative">
+                  <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block pl-1">{t('newPassword')}</label>
+                  <div className="relative flex items-center">
                     <input
                       type={showNewPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder={t('enterNewPassword')}
-                      className="input-unified pr-10 rounded-xl text-sm"
+                      className="input-unified h-11 sm:h-12 px-4 pr-11 rounded-xl text-sm sm:text-base"
                       required
                     />
                     {newPassword ? (
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3.5 top-3.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
                       >
-                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showNewPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     ) : null}
                   </div>
@@ -755,7 +759,7 @@ export default function LoginView({ onNavigate }) {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
+                    className="flex-1 btn-primary-unified h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base shadow-lg shadow-blue-500/20 transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
@@ -765,7 +769,7 @@ export default function LoginView({ onNavigate }) {
                     type="button"
                     onClick={handleReset2FAOnly}
                     disabled={loading}
-                    className="px-3 py-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-500/20 transition-all cursor-pointer whitespace-nowrap"
+                    className="px-3.5 h-11 sm:h-12 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-500/20 transition-all cursor-pointer whitespace-nowrap"
                   >
                     Reset 2FA Only
                   </button>
@@ -775,7 +779,7 @@ export default function LoginView({ onNavigate }) {
 
             <button
               onClick={() => { setMode('login'); setForgotQuestion(''); }}
-              className="w-full text-center text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors py-1"
+              className="w-full text-center text-xs sm:text-sm font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors py-1 cursor-pointer"
             >
               {t('backToLogin')}
             </button>
@@ -784,9 +788,9 @@ export default function LoginView({ onNavigate }) {
 
         {/* MFA / 2FA MODE */}
         {mode === 'mfa' && (
-          <form onSubmit={handleMfaVerify} className="space-y-4 relative z-10">
+          <form onSubmit={handleMfaVerify} className="space-y-4 sm:space-y-5 relative z-10">
             <div className="space-y-2 text-center">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
+              <label className="text-xs sm:text-[13px] font-bold text-zinc-500 uppercase tracking-wider block">
                 {t('enter2faCode')}
               </label>
               <input
@@ -796,14 +800,14 @@ export default function LoginView({ onNavigate }) {
                 pattern="[0-9]{6}"
                 maxLength="6"
                 placeholder="000000"
-                className="input-unified text-xl font-bold text-center tracking-[0.3em] rounded-xl py-3"
+                className="input-unified text-2xl sm:text-3xl font-bold text-center tracking-[0.3em] rounded-xl py-3.5 sm:py-4 h-14 sm:h-16"
                 required
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+              className="w-full btn-primary-unified h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer shadow-lg shadow-blue-500/10"
             >
               <ShieldCheck className="w-4 h-4" />
               {t('verify')}
