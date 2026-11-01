@@ -12,8 +12,8 @@ router.get('/tags', ticketController.getTags);
 router.get('/dashboard', verifyHelpdeskToken, ticketController.getDashboardStats);
 router.patch('/:id/status', verifyHelpdeskToken, ticketController.updateTicketStatus);
 router.patch('/:id/close', verifyHelpdeskToken, ticketController.closeTicket);
-router.post('/send-notification', verifyHelpdeskToken, ticketController.sendNotification);
-router.get('/settings/defaults', verifyHelpdeskToken, ticketController.getNotificationDefaults);
+router.post('/send-notification', ticketController.sendNotification);
+router.get('/settings/defaults', ticketController.getNotificationDefaults);
 
 // Admin / Super Admin Only Routes
 router.get('/reports/csv', requireAdminRole, ticketController.exportTicketsCSV);

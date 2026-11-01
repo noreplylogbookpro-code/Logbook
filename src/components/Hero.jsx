@@ -1,266 +1,150 @@
-import React, { useRef } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Shield, ArrowRight, Zap, Database, Lock, EyeOff } from 'lucide-react';
+import React from 'react';
 import { useLanguage } from '../useLanguage.js';
-
-function MagneticButton({ children, className, href }) {
-  const ref = useRef(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Dynamic spring physics as requested (stiffness: 100-150, damping: 12-15)
-  const springX = useSpring(x, { stiffness: 120, damping: 12, mass: 0.8 });
-  const springY = useSpring(y, { stiffness: 120, damping: 12, mass: 0.8 });
-
-  const handleMouseMove = (e) => {
-    if (!ref.current) return;
-    const { clientX, clientY } = e;
-    const { left, top, width, height } = ref.current.getBoundingClientRect();
-    const centerX = left + width / 2;
-    const centerY = top + height / 2;
-    const distanceX = clientX - centerX;
-    const distanceY = clientY - centerY;
-    
-    // Magnetic pull limit (max 25px offset)
-    x.set(distanceX * 0.3);
-    y.set(distanceY * 0.3);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.a
-      ref={ref}
-      href={href}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ x: springX, y: springY }}
-      className={`inline-flex items-center justify-center relative transition-shadow duration-300 ${className}`}
-    >
-      {children}
-    </motion.a>
-  );
-}
 
 export default function Hero() {
   const { t } = useLanguage();
-  const fadeUpVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: (custom) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-        delay: custom * 0.1,
-      },
-    }),
-  };
 
   return (
-    <section className="relative min-h-[92vh] flex flex-col items-center justify-center px-4 md:px-8 py-20 overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
-      {/* Background Neon Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none animate-pulse-glow" />
+    <section className="relative min-h-[84vh] flex flex-col justify-center px-4 md:px-8 py-16 md:py-24" style={{ backgroundColor: 'var(--bg-base)' }}>
+      <div className="w-full max-w-[95%] xl:max-w-[1500px] 2xl:max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-12 items-center">
 
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: 'linear-gradient(to right, rgba(255, 255, 255, 0.012) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.012) 1px, transparent 1px)',
-          backgroundSize: '4rem 4rem',
-          maskImage: 'radial-gradient(ellipse 60% 50% at 50% 50%, #000 70%, transparent 100%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 60% 50% at 50% 50%, #000 70%, transparent 100%)'
-        }}
-      />
-
-      <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center z-10">
-        
         {/* Text Content */}
-        <div className="lg:col-span-7 flex flex-col items-start text-left space-y-6">
-          {/* Badge */}
-          <motion.div
-            custom={0}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUpVariants}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-card text-xs font-semibold text-accent-blue tracking-wide uppercase border border-blue-500/20"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>{t('heroBadge')}</span>
-          </motion.div>
+        <div className="lg:col-span-6 flex flex-col items-start text-left space-y-6">
+          {/* Main Title - Solid, crisp, non-gradient */}
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.12]" style={{ color: 'var(--text-primary)' }}>
+            {t('heroTitle')}
+          </h1>
 
-          {/* Title */}
-          <motion.h1
-            custom={1}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUpVariants}
-            className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] md:leading-[1.05]" style={{ color: 'var(--text-primary)' }}
-          >
-            <span className="bg-gradient-to-r from-accent-blue via-accent-purple to-accent-pink bg-clip-text text-transparent">
-              {t('heroTitle')}
-            </span>
-          </motion.h1>
-
-          {/* Description */}
-          <motion.p
-            custom={2}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUpVariants}
-            className="text-base sm:text-lg max-w-xl leading-relaxed" style={{ color: 'var(--text-muted)' }}
-          >
+          {/* Subtitle - grounded, concrete, no buzzwords */}
+          <p className="text-base sm:text-lg max-w-xl leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             {t('heroSubtitle')}
-          </motion.p>
+          </p>
 
-          {/* CTA & Actions */}
-          <motion.div
-            custom={3}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUpVariants}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto"
-          >
-            <MagneticButton
+          {/* Action CTAs - Unified common button colors in light and dark mode */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2">
+            <a
               href="/app/"
-              className="px-8 py-4 rounded-xl font-medium text-white shadow-[0_0_20px_rgba(96,165,250,0.3)] bg-gradient-to-r from-accent-blue to-accent-purple border border-white/20 hover:shadow-[0_0_30px_rgba(192,132,252,0.5)] transition-shadow duration-300"
+              className="btn-primary-unified px-6 py-3 rounded-lg text-sm transition-colors cursor-pointer"
             >
               {t('heroCta')}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </MagneticButton>
+            </a>
 
             <a
-              href="/documentation/"
-              className="px-6 py-4 rounded-xl font-medium glass-card hover:bg-white/5 transition-all text-center flex items-center justify-center gap-2" style={{ color: 'var(--text-secondary)' }}
+              href="/pricing/"
+              className="btn-secondary-unified px-6 py-3 rounded-lg text-sm transition-colors cursor-pointer"
             >
-              {t('readDocs')}
+              {t('pricing')}
             </a>
-          </motion.div>
+          </div>
 
-          {/* Stats Bar */}
-          <motion.div
-            custom={4}
-            initial="hidden"
-            animate="visible"
-            variants={fadeUpVariants}
-            className="grid grid-cols-3 gap-6 md:gap-8 pt-8 w-full border-t" style={{ borderColor: 'var(--border)' }}
-          >
-            <div className="flex flex-col">
-              <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>100%</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statEncrypted')}</span>
+          {/* System Spec Detail - Clean editorial list instead of 3 icon boxes */}
+          <div className="pt-8 border-t w-full flex flex-wrap gap-x-8 gap-y-3 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+            <div>
+              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Private Database:</span> SQLite3 local vault with client-side AES-256 encryption
             </div>
-            <div className="flex flex-col">
-              <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>3x</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statRedundancy')}</span>
+            <div>
+              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Sync Target:</span> Private WebDAV or personal self-hosted cloud
             </div>
-            <div className="flex flex-col">
-              <span className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>24/7</span>
-              <span className="text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>{t('statCloudSync')}</span>
-            </div>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Anti-Gravity Floating Application Mockup */}
-        <div className="lg:col-span-5 relative w-full h-[350px] md:h-[450px] flex items-center justify-center mt-10 lg:mt-0">
-          {/* Main Dashboard Container */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 80, damping: 15, delay: 0.3 }}
-            className="relative w-full max-w-[420px] aspect-[4/3] rounded-2xl glass-card shadow-2xl p-4 overflow-hidden animate-float-medium" style={{ border: '1px solid var(--border)' }}
+        {/* Real Software Interface Preview - High-contrast Private Database for Personal Finance */}
+        <div className="lg:col-span-6 w-full">
+          <div
+            className="rounded-xl border overflow-hidden shadow-sm"
+            role="region"
+            aria-label="Private Database Personal Finance Preview"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border)'
+            }}
           >
-            {/* Window controls */}
-            <div className="flex items-center gap-1.5 mb-4 border-b pb-3" style={{ borderColor: 'var(--border)' }}>
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="text-[10px] ml-2 font-mono" style={{ color: 'var(--text-muted)' }}>{t('mockupTitle')}</span>
-            </div>
-
-            {/* Fake layout */}
-            <div className="space-y-3">
-              <div className="h-6 w-24 rounded-md" style={{ background: 'var(--bg-input)' }} />
-              <div className="grid grid-cols-3 gap-2">
-                <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('monthlySpend')}</span>
-                  <span className="text-xs font-semibold text-accent-blue">₹2,481.50</span>
-                </div>
-                <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('localCache')}</span>
-                  <span className="text-xs font-semibold text-accent-purple">{t('active')}</span>
-                </div>
-                <div className="h-14 rounded-xl p-2 flex flex-col justify-between" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                  <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('syncStatus')}</span>
-                  <span className="text-xs font-semibold text-emerald-400">{t('secure')}</span>
-                </div>
+            {/* Window Header */}
+            <div
+              className="px-4 py-3 border-b flex items-center justify-between text-xs"
+              style={{
+                backgroundColor: 'var(--bg-input)',
+                borderColor: 'var(--border)'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400 dark:bg-zinc-600 inline-block" aria-hidden="true" />
+                <span className="font-semibold font-mono" style={{ color: 'var(--text-primary)' }}>
+                  PRIVATE_DATABASE.db
+                </span>
               </div>
-              <div className="space-y-2">
-                <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: 'var(--bg-input)' }}>
-                  <div className="h-full bg-gradient-to-r from-accent-blue to-accent-purple w-2/3" />
-                </div>
-                <div className="flex justify-between text-[8px]" style={{ color: 'var(--text-muted)' }}>
-                  <span>{t('quotaUtilizedHero')}</span>
-                  <span>{t('quotaLimitHero')}</span>
-                </div>
-              </div>
-              {/* Fake logs list */}
-              <div className="space-y-1.5">
-                {[
-                  { desc: t('mockAwsBackup'), amount: '-₹120.00', cat: t('categoryServer'), time: t('justNow') },
-                  { desc: t('mockVercelSubscription'), amount: '-₹20.00', cat: t('categoryHosting'), time: t('twelveMinsAgo') }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg text-[10px]" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                    <div className="flex flex-col">
-                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{item.desc}</span>
-                      <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{item.time} · {item.cat}</span>
-                    </div>
-                    <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.amount}</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                <span>LOCAL_ENCRYPTED</span>
               </div>
             </div>
-          </motion.div>
 
-          {/* Floating Anti-Gravity Widget 1: Total Privacy */}
-          <motion.div
-            initial={{ opacity: 0, x: -30, y: 40 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 14, delay: 0.6 }}
-            className="absolute top-1/4 left-0 sm:-left-6 md:-left-12 glass-card p-3 rounded-xl border border-emerald-500/20 shadow-xl hidden sm:flex items-center gap-2.5 animate-float-slow"
-          >
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-              <Lock className="w-4 h-4" />
+            {/* Account Context Bar */}
+            <div className="p-4 border-b flex flex-wrap items-center justify-between gap-4 text-xs font-mono" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Vault: </span>
+                <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Personal Finance (Offline-First)</span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Monthly Surplus: </span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">+₹38,450.00</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{t('floatPrivateDb')}</span>
-              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('floatEncryptedDevice')}</span>
-            </div>
-          </motion.div>
 
-          {/* Floating Anti-Gravity Widget 2: Sync Sync */}
-          <motion.div
-            initial={{ opacity: 0, x: 40, y: -40 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ type: "spring", stiffness: 100, damping: 14, delay: 0.8 }}
-            className="absolute bottom-1/4 right-0 sm:-right-6 md:-right-12 glass-card p-3 rounded-xl border border-purple-500/20 shadow-xl hidden sm:flex items-center gap-2.5 animate-float-medium"
-          >
-            <div className="p-2 rounded-lg bg-purple-500/10 text-accent-purple">
-              <Zap className="w-4 h-4" />
+            {/* Realistic Tabular Records */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono border-collapse" aria-label="Personal Finance Ledger Table">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-input)' }}>
+                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>DATE</th>
+                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>REF #</th>
+                    <th scope="col" className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>CATEGORY & DESCRIPTION</th>
+                    <th scope="col" className="py-2.5 px-4 font-semibold text-right" style={{ color: 'var(--text-muted)' }}>AMOUNT</th>
+                    <th scope="col" className="py-2.5 px-4 font-semibold text-center" style={{ color: 'var(--text-muted)' }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                  {[
+                    { date: '2026-11-01', ref: 'TXN-1049', head: 'Salary Credit - Primary Employment', amt: '+₹85,000.00', status: 'VERIFIED' },
+                    { date: '2026-10-31', ref: 'TXN-1048', head: 'Apartment Rent & Society Maintenance', amt: '-₹22,000.00', status: 'SETTLED' },
+                    { date: '2026-10-30', ref: 'TXN-1047', head: 'Groceries & Organic Essentials', amt: '-₹4,620.00', status: 'SETTLED' },
+                    { date: '2026-10-29', ref: 'TXN-1046', head: 'Index Mutual Fund SIP Investment', amt: '-₹15,000.00', status: 'ALLOCATED' },
+                    { date: '2026-10-28', ref: 'TXN-1045', head: 'High-Speed Fiber & Utilities', amt: '-₹1,430.00', status: 'SETTLED' },
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                      <td className="py-2.5 px-4" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
+                      <td className="py-2.5 px-4 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.ref}</td>
+                      <td className="py-2.5 px-4 font-sans text-xs" style={{ color: 'var(--text-primary)' }}>{row.head}</td>
+                      <td className={`py-2.5 px-4 text-right font-semibold ${row.amt.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                        {row.amt}
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" style={{ color: 'var(--text-secondary)' }}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="flex flex-col font-sans">
-              <span className="text-[10px] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{t('floatZeroLatency')}</span>
-              <span className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('twelveMsResponse')}</span>
-            </div>
-          </motion.div>
 
-          {/* Interactive Floating Indicator */}
-          <div className="absolute top-[80%] left-1/4 flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full backdrop-blur-sm pointer-events-none" style={{ color: 'var(--text-muted)', background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-            <span>{t('interactiveSandbox')}</span>
+            {/* Footer Summary */}
+            <div
+              className="px-4 py-3 border-t flex items-center justify-between text-xs"
+              style={{
+                backgroundColor: 'var(--bg-input)',
+                borderColor: 'var(--border)'
+              }}
+            >
+              <div className="flex items-center gap-4 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                <span>Records: 5 Verified in Private Database</span>
+                <span>SHA-256 Digest: e8f2...91b0</span>
+              </div>
+              <span className="font-semibold text-xs text-blue-600 dark:text-blue-400">
+                Local Encrypted Database
+              </span>
+            </div>
           </div>
         </div>
 

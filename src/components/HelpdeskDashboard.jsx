@@ -510,7 +510,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
             try {
                 new Notification(title, {
                     body: message.replace(/<[^>]*>/g, ''),
-                    icon: '/favicon.ico'
+                    icon: '/assets/images/app_logo.webp'
                 });
             } catch (e) {
                 console.error('Desktop notification failed:', e);
@@ -2928,8 +2928,8 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
 
                                             <button
                                                 type="button"
-                                                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-xs shadow-md transition-all duration-200 hover:shadow-lg"
-                                                onClick={() => alert('Redirecting to secure Stripe licensing portal...')}
+                                                className="w-full py-3 bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 font-bold rounded-xl text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+                                                onClick={() => alert('Redirecting to secure licensing portal...')}
                                             >
                                                 Proceed to Payment Portal
                                             </button>
@@ -3849,7 +3849,7 @@ export default function HelpdeskDashboard({ onNavigate, theme: propTheme, toggle
                                 <button
                                     type="submit"
                                     disabled={profileUpdating}
-                                    className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                                    className="px-6 py-2.5 bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 font-bold text-xs rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                                 >
                                     {profileUpdating ? (
                                         <>

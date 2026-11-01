@@ -222,6 +222,15 @@ app.get('/sitemap.xml', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
 });
 
+app.get('/llms.txt', (req, res) => {
+    res.type('text/plain; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'public', 'llms.txt'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+    res.redirect(301, '/assets/images/app_logo.webp');
+});
+
 // Serve static assets
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));

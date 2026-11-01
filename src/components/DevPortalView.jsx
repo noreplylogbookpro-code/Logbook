@@ -647,9 +647,9 @@ curl -X ${endpoint.method} "https://api.logbookplus.co.in${endpoint.path}" \\
                   })}
                   <button
                     onClick={() => setSidebarOpen(false)}
-                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white"
+                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-colors text-left cursor-pointer bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white"
                   >
-                    <Code className="w-4 h-4 text-accent-purple" />
+                    <Code className="w-4 h-4 text-zinc-950 dark:text-zinc-100" />
                     Dev Portal
                   </button>
                 </nav>
@@ -733,9 +733,9 @@ curl -X ${endpoint.method} "https://api.logbookplus.co.in${endpoint.path}" \\
               );
             })}
             <button
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors text-left cursor-pointer bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white"
             >
-              <Code className="w-4 h-4 text-accent-purple" />
+              <Code className="w-4 h-4 text-zinc-950 dark:text-zinc-100" />
               Dev Portal
             </button>
           </nav>
@@ -805,7 +805,7 @@ curl -X ${endpoint.method} "https://api.logbookplus.co.in${endpoint.path}" \\
         {API_SECTIONS.map((section) => (
           <section key={section.id} id={section.id} className="space-y-5">
             <h2 className="text-xl md:text-2xl font-extrabold text-zinc-900 dark:text-white border-b border-zinc-200 dark:border-white/10 pb-3 uppercase tracking-wider flex items-center gap-2.5">
-              <span className="w-2 h-6 bg-gradient-to-b from-accent-blue to-accent-purple rounded-full inline-block"></span>
+              <span className="w-2 h-6 bg-zinc-950 dark:bg-zinc-100 rounded-full inline-block"></span>
               {section.title}
             </h2>
 

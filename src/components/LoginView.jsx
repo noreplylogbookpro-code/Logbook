@@ -366,12 +366,12 @@ export default function LoginView({ onNavigate }) {
 
         {/* Branding header */}
         <div className="flex flex-col items-center text-center space-y-2 relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-accent-blue/20 to-accent-purple/20 flex items-center justify-center text-accent-blue border border-blue-500/20 shadow-inner">
-            <Shield className="w-7 h-7 text-accent-blue" />
+          <div className="w-12 h-12 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
+            <Shield className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
-              Logbook <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">Plus</span>
+            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
+              Logbook <span className="font-semibold text-zinc-500">Plus</span>
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{t('accessVaults')}</p>
           </div>
@@ -492,7 +492,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -664,7 +664,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="submit"
               disabled={loading || nameAvailable === false || emailAvailable === false || !ageConfirmed || !termsAccepted}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 disabled:opacity-50"
+              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
@@ -803,7 +803,7 @@ export default function LoginView({ onNavigate }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4" />
               {t('verify')}
@@ -830,9 +830,9 @@ export default function LoginView({ onNavigate }) {
         {/* APP LINKING / MOBILE SYNC CARD */}
         {mode === 'app_link' && (
           <div className="space-y-5 relative z-10 text-center">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-accent-blue/10 border border-emerald-500/20 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                <Smartphone className="w-6 h-6 animate-bounce" />
+            <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-white/10 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-500/20">
+                <Smartphone className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-white">Mobile App Sync Active</h3>
@@ -846,7 +846,7 @@ export default function LoginView({ onNavigate }) {
               <button
                 type="button"
                 onClick={openInAndroidApp}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white font-bold text-sm shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
                 Open in Logbook Plus Android App

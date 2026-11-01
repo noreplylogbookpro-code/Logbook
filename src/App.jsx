@@ -224,12 +224,18 @@ function AppContent() {
     } else if (cleanPath === 'app/dashboard') {
       view = 'dashboard';
     } else if ([
-      'security', 'terms', 'privacy', 'refund', 'cloud-backup-policy',
+      'security', 'terms', 'privacy', 'cookie', 'cookie-policy', 'cookies', 'refund', 'cloud-backup-policy',
       'paid-terms', 'delete-account', 'delete-account-policy', 'changelog', 'careers', 'blog',
       'help-center', 'documentation', 'community', 'contact'
     ].includes(cleanPath)) {
       view = 'policy';
-      initialDoc = (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') ? 'delete-account' : cleanPath;
+      if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
+        initialDoc = 'delete-account';
+      } else if (cleanPath === 'cookie-policy' || cleanPath === 'cookies') {
+        initialDoc = 'cookie';
+      } else {
+        initialDoc = cleanPath;
+      }
     }
   }
 
@@ -257,7 +263,7 @@ function AppContent() {
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <span className="text-lg font-bold tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}>
-                Logbook <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">Plus</span>
+                Logbook <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Plus</span>
               </span>
             </a>
 
@@ -282,7 +288,7 @@ function AppContent() {
             <div
               className={`
                 fixed inset-y-0 top-0 right-0 h-[100dvh] h-auto w-[85vw] max-w-[340px] sm:w-[380px] p-6 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out
-                flex flex-col gap-6 overflow-y-auto overflow-x-hidden backdrop-blur-xl bg-white/90 dark:bg-zinc-950/80
+                flex flex-col gap-6 overflow-y-auto overflow-x-hidden backdrop-blur-xl bg-white/90 dark:bg-black/90
                 ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
                 md:static md:w-auto md:p-0 md:shadow-none md:transform-none md:flex md:flex-row md:items-center md:gap-4 md:translate-x-0 md:overflow-visible md:bg-transparent md:backdrop-blur-none
               `}
@@ -345,7 +351,7 @@ function AppContent() {
                         >
                           <span>{lang.name}</span>
                           {language === lang.code && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-accent-blue to-accent-purple" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100" />
                           )}
                         </button>
                       ))}
@@ -390,7 +396,7 @@ function AppContent() {
                   </>
                 )
               ) : (
-                <a href="/app/" className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-accent-blue to-accent-purple text-white w-full md:w-auto text-center">{t('launchConsole')}</a>
+                <a href="/app/" className="btn-primary-unified px-4 py-2 rounded-lg text-xs font-semibold transition-colors w-full md:w-auto text-center cursor-pointer">{t('launchConsole')}</a>
               )}
             </div>
           </div>
@@ -412,7 +418,7 @@ function AppContent() {
               }}>
                 <div className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto space-y-6">
                   <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
-                  <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-medium bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-xl hover:scale-[1.02] transition-all">
+                  <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="btn-primary-unified inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold transition-colors cursor-pointer">
                     {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </a>
@@ -453,7 +459,7 @@ function AppContent() {
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
                 <span className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                  Logbook <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">Plus</span>
+                  Logbook <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>Plus</span>
                 </span>
               </a>
 
@@ -496,7 +502,7 @@ function AppContent() {
                       <button
                         type="submit"
                         disabled={!newsletterConsent}
-                        className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+                        className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                       >
                         {t('join')}
                       </button>
@@ -522,44 +528,43 @@ function AppContent() {
             {/* Links Grid */}
             <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-8 text-left">
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-blue pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerProduct')}</h4>
+                <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerProduct')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/" className="hover:text-accent-blue transition-colors">{t('features')}</a></li>
-                  <li><a href="/pricing/" className="hover:text-accent-blue transition-colors">{t('pricing')}</a></li>
-                  <li><a href="/security/" className="hover:text-accent-blue transition-colors">{t('securityPolicy')}</a></li>
-                  <li><a href="/changelog/" className="hover:text-accent-blue transition-colors">{t('changelog')}</a></li>
+                  <li><a href="/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('features')}</a></li>
+                  <li><a href="/pricing/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('pricing')}</a></li>
+                  <li><a href="/security/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('securityPolicy')}</a></li>
+                  <li><a href="/changelog/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('changelog')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-purple pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerCompany')}</h4>
+                <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerCompany')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/about/" className="hover:text-accent-purple transition-colors">{t('aboutUs')}</a></li>
-                  <li><a href="/blog/" className="hover:text-accent-purple transition-colors">{t('Blog')}</a></li>
-                  <li><a href="/careers/" className="hover:text-accent-purple transition-colors">{t('careers')}</a></li>
-                  <li><a href="/contact/" className="hover:text-accent-purple transition-colors">{t('contactSales')}</a></li>
+                  <li><a href="/about/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('aboutUs')}</a></li>
+                  <li><a href="/blog/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('Blog')}</a></li>
+                  <li><a href="/careers/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('careers')}</a></li>
+                  <li><a href="/contact/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('contactSales')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-cyan pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerSupport')}</h4>
+                <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerSupport')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/help-center/" className="hover:text-accent-cyan transition-colors">{t('helpCenter')}</a></li>
-                  <li><a href="/documentation/" className="hover:text-accent-cyan transition-colors">{t('apiDocs')}</a></li>
-                  <li><a href="/community/" className="hover:text-accent-cyan transition-colors">{t('discord')}</a></li>
+                  <li><a href="/help-center/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('helpCenter')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
-                <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-pink pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerLegal')}</h4>
+                <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerLegal')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/terms/" className="hover:text-accent-pink transition-colors">{t('termsOfUse')}</a></li>
-                  <li><a href="/privacy/" className="hover:text-accent-pink transition-colors">{t('privacyPolicy')}</a></li>
-                  <li><a href="/refund/" className="hover:text-accent-pink transition-colors">{t('refundPolicy')}</a></li>
-                  <li><a href="/cloud-backup-policy/" className="hover:text-accent-pink transition-colors">{t('backupPolicy')}</a></li>
-                  <li><a href="/delete-account/" className="hover:text-accent-pink transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
+                  <li><a href="/terms/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('termsOfUse')}</a></li>
+                  <li><a href="/privacy/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('privacyPolicy')}</a></li>
+                  <li><a href="/cookie/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('cookiePolicy') || 'Cookie Policy'}</a></li>
+                  <li><a href="/refund/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('refundPolicy')}</a></li>
+                  <li><a href="/cloud-backup-policy/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('backupPolicy')}</a></li>
+                  <li><a href="/delete-account/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
                   <li>
                     <button
                       type="button"
                       onClick={() => window.dispatchEvent(new CustomEvent('openCookieSettings'))}
-                      className="hover:text-accent-pink transition-colors cursor-pointer text-left"
+                      className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors cursor-pointer text-left"
                     >
                       {t('Cookie Settings')}
                     </button>
@@ -601,34 +606,6 @@ function AppContent() {
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.094 13.094 0 0 1-1.873-.894.077.077 0 0 1-.008-.128c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.011c3.92 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .078.009c.12.099.246.195.373.289a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.156 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.156 2.418z" />
                 </svg>
               </a>
-            </div>
-          </div>
-
-          {/* Statutory Grievance Redressal & Legal Entity Disclosure (DPDP Act Sec 8(9) & Consumer Protection Rules 2020) */}
-          <div
-            className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto mt-8 p-4 rounded-2xl border text-xs relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4"
-            style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-          >
-            <div>
-              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Legal Business Entity</h5>
-              <p className="leading-relaxed">
-                <strong>Aamir Shaikh</strong> (Sole Proprietorship / Data Fiduciary)<br />
-                319, Janseva CHS, Khindipada, Mulund West, Maharashtra, India - 400082
-              </p>
-            </div>
-            <div>
-              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Grievance Redressal Officer</h5>
-              <p className="leading-relaxed">
-                <strong>Officer:</strong> Data Protection & Grievance Officer<br />
-                <strong>Email:</strong> <a href="mailto:grievance@logbookplus.co.in" className="text-accent-blue underline">grievance@logbookplus.co.in</a><br />
-                <strong>Response SLA:</strong> Acknowledgment within 48h; Redressal within 30 days.
-              </p>
-            </div>
-            <div>
-              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Data Principal Rights & Appeals</h5>
-              <p className="leading-relaxed">
-                Exercise your statutory rights (Access/DSAR, Correction, Erasure, Nomination) under DPDP Act 2023. Unresolved grievances may be escalated to the <strong>Data Protection Board of India (DPBI)</strong>.
-              </p>
             </div>
           </div>
 

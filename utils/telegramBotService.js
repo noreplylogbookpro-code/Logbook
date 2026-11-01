@@ -142,13 +142,13 @@ async function sendEventAlertTelegram({ level = 'alarm', ip, endpoint, reason, d
     const formattedEndpoint = endpoint ? `<code>${endpoint}</code>` : '<i>N/A</i>';
 
     const text = `${headerBadge}\n\n` +
-        `<b>Severity:</b> <code>#${normLevel.toUpperCase()}</code>\n` +
+        `<b>Severity:</b> #${normLevel.toUpperCase()}\n` +
         `<b>Event:</b> ${cleanReason || 'System event recorded'}\n` +
-        `<b>Client IP:</b> ${formattedIp}\n` +
-        `<b>Target Endpoint:</b> ${formattedEndpoint}\n` +
-        `<b>Timestamp:</b> ${timeStr}\n` +
-        (details ? `<b>Details:</b> ${details}\n` : '') +
-        `\nLogbook Security & Server Monitor`;
+        `<b>IP Address:</b> #${formattedIp}\n` +
+        `<b>Endpoint:</b> ${formattedEndpoint}\n` +
+        `<b>Time:</b> ${timeStr}\n` +
+        (details ? `\n<b>Details:</b>\n<i>${details}</i>\n` : '') +
+        `\n#Security #ServerAlert #LogbookPlus`;
 
     const token = (process.env.SERVER_TELEGRAM_BOT_TOKEN).trim();
     const chatId = (process.env.SERVER_TELEGRAM_BOT_CHAT_ID).trim();
@@ -295,10 +295,10 @@ async function buildServerStatsMessage() {
     let totalLogs = 0;
     try {
         totalUsers = await db.count({});
-    } catch (_) {}
+    } catch (_) { }
     try {
         totalLogs = await logsDb.count({});
-    } catch (_) {}
+    } catch (_) { }
 
     const activeSessionsCount = activeUserSessions ? activeUserSessions.size : 0;
     const nowStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
@@ -306,15 +306,19 @@ async function buildServerStatsMessage() {
     return `📊 <b>LOGBOOK SERVER STATS REPORT</b>\n\n` +
         `<b>Status:</b> 🟢 <code>ONLINE (HEALTHY)</code>\n` +
         `<b>Uptime:</b> ⏱️ ${uptimeStr}\n` +
-        `<b>CPU Load:</b> ⚙️ ${cpuPercent}%\n` +
-        `<b>RAM Usage:</b> 🧠 ${formatBytes(usedMem)} / ${formatBytes(totalMem)} (${memPercent}%)\n` +
-        `<b>Process Heap:</b> 📦 ${formatBytes(memUsage.heapUsed)}\n` +
-        `<b>Active Sessions:</b> 👥 ${activeSessionsCount} online\n` +
-        `<b>Registered Users:</b> 👤 ${totalUsers}\n` +
-        `<b>Server Logs:</b> 📝 ${totalLogs}\n` +
-        `<b>Network Rx/Tx:</b> 🌐 ${formatBytes(networkStats?.bytesRx || 0)} / ${formatBytes(networkStats?.bytesTx || 0)}\n` +
+        `💻 <b>Hardware:</b>\n` +
+        `├ <b>CPU Load:</b> ${cpuPercent}%\n` +
+        `├ <b>RAM Usage:</b> ${formatBytes(usedMem)} / ${formatBytes(totalMem)} (${memPercent}%)\n` +
+        `└ <b>Node Heap:</b> ${formatBytes(memUsage.heapUsed)}\n\n` +
+        `🌐 <b>Network & Traffic:</b>\n` +
+        `├ <b>Active Sessions:</b> ${activeSessionsCount}\n` +
+        `├ <b>Data Rx:</b> ${formatBytes(networkStats?.bytesRx || 0)}\n` +
+        `└ <b>Data Tx:</b> ${formatBytes(networkStats?.bytesTx || 0)}\n\n` +
+        `👥 <b>Database:</b>\n` +
+        `├ <b>Users:</b> ${totalUsers}\n` +
+        `└ <b>Logs:</b> ${totalLogs}\n\n` +
         `<b>Timestamp:</b> 📅 ${nowStr}\n\n` +
-        `<i>Logbook Security & Server Monitor</i>`;
+        `<i>#ServerStats #HealthCheck #LogbookPlus`;
 }
 
 /**
@@ -537,14 +541,15 @@ async function handleTelegramUpdate(update, callerBotToken = null) {
             });
         } else {
             const statusText =
-                `📢 <b>Active Developer Note</b>\n\n` +
+                `📢 <b>ACTIVE DEVELOPER NOTE</b>\n\n` +
                 `<b>Title:</b> ${active.title}\n` +
                 `<b>Message:</b> ${active.message}\n` +
                 `<b>Badge:</b> ${active.badge || 'Announcement'}\n` +
                 `<b>Date:</b> ${active.date}\n` +
                 (active.actionUrl ? `<b>Action:</b> <a href="${active.actionUrl}">${active.actionText || 'Read More'}</a>\n` : '') +
-                `<b>Status:</b> 🟢 Active & Visible in App\n\n` +
-                `<i>To turn it off, send <code>/devnote off</code></i>`;
+                `\n🟢 <b>Status:</b> Live & Visible in App\n\n` +
+                `<i>Send /devnote off to hide it.</i>\n\n` +
+                `#DevNote #Status #LogbookPlus`;
             await sendTelegramMessage({ botToken: activeBotToken, chatId, text: statusText });
         }
         return { handled: true, success: true, command: 'STATUS' };
@@ -595,16 +600,13 @@ async function handleTelegramUpdate(update, callerBotToken = null) {
             });
 
             const confirmation =
-                `✅ <b>Developer Note Published Successfully!</b>\n\n` +
-                `━━━━━━━━━━━━━━━━━━━━━\n` +
+                `✅ <b>NOTE PUBLISHED SUCCESSFULLY</b>\n\n` +
                 `📌 <b>Title:</b> ${note.title}\n` +
                 `💬 <b>Message:</b> ${note.message}\n` +
                 `🏷️ <b>Badge:</b> ${note.badge}\n` +
-                `📅 <b>Date:</b> ${note.date}\n` +
                 (note.actionUrl ? `🔗 <b>Link:</b> <a href="${note.actionUrl}">${note.actionText || 'Read More'}</a>\n` : '') +
-                `━━━━━━━━━━━━━━━━━━━━━\n` +
-                `🟢 <b>Live Status:</b> Broadcasted to Android App & Web Vault via <code>/api/developer-note</code>.\n\n` +
-                `<i>Send <code>/devnote off</code> anytime to turn it off.</i>`;
+                `\n🟢 Broadcasted to Android App & Web Vault.\n\n` +
+                `#DevNote #Published #LogbookPlus`;
 
             await sendTelegramMessage({ botToken: devnoteBotToken, chatId, text: confirmation });
             return { handled: true, success: true, command: 'CREATE', note };
@@ -640,69 +642,85 @@ async function handleTelegramUpdate(update, callerBotToken = null) {
  * Long-polling worker for local testing / servers without public webhooks
  */
 async function startTelegramPolling({ botToken, pollIntervalMs = 3000 } = {}) {
-    const token = (botToken || process.env.DEVNOTE_TELEGRAM_BOT_TOKEN || '').trim();
-    if (!token) {
-        logServerEvent('warning', '[TELEGRAM BOT] Polling not started: DEVNOTE_TELEGRAM_BOT_TOKEN is not configured.');
-        return;
-    }
-
     if (isPollingActive) {
         logServerEvent('info', '[TELEGRAM BOT] Polling is already running.');
         return;
     }
 
-    isPollingActive = true;
-    logServerEvent('info', '[TELEGRAM BOT] Telegram bot background polling listener started.');
-
-    const poll = async () => {
-        if (!isPollingActive) return;
-
-        try {
-            const url = `/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=15`;
-            const req = https.request({
-                hostname: 'api.telegram.org',
-                port: 443,
-                path: url,
-                method: 'GET',
-                timeout: 25000
-            }, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', async () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.ok && Array.isArray(parsed.result)) {
-                            for (const update of parsed.result) {
-                                if (update.update_id >= lastUpdateId) {
-                                    lastUpdateId = update.update_id;
-                                }
-                                await handleTelegramUpdate(update, token);
-                            }
-                        }
-                    } catch (e) { }
-
-                    if (isPollingActive) {
-                        setTimeout(poll, pollIntervalMs);
-                    }
-                });
-            });
-
-            req.on('error', () => {
-                if (isPollingActive) setTimeout(poll, pollIntervalMs * 2);
-            });
-
-            req.on('timeout', () => {
-                req.destroy();
-                if (isPollingActive) setTimeout(poll, pollIntervalMs);
-            });
-
-            req.end();
-        } catch (err) {
-            if (isPollingActive) setTimeout(poll, pollIntervalMs * 2);
+    // Collect all tokens that should listen for commands
+    const tokensToPoll = [];
+    if (botToken) {
+        tokensToPoll.push({ name: 'CUSTOM', token: botToken.trim() });
+    } else {
+        if (process.env.DEVNOTE_TELEGRAM_BOT_TOKEN) {
+            tokensToPoll.push({ name: 'DEVNOTE', token: process.env.DEVNOTE_TELEGRAM_BOT_TOKEN.trim() });
         }
-    };
+        if (process.env.SERVER_TELEGRAM_BOT_TOKEN && process.env.SERVER_TELEGRAM_BOT_TOKEN.trim() !== process.env.DEVNOTE_TELEGRAM_BOT_TOKEN?.trim()) {
+            tokensToPoll.push({ name: 'SERVER', token: process.env.SERVER_TELEGRAM_BOT_TOKEN.trim() });
+        }
+    }
 
-    poll();
+    if (tokensToPoll.length === 0) {
+        logServerEvent('warning', '[TELEGRAM BOT] Polling not started: No Telegram bot tokens configured.');
+        return;
+    }
+
+    isPollingActive = true;
+    logServerEvent('info', `[TELEGRAM BOT] Telegram bot background polling listener started for: ${tokensToPoll.map(t => t.name).join(', ')}`);
+
+    tokensToPoll.forEach(({ name, token }) => {
+        let lastBotUpdateId = 0;
+
+        const pollBot = async () => {
+            if (!isPollingActive) return;
+
+            try {
+                const url = `/bot${token}/getUpdates?offset=${lastBotUpdateId + 1}&timeout=15`;
+                const req = https.request({
+                    hostname: 'api.telegram.org',
+                    port: 443,
+                    path: url,
+                    method: 'GET',
+                    timeout: 25000
+                }, (res) => {
+                    let data = '';
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', async () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed.ok && Array.isArray(parsed.result)) {
+                                for (const update of parsed.result) {
+                                    if (update.update_id >= lastBotUpdateId) {
+                                        lastBotUpdateId = update.update_id;
+                                    }
+                                    await handleTelegramUpdate(update, token);
+                                }
+                            }
+                        } catch (e) { }
+
+                        if (isPollingActive) {
+                            setTimeout(pollBot, pollIntervalMs);
+                        }
+                    });
+                });
+
+                req.on('error', () => {
+                    if (isPollingActive) setTimeout(pollBot, pollIntervalMs * 2);
+                });
+
+                req.on('timeout', () => {
+                    req.destroy();
+                    if (isPollingActive) setTimeout(pollBot, pollIntervalMs);
+                });
+
+                req.end();
+            } catch (err) {
+                if (isPollingActive) setTimeout(pollBot, pollIntervalMs * 2);
+            }
+        };
+
+        pollBot();
+    });
 }
 
 /**

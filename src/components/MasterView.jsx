@@ -1870,11 +1870,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                           setSidebarOpen(false);
                         }}
                         className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
-                          ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white'
+                          ? 'bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white'
                           : 'text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
                           }`}
                       >
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-400 dark:text-zinc-500'}`} />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-950 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'}`} />
                         {tab.name}
                       </button>
                     );
@@ -1939,11 +1939,11 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   key={tab.name}
                   onClick={() => setActiveTab(tab.name)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-semibold transition-all text-left cursor-pointer ${isActive
-                    ? 'bg-gradient-to-r from-accent-blue/15 to-accent-purple/15 border border-accent-purple/30 text-zinc-900 dark:text-white'
+                    ? 'bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white'
                     : 'hover:scale-110 text-zinc-650 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent'
                     }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-accent-purple' : 'text-zinc-400 dark:text-zinc-500'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-950 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'}`} />
                   {tab.name}
                 </button>
               );
@@ -2816,7 +2816,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Manage Blog Posts</h3>
                 <button
                   onClick={() => openBlogEditModal(null)}
-                  className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1"
+                  className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Create Post
@@ -2903,7 +2903,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                 </div>
                 <button
                   onClick={() => openChangelogEditModal(null)}
-                  className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1"
+                  className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   New Release Note
@@ -3002,7 +3002,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                   </a>
                   <button
                     onClick={() => openNoteEditModal(null)}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold rounded-lg transition-all hover:opacity-95 cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    className="px-3.5 py-1.5 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     New Announcement
@@ -3200,7 +3200,7 @@ export default function MasterView({ onNavigate, theme, toggleTheme }) {
                                   href={activeNote.actionUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="px-3 py-1.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-[11px] font-bold rounded-lg shadow"
+                                  className="px-3 py-1.5 bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 text-[11px] font-bold rounded-lg shadow transition-colors"
                                 >
                                   {activeNote.actionText || 'Read More'}
                                 </a>

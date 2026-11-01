@@ -80,9 +80,9 @@ export default function CookieConsentBanner() {
             exit={{ opacity: 0, y: 30, scale: 0.98 }}
             transition={{ duration: 0.3 }}
             aria-label="Privacy and Local Storage Notice"
-            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-lg z-50 p-5 rounded-2xl glass-card border shadow-2xl backdrop-blur-xl"
+            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-lg z-50 p-5 rounded-2xl border shadow-xl"
             style={{
-              backgroundColor: 'var(--bg-card)',
+              backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border)',
               color: 'var(--text-primary)'
             }}
@@ -162,14 +162,24 @@ export default function CookieConsentBanner() {
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                  <a
-                    href="/privacy/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-semibold text-accent-blue hover:underline inline-flex items-center gap-1"
-                  >
-                    Privacy Policy <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href="/privacy/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-semibold text-accent-blue hover:underline inline-flex items-center gap-1"
+                    >
+                      Privacy Policy <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="/cookie/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-semibold text-accent-blue hover:underline inline-flex items-center gap-1"
+                    >
+                      Cookie Policy <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     {acknowledged && (
@@ -193,7 +203,7 @@ export default function CookieConsentBanner() {
                     <button
                       type="button"
                       onClick={handleAcknowledge}
-                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-accent-blue to-accent-purple text-white shadow-md hover:opacity-90 transition-opacity cursor-pointer inline-flex items-center gap-1"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors cursor-pointer inline-flex items-center gap-1"
                     >
                       <Check className="w-3.5 h-3.5" /> {acknowledged ? 'Save Preferences' : 'Got it'}
                     </button>

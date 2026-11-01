@@ -4,7 +4,8 @@ import {
   ShieldAlert, BookOpen, Scale, Landmark, RefreshCcw,
   ScrollText, Calendar, ArrowLeft, History, Mail,
   MessageSquare, Bug, Lightbulb, Activity, CheckCircle,
-  Users, Briefcase, FileCode, ChevronDown, Search, UserX
+  Users, Briefcase, FileCode, ChevronDown, Search, UserX,
+  Cookie
 } from 'lucide-react';
 import CustomSelect from './DropdownMenu.jsx';
 import ReactMarkdown from 'react-markdown';
@@ -35,12 +36,14 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     const cleanPath = window.location.pathname.replace(/^\/|\/$/g, '');
     if (cleanPath) {
       const validKeys = [
-        'security', 'terms', 'privacy', 'refund', 'cloud-backup-policy',
+        'security', 'terms', 'privacy', 'cookie', 'refund', 'cloud-backup-policy',
         'paid-terms', 'delete-account', 'changelog', 'careers', 'blog',
         'help-center', 'documentation', 'community', 'contact'
       ];
       if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
         setActiveDoc('delete-account');
+      } else if (cleanPath === 'cookie-policy' || cleanPath === 'cookies') {
+        setActiveDoc('cookie');
       } else if (validKeys.includes(cleanPath)) {
         setActiveDoc(cleanPath);
       }
@@ -312,6 +315,98 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         </div>
       )
     },
+    cookie: {
+      title: 'Cookie & Storage Policy',
+      updated: 'November 2026',
+      icon: Cookie,
+      content: (
+        <div className="space-y-6">
+          <p>
+            At <strong>Logbook Plus</strong>, we hold an uncompromising commitment to privacy by design. We do <strong>NOT</strong> deploy tracking cookies, advertising pixels (e.g. Meta, TikTok), or behavioral tracking scripts. All browser storage used is strictly necessary for basic system operation and offline expense tracking.
+          </p>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>1. What Storage Mechanisms We Use</h3>
+          <p>
+            Unlike typical web apps that place invasive cross-site identifiers on your browser, Logbook Plus utilizes modern browser storage strictly for local-first utility:
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse" style={{ borderColor: 'var(--border)' }}>
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+                  <th className="py-2.5 px-3">Storage Item</th>
+                  <th className="py-2.5 px-3">Mechanism</th>
+                  <th className="py-2.5 px-3">Purpose</th>
+                  <th className="py-2.5 px-3">Category</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">logbook_session_token</td>
+                  <td className="py-2.5 px-3 font-mono">Secure Cookie / LocalStorage</td>
+                  <td className="py-2.5 px-3">Maintains authenticated user session for private dashboard access.</td>
+                  <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">Strictly Essential</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">theme</td>
+                  <td className="py-2.5 px-3 font-mono">LocalStorage</td>
+                  <td className="py-2.5 px-3">Remembers user preference for Dark Mode or Light Mode.</td>
+                  <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">Strictly Essential</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">logbook_selected_lang</td>
+                  <td className="py-2.5 px-3 font-mono">LocalStorage</td>
+                  <td className="py-2.5 px-3">Preserves your preferred language selection across visits.</td>
+                  <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">Strictly Essential</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">privacy_notice_acknowledged</td>
+                  <td className="py-2.5 px-3 font-mono">LocalStorage</td>
+                  <td className="py-2.5 px-3">Remembers that you have reviewed the storage & privacy notice.</td>
+                  <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">Strictly Essential</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Private Database (IndexedDB)</td>
+                  <td className="py-2.5 px-3 font-mono">IndexedDB</td>
+                  <td className="py-2.5 px-3">Stores encrypted personal ledger entries locally on your device for offline access.</td>
+                  <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">Strictly Essential</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Zero Advertising & Tracking Cookies</h3>
+          <p>
+            In compliance with the <strong>DPDP Act, 2023 (India)</strong> and <strong>ePrivacy Directive / GDPR (EU)</strong>, we do not require a deceptive cookie consent wall because:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li>We do not set third-party marketing or profiling cookies.</li>
+            <li>We do not build cross-device advertising graphs or sell browsing analytics to data brokers.</li>
+            <li>All stored preferences reside strictly on your own hardware.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Third-Party SDK & Resource Audit</h3>
+          <p>
+            We periodically audit all client-side dependencies to prevent unauthorized data telemetry:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li><strong>Fonts (SIL Open Font License):</strong> Google Fonts serves <em>Plus Jakarta Sans</em> and <em>JetBrains Mono</em> strictly as static stylesheets; requests are unauthenticated and contain no tracking cookies.</li>
+            <li><strong>Icons:</strong> Open-source SVG vectors (Lucide) rendered directly in React components without external network beacons.</li>
+            <li><strong>Google Play Billing:</strong> In-app purchase validation on Android is processed through official Google Play OS APIs; no third-party marketing trackers are packaged.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>4. How to Clear Local Storage</h3>
+          <p>
+            You have full control over your local device storage. You can purge all tokens, preferences, and cached assets at any time:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li>In Chrome/Edge: <em>Settings → Privacy and security → Delete browsing data → Cookies and other site data</em>.</li>
+            <li>In Firefox: <em>Settings → Privacy & Security → Cookies and Site Data → Clear Data</em>.</li>
+            <li>In Safari: <em>Settings → Privacy → Manage Website Data → Remove All</em>.</li>
+            <li>In Android App: <em>Settings → Apps → Logbook Plus → Storage & Cache → Clear Storage</em>.</li>
+          </ul>
+        </div>
+      )
+    },
     refund: {
       title: 'Refund Policy',
       updated: 'June 4, 2026',
@@ -454,12 +549,12 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         <div className="space-y-8">
           {dynamicChangelogs.length > 0 ? (
             dynamicChangelogs.map((item, idx) => (
-              <div key={item._id || idx} className={`border-l-2 pl-4 space-y-2 ${idx === 0 ? 'border-accent-purple' : ''}`} style={idx === 0 ? {} : { borderColor: 'var(--border)' }}>
+              <div key={item._id || idx} className="border-l-2 pl-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{item.version}</span>
                   <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{item.date}</span>
                   {item.isMajor && (
-                    <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-purple-500/10 text-purple-400 rounded-md border border-purple-500/20">
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" style={{ color: 'var(--text-secondary)' }}>
                       Major Release
                     </span>
                   )}
@@ -477,7 +572,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
               </div>
             ))
           ) : (
-            <div className="border-l-2 border-accent-purple pl-4 space-y-2">
+            <div className="border-l-2 pl-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>v2.0.9</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>December 2025</span>
@@ -718,66 +813,6 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         </div>
       )
     },
-    documentation: {
-      title: 'API Documentation',
-      updated: 'v2.1 API',
-      icon: FileCode,
-      content: (
-        <div className="space-y-6">
-          <p>Developers can query sync data and back up SQLite files using our REST endpoint schemas.</p>
-          <div className="space-y-4 font-mono text-sm">
-            <div className="p-4 rounded-xl space-y-2" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-xs font-bold">POST</span>
-                <span className="font-bold" style={{ color: 'var(--text-primary)' }}>/api/backup/upload</span>
-              </div>
-              <p className="text-xs font-sans" style={{ color: 'var(--text-muted)' }}>Upload an encrypted database file to active backup slot.</p>
-              <pre className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Header: Authorization: Bearer &lt;Token&gt;</pre>
-            </div>
-
-            <div className="p-4 rounded-xl space-y-2" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-accent-blue text-xs font-bold">GET</span>
-                <span className="font-bold" style={{ color: 'var(--text-primary)' }}>/api/backup/download</span>
-              </div>
-              <p className="text-xs font-sans" style={{ color: 'var(--text-muted)' }}>Fetch the latest encrypted SQLite backup archive.</p>
-            </div>
-          </div>
-        </div>
-      )
-    },
-    community: {
-      title: 'Community channels',
-      updated: 'Active channels',
-      icon: Users,
-      content: (
-        <div className="space-y-6">
-          <p>Interact with other developers, request feature patches, and help review code packages.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { name: 'Discord Server', label: 'Join Chat', desc: 'Interact live with core builders.', link: 'https://discord.gg/dRtT67ehK' },
-              { name: 'GitHub Repositories', label: 'Contribute', desc: 'Review open-source client sync plugins.', link: 'https://github.com/noreplylogbookpro-code/Logbook' },
-            ].map((node) => (
-              <div key={node.name} className="p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-accent-purple/20 transition-all" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
-                <div className="space-y-1">
-                  <h4 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{node.name}</h4>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{node.desc}</p>
-                </div>
-                <a
-                  href={node.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 rounded-xl text-sm font-semibold transition-colors text-center block"
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                >
-                  {node.label}
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    },
     contact: {
       title: 'Contact support',
       updated: '7d Support',
@@ -879,7 +914,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
               <button
                 type="submit"
                 disabled={!contactConsent}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                className='btn-primary-unified'
               >
                 Send Message
               </button>
@@ -922,13 +957,14 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
               return (
                 <button
                   key={key}
+                  type="button"
                   onClick={() => handleDocChange(key)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all`}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
                   style={isActive
-                    ? { background: 'linear-gradient(to right, rgba(96,165,250,0.15), rgba(192,132,252,0.15))', color: 'var(--text-primary)', border: '1px solid rgba(96,165,250,0.3)' }
+                    ? { backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontWeight: '700' }
                     : { color: 'var(--text-muted)', border: '1px solid transparent' }}
                 >
-                  <ItemIcon className={`w-4 h-4 ${isActive ? 'text-accent-blue' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
+                  <ItemIcon className={`w-4 h-4 ${isActive ? 'text-zinc-950 dark:text-zinc-100' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} aria-hidden="true" />
                   <span>{item.title}</span>
                 </button>
               );
@@ -937,8 +973,7 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
         </div>
 
         {/* Content Panel */}
-        <div className="col-span-12 md:col-span-8 glass-card rounded-3xl p-6 md:p-8 space-y-6 text-left relative overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 to-transparent pointer-events-none" />
+        <div className="col-span-12 md:col-span-8 rounded-2xl p-6 md:p-8 space-y-6 text-left relative" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center gap-3.5">

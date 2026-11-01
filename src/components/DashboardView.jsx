@@ -495,7 +495,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
       return (
         <img
           src={profile.avatarUrl || `/api/profile/avatar/${userId}?_t=${Date.now()}`}
-          alt=""
+          alt="Account profile avatar"
           className={`${sizeClass} rounded-full object-cover border border-white/10`}
           onError={() => setAvatarFailed(true)}
         />
@@ -938,8 +938,8 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-white/5 pb-6">
         <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
-            {t('welcome')} <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">{profile.name}</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+            {t('welcome')} <span className="font-semibold text-zinc-500">{profile.name}</span>
           </h1>
           <p className="text-xs text-zinc-500 mt-1">{t('consoleSession')}: {profile.email} • {t('planLabel')}: {license.licenseType}</p>
         </div>
@@ -1287,7 +1287,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                         {selectedAvatarFile ? (
                           <img
                             src={URL.createObjectURL(selectedAvatarFile)}
-                            alt="Preview"
+                            alt="Custom user avatar preview"
                             className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
                           />
                         ) : (
@@ -1302,7 +1302,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                               return (
                                 <img
                                   src={profile.avatarUrl || `/api/profile/avatar/${userId}?_t=${Date.now()}`}
-                                  alt=""
+                                  alt="Saved profile avatar"
                                   className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-white/10"
                                   onError={() => setAvatarFailed(true)}
                                 />

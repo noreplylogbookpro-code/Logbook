@@ -67,6 +67,62 @@ exports.createTicket = (req, res) => {
         ticketsDB.push(newTicket);
         writeTickets(ticketsDB, targetSchool);
 
+        // Auto-dispatch notification to Telegram Helpdesk channel
+        const helpdeskToken = process.env.HELPDESK_TELEGRAM_BOT_TOKEN;
+        const helpdeskChatId = process.env.HELPDESK_TELEGRAM_BOT_CHAT_ID;
+        if (helpdeskToken && helpdeskChatId) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const msgLines = [
+                `🚨 <b>New Complaint Registered</b>`,
+                ``,
+                `━━━━━━━━━━━━━━━━━━━━━`,
+                `🏫 <b>Campus:</b> ${escapeHtml(targetSchool) || 'N/A'}`,
+                `🎫 <b>Ticket:</b> <code>${escapeHtml(newTicket.token)}</code>`,
+                `📅 <b>Date:</b> ${dateStr}`,
+                `🕐 <b>Time:</b> ${timeStr}`,
+                `━━━━━━━━━━━━━━━━━━━━━`,
+                ``,
+                `📋 <b>Category:</b> ${escapeHtml(newTicket.category)}`,
+                `📝 <b>Subject:</b> ${escapeHtml(newTicket.subject)}`,
+                `👤 <b>Reported By:</b> ${escapeHtml(newTicket.userName)}`,
+                `📍 <b>Floor:</b> ${escapeHtml(newTicket.floor)}`,
+                `🚪 <b>Room/Lab:</b> ${escapeHtml(newTicket.roomNumber)}`,
+            ];
+            if (newTicket.description && newTicket.description !== newTicket.subject) {
+                msgLines.push(`💬 <b>Description:</b> ${escapeHtml(newTicket.description)}`);
+            }
+            if (newTicket.userPhone) {
+                msgLines.push(`📞 <b>Contact:</b> ${escapeHtml(newTicket.userPhone)}`);
+            }
+            msgLines.push(``);
+            msgLines.push(`⚡ <b>Status:</b> 🟡 PENDING`);
+            msgLines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+            msgLines.push(`<i>LogBook+ IT Helpdesk</i>`);
+
+            const postData = JSON.stringify({
+                chat_id: helpdeskChatId.trim(),
+                text: msgLines.join('\n'),
+                parse_mode: 'HTML'
+            });
+
+            const alertReq = https.request({
+                hostname: 'api.telegram.org',
+                port: 443,
+                path: `/bot${helpdeskToken.trim()}/sendMessage`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData)
+                },
+                timeout: 5000
+            });
+            alertReq.on('error', () => {});
+            alertReq.write(postData);
+            alertReq.end();
+        }
+
         return res.status(201).json({
             success: true,
             message: `Complaint registered successfully in school ${targetSchool}.`,

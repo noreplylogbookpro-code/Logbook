@@ -8,35 +8,41 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: '#020617', // Slate 950 deep midnight
-        zincBg: '#09090b', // Zinc 950 alternate midnight
+        background: 'var(--bg-base)',
+        zincBg: 'var(--bg-base)',
+        primary: {
+          DEFAULT: 'var(--primary)',
+          container: 'var(--primary-container)',
+        },
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          container: 'var(--secondary-container)',
+        },
+        tertiary: {
+          DEFAULT: 'var(--tertiary)',
+          container: 'var(--tertiary-container)',
+        },
+        surface: {
+          DEFAULT: 'var(--surface)',
+          variant: 'var(--surface-variant)',
+        },
         accent: {
-          blue: '#60a5fa',
-          purple: '#c084fc',
-          cyan: '#22d3ee',
-          pink: '#f472b6',
+          blue: '#3b82f6',
+          purple: '#6366f1',
+          cyan: '#0ea5e9',
+          pink: '#ec4899',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       animation: {
-        'float-slow': 'float 8s ease-in-out infinite',
-        'float-medium': 'float 6s ease-in-out infinite',
-        'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
-        'slide-in-new': 'slideInNew 0.5s cubic-bezier(0.22, 1, 0.36, 1) both',
-        'new-entry-glow': 'newEntryGlow 2.5s ease-out forwards',
+        'slide-in-new': 'slideInNew 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
+        'new-entry-glow': 'newEntryGlow 2s ease-out forwards',
         'spin-slow': 'spin 1.2s linear infinite',
       },
       keyframes: {
-        float: {
-          '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
-          '50%': { transform: 'translateY(-10px) rotate(0.5deg)' },
-        },
-        pulseGlow: {
-          '0%, 100%': { opacity: 0.5, filter: 'drop-shadow(0 0 15px rgba(96, 165, 250, 0.2))' },
-          '50%': { opacity: 0.8, filter: 'drop-shadow(0 0 25px rgba(192, 132, 252, 0.4))' },
-        },
         slideInNew: {
           '0%': { opacity: 0, transform: 'translateY(-10px) scale(0.98)' },
           '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },

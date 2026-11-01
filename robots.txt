@@ -4,6 +4,8 @@
 
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /sitemap.xml
 
 # Allow static assets and bundles so Googlebot can properly render the application
 Allow: /assets/
