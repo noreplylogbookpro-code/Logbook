@@ -41,7 +41,15 @@ Thumbs.db
 google_auth/
 #Hosting Platform
 .htaccess
-public/
+public/*
+!public/robots.txt
+!public/sitemap.xml
+!public/index.html
+!public/404.html
+!public/master/
+!public/helpdesk/
+!public/dist-assets/
+!public/wrangler.json
 .idea/
 #database
 database/

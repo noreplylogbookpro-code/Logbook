@@ -4,6 +4,7 @@ import BentoFeatures from './components/BentoFeatures.jsx';
 import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useSystemTheme } from './hooks/useSystemTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
+import CookieConsentBanner from './components/CookieConsentBanner.jsx';
 
 const AboutView = lazy(() => import('./components/AboutView.jsx'));
 const PricingView = lazy(() => import('./components/PricingView.jsx'));
@@ -22,6 +23,7 @@ function AppContent() {
   const { theme, toggleTheme } = useSystemTheme();
   const [subscribed, setSubscribed] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
 
   // Sync .dark class on <html> element and update browser theme-color
@@ -76,6 +78,10 @@ function AppContent() {
   const handleSubscribe = async (e) => {
     e.preventDefault();
     if (!newsletterEmail) return;
+    if (!newsletterConsent) {
+      alert('Please confirm your consent to receive newsletters.');
+      return;
+    }
 
     try {
       const response = await fetch('/api/subscribe', {
@@ -83,10 +89,11 @@ function AppContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: newsletterEmail }),
+        body: JSON.stringify({ email: newsletterEmail, consentGiven: true }),
       });
       if (response.ok) {
         setSubscribed(true);
+        setNewsletterConsent(false);
       } else {
         const data = await response.json();
         alert(data.error || 'Failed to subscribe.');
@@ -173,6 +180,9 @@ function AppContent() {
   const handleGlobalClick = (e) => {
     const anchor = e.target.closest('a');
     if (anchor) {
+      if (anchor.target === '_blank' || anchor.getAttribute('target') === '_blank') {
+        return; // Allow native browser new tab behavior
+      }
       const href = anchor.getAttribute('href');
       if (href && href.startsWith('/') && !href.includes('.') && !href.startsWith('/api/')) {
         const isMaster = window.location.hostname.startsWith('master.');
@@ -473,21 +483,37 @@ function AppContent() {
                     <span>{t('subscribedMsg').replace('{email}', newsletterEmail)}</span>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubscribe} className="flex gap-2 max-w-sm">
-                    <input
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      value={newsletterEmail}
-                      onChange={(e) => setNewsletterEmail(e.target.value)}
-                      className="input-unified flex-grow min-w-0 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue transition-colors"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold hover:opacity-90 transition-all"
-                    >
-                      {t('join')}
-                    </button>
+                  <form onSubmit={handleSubscribe} className="space-y-2 max-w-sm">
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder={t('emailPlaceholder')}
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        className="input-unified flex-grow min-w-0 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue transition-colors"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newsletterConsent}
+                        className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        {t('join')}
+                      </button>
+                    </div>
+
+                    <label className="flex items-start gap-2 text-[11px] text-left cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+                      <input
+                        type="checkbox"
+                        checked={newsletterConsent}
+                        onChange={(e) => setNewsletterConsent(e.target.checked)}
+                        className="mt-0.5 rounded border-zinc-700 accent-blue-500 cursor-pointer"
+                        required
+                      />
+                      <span>
+                        I consent to receive product releases and security updates pursuant to the <a href="/privacy/" className="underline hover:text-accent-blue">Privacy Policy</a> (unsubscribe anytime).
+                      </span>
+                    </label>
                   </form>
                 )}
               </div>
@@ -508,7 +534,7 @@ function AppContent() {
                 <h4 className="text-sm font-bold tracking-widest uppercase border-l-2 border-accent-purple pl-2.5" style={{ color: 'var(--text-primary)' }}>{t('footerCompany')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
                   <li><a href="/about/" className="hover:text-accent-purple transition-colors">{t('aboutUs')}</a></li>
-                  <li><a href="/blog/" className="hover:text-accent-purple transition-colors">{t('techBlog')}</a></li>
+                  <li><a href="/blog/" className="hover:text-accent-purple transition-colors">{t('Blog')}</a></li>
                   <li><a href="/careers/" className="hover:text-accent-purple transition-colors">{t('careers')}</a></li>
                   <li><a href="/contact/" className="hover:text-accent-purple transition-colors">{t('contactSales')}</a></li>
                 </ul>
@@ -529,6 +555,15 @@ function AppContent() {
                   <li><a href="/refund/" className="hover:text-accent-pink transition-colors">{t('refundPolicy')}</a></li>
                   <li><a href="/cloud-backup-policy/" className="hover:text-accent-pink transition-colors">{t('backupPolicy')}</a></li>
                   <li><a href="/delete-account/" className="hover:text-accent-pink transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('openCookieSettings'))}
+                      className="hover:text-accent-pink transition-colors cursor-pointer text-left"
+                    >
+                      {t('Cookie Settings')}
+                    </button>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -569,6 +604,34 @@ function AppContent() {
             </div>
           </div>
 
+          {/* Statutory Grievance Redressal & Legal Entity Disclosure (DPDP Act Sec 8(9) & Consumer Protection Rules 2020) */}
+          <div
+            className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto mt-8 p-4 rounded-2xl border text-xs relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4"
+            style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          >
+            <div>
+              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Legal Business Entity</h5>
+              <p className="leading-relaxed">
+                <strong>Aamir Shaikh</strong> (Sole Proprietorship / Data Fiduciary)<br />
+                319, Janseva CHS, Khindipada, Mulund West, Maharashtra, India - 400082
+              </p>
+            </div>
+            <div>
+              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Grievance Redressal Officer</h5>
+              <p className="leading-relaxed">
+                <strong>Officer:</strong> Data Protection & Grievance Officer<br />
+                <strong>Email:</strong> <a href="mailto:grievance@logbookplus.co.in" className="text-accent-blue underline">grievance@logbookplus.co.in</a><br />
+                <strong>Response SLA:</strong> Acknowledgment within 48h; Redressal within 30 days.
+              </p>
+            </div>
+            <div>
+              <h5 className="font-bold text-accent-blue uppercase tracking-wider mb-1">Data Principal Rights & Appeals</h5>
+              <p className="leading-relaxed">
+                Exercise your statutory rights (Access/DSAR, Correction, Erasure, Nomination) under DPDP Act 2023. Unresolved grievances may be escalated to the <strong>Data Protection Board of India (DPBI)</strong>.
+              </p>
+            </div>
+          </div>
+
           {/* Copyright */}
           <div
             className="w-full max-w-[95%] xl:max-w-[1600px] 2xl:max-w-[1800px] mx-auto mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center text-xs gap-4 relative z-10"
@@ -584,6 +647,9 @@ function AppContent() {
           </div>
         </footer>
       )}
+
+      {/* Cookie & Privacy Consent Banner */}
+      <CookieConsentBanner />
     </div>
   );
 }

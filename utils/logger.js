@@ -64,15 +64,18 @@ function logServerEvent(level, message, metadata = {}) {
         timestamp
     }).then(async () => {
         try {
-            // Keep sliding window of 500 logs
-            const count = await logsDb.count({ type: 'server_log' });
-            if (count > 500) {
-                const logs = await logsDb.find({ type: 'server_log' });
-                logs.sort((a, b) => a.timestamp - b.timestamp);
-                const toRemove = logs.slice(0, logs.length - 500);
-                for (const l of toRemove) {
-                    await logsDb.remove({ _id: l._id }, {});
-                }
+            // STATUTORY COMPLIANCE: CERT-In Directions 2022 & DPDP Act 2023 (1-Year / 365 Days Audit Log Retention)
+            // Retain all security, authentication, and forensic access logs for a minimum rolling period of 365 days.
+            const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+            const cutoffTimestamp = Date.now() - ONE_YEAR_MS;
+
+            // Remove only audit records older than the statutory 365-day threshold
+            const removedCount = await logsDb.remove({
+                type: 'server_log',
+                timestamp: { $lt: cutoffTimestamp }
+            }, { multi: true });
+
+            if (removedCount > 0) {
                 logsDb.compactDatafile();
             }
         } catch (err) {
@@ -90,20 +93,35 @@ function logServerEvent(level, message, metadata = {}) {
         try {
             const { sendEventAlertTelegram } = require('./telegramBotService');
             const ipMatch = cleanMessage.match(/(?:from\s+IP:\s*|client\s+IP:\s*)([^\s,]+)/i);
-            const ip = cleanMetadata.ip || (ipMatch ? ipMatch[1] : undefined);
+            const rawIp = cleanMetadata.ip || (ipMatch ? ipMatch[1] : undefined);
+
+            // Anonymize IP address (e.g., 103.58.153.xxx) pursuant to DPDP/GDPR minimization
+            let sanitizedIp = rawIp;
+            if (rawIp && typeof rawIp === 'string') {
+                sanitizedIp = rawIp.includes('.') ? rawIp.replace(/\.\d+$/, '.xxx') : (rawIp === '127.0.0.1' ? rawIp : 'masked-ip');
+            }
+
             const epMatch = cleanMessage.match(/(?:endpoint:\s*|on\s+endpoint:\s*)([^\s,]+)/i);
             const endpoint = cleanMetadata.url || (epMatch ? epMatch[1] : undefined);
 
             const detailsParts = [];
             if (cleanMetadata.status) detailsParts.push(`Status: ${cleanMetadata.status}`);
-            if (cleanMetadata.username) detailsParts.push(`User: @${cleanMetadata.username}`);
+            if (cleanMetadata.username) {
+                const u = String(cleanMetadata.username);
+                // Anonymize if username is an email address
+                const cleanU = u.includes('@') ? u.replace(/^([^@]{1,2})[^@]*@/, '$1***@') : u;
+                detailsParts.push(`User: @${cleanU}`);
+            }
             if (cleanMetadata.school) detailsParts.push(`School: ${cleanMetadata.school}`);
+
+            // Anonymize any email address present in the reason message
+            const safeReason = cleanMessage.replace(/([a-zA-Z0-9_\.-])[a-zA-Z0-9_\.-]*@([a-zA-Z0-9_\.-]+\.[a-zA-Z]{2,})/g, '$1***@$2');
 
             sendEventAlertTelegram({
                 level: normalizedLevel,
-                ip,
+                ip: sanitizedIp,
                 endpoint,
-                reason: cleanMessage,
+                reason: safeReason,
                 details: detailsParts.length > 0 ? detailsParts.join(' | ') : undefined
             }).catch(err => {
                 console.error('[TELEGRAM ALERT ERROR]', err.message);

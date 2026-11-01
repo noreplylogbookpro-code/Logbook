@@ -612,6 +612,32 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
     }
   };
 
+  // Data Subject Access Request (DSAR) - Right to Portability & Access (DPDP Sec 11, GDPR Art 15)
+  const handleExportPersonalData = async () => {
+    addActivity('Exporting personal data report (DSAR)...');
+    try {
+      const res = await fetch('/api/user/data-export', {
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logbook-personal-data-${profile.username || 'user'}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        addActivity('Personal data export (DSAR) downloaded successfully.');
+      } else {
+        alert('Failed to generate personal data export.');
+      }
+    } catch {
+      alert('Network error while requesting data export.');
+    }
+  };
+
   // Delete Backup
   const handleDeleteBackup = async (filename) => {
     if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
@@ -963,6 +989,7 @@ export default function DashboardView({ onNavigate, theme: propTheme, toggleThem
                       { label: t('securityQuestionMenu'), icon: ShieldAlert, action: () => { setActiveModal('securityQ'); setMenuOpen(false); } },
                       { label: t('twoFactorAuth'), icon: Shield, action: () => { setActiveModal('mfa'); if (!profile.twoFactorEnabled) { initiateMfaSetup(); } setMenuOpen(false); } },
                       { label: t('billingSettings'), icon: CreditCard, action: () => { setActiveModal('billing'); setMenuOpen(false); } },
+                      { label: 'Export Personal Data (DSAR)', icon: Download, action: () => { handleExportPersonalData(); setMenuOpen(false); } },
                     ].map((item) => (
                       <button
                         key={item.label}

@@ -13,6 +13,10 @@ import remarkGfm from 'remark-gfm';
 export default function PolicyView({ initialDoc = 'security', onNavigate }) {
   const [activeDoc, setActiveDoc] = useState(initialDoc);
   const [contactSubject, setContactSubject] = useState('General Inquiry');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactConsent, setContactConsent] = useState(false);
   const [contactSent, setContactSent] = useState(false);
   const [selectedBlog, setSelectedBlog] = useState(null);
   const [dynamicBlogs, setDynamicBlogs] = useState([]);
@@ -82,12 +86,39 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     }
   };
 
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    setContactSent(true);
-    setTimeout(() => {
-      setContactSent(false);
-    }, 4000);
+    if (!contactConsent) {
+      alert('Please confirm your privacy consent before submitting.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: contactName.trim(),
+          email: contactEmail.trim(),
+          subject: contactSubject,
+          message: contactMessage.trim(),
+          consentGiven: true
+        })
+      });
+      if (res.ok) {
+        setContactSent(true);
+        setContactName('');
+        setContactEmail('');
+        setContactMessage('');
+        setContactConsent(false);
+        setTimeout(() => setContactSent(false), 5000);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to submit inquiry.');
+      }
+    } catch {
+      setContactSent(true);
+      setTimeout(() => setContactSent(false), 4000);
+    }
   };
 
   const blogs = dynamicBlogs;
@@ -144,27 +175,139 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
     },
     privacy: {
       title: 'Privacy Policy',
-      updated: 'June 4, 2026',
+      updated: 'October 29, 2026',
       icon: ScrollText,
       content: (
         <div className="space-y-6">
-          <p>Thank you for using <strong>Logbook Plus</strong>. We are committed to protecting your privacy and being transparent about how we handle your data.</p>
+          <p>
+            Welcome to <strong>Logbook Plus</strong>. We are committed to safeguarding personal data and respecting your right to privacy in accordance with <strong>India's Digital Personal Data Protection (DPDP) Act, 2023</strong> (and its phased 2025/2026/2027 Rules), the <strong>General Data Protection Regulation (GDPR)</strong>, and the <strong>California Consumer Privacy Act / CPRA (CCPA)</strong>.
+          </p>
 
-          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>1. Information We Collect</h3>
-          <p><strong>Logbook Plus is designed with your privacy in mind.</strong> While the app requires an initial account login or authentication to get started, it operates entirely offline for its core functionality afterward, and we do not track or sell your personal data.</p>
-          <p><strong>Account Information:</strong> When you sign in or create an account, we collect your authentication credentials (such as your email address or user ID) solely for account verification and access management.</p>
-          <p><strong>In-App Purchases:</strong> For users who choose to purchase premium features or subscriptions, transaction processing is handled securely by the app store (such as Google Play). We do not collect, store, or have access to your credit card, bank account, or billing details—we only receive purchase verification tokens and transaction IDs to unlock paid features.</p>
-          <p><strong>Local Data Storage:</strong> All information you enter in the app (such as expense logs, notes, and attached media) is stored <strong>exclusively on your device or your personal cloud storage</strong> (if you choose to enable encrypted backups).</p>
+          <div className="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 space-y-2">
+            <h4 className="text-sm font-bold text-accent-blue uppercase tracking-wider">Data Fiduciary / Controller Information</h4>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              <strong>Legal Entity:</strong> Aamir Shaikh <br />
+              <strong>Operating Domain:</strong> logbookplus.co.in | helpdesk.logbookplus.co.in | re.logbookplus.co.in<br />
+              <strong>Jurisdiction:</strong> Republic of India (Governed by DPDP Act, 2023 & Information Technology Act, 2000)
+            </p>
+          </div>
 
-          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Data Stored on Your Device</h3>
-          <p>The app stores your data locally in its private storage area. This may include expense log entries, attached images, backup archives, and app settings. Your core day-to-day data remains on your device and is never uploaded to our servers or any external service unless you explicitly choose to use our cloud backup service (available to premium subscribers) or configure your own external destination (e.g., WebDAV, Nextcloud available to self-host subscribers).</p>
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>1. Designated Grievance Redressal Officer (DPDP Act, 2023)</h3>
+          <p>
+            Pursuant to Section 5(1)(ii) and Section 8(9) of the Digital Personal Data Protection Act, 2023, Logbook Plus has designated a Grievance Redressal Officer to address queries, consent withdrawals, and complaints from Data Principals:
+          </p>
+          <div className="p-4 rounded-2xl border space-y-1.5 text-xs font-mono" style={{ background: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+            <p><strong>Designation:</strong> Data Protection & Grievance Redressal Officer</p>
+            <p><strong>Contact Email:</strong> <a href="mailto:support@logbookplus.co.in" className="text-accent-blue hover:underline">support@logbookplus.co.in</a></p>
+            <p><strong>Postal Address:</strong> 319, Janseva CHS, Khindipada, Mulund West, Maharashtra, India - 400082</p>
+            <p><strong>Statutory Redressal Timeline:</strong> Formal acknowledgment within 48 business hours; complete investigation and redressal within <strong>30 calendar days</strong> (well within the statutory 90-day ceiling).</p>
+            <p><strong>Appeals & Regulatory Oversight:</strong> If your grievance is unresolved within 30 days, or if you are dissatisfied with our response, you have the statutory right under Section 13(3) of the DPDP Act to file a complaint before the <strong>Data Protection Board of India (DPBI)</strong> via its digital portal.</p>
+          </div>
 
-          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Backup and Restore</h3>
-          <p>Logbook Plus provides flexible backup and restore options depending on your setup:</p>
-          <ul className="list-disc pl-5 mt-2 space-y-2">
-            <li><strong>Cloud Backups (Premium Users):</strong> If you have an active premium plan, you may choose to back up your data to our secure servers. All backups sent to our servers must be protected with an encryption password. </li>
-            <li><strong>Self-Hosted Backups:</strong> Self-hosted users may use their own servers (such as WebDAV or Nextcloud) for backup and restore functions.</li>
-            <li><strong>User Security Responsibility:</strong> You are solely responsible for managing your backup files and passwords. Uploading unencrypted backup files or failing to secure your encryption password may result in data exposure or security breaches, for which you assume full responsibility. No backup data or keys are ever stored on Logbook Plus infrastructure in plaintext.</li>
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>2. Itemized Notice & Personal Data Collected (DPDP Sec 5 & GDPR Art 13)</h3>
+          <p>
+            We collect and process only the minimal personal data strictly necessary for providing our sovereign logging and cloud backup services:
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse" style={{ borderColor: 'var(--border)' }}>
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+                  <th className="py-2.5 px-3">Data Category</th>
+                  <th className="py-2.5 px-3">Specific Purpose</th>
+                  <th className="py-2.5 px-3">GDPR Lawful Basis</th>
+                  <th className="py-2.5 px-3">Retention Period</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Account Credentials (Username, Email, Hashed Password, Hashed Security Answer)</td>
+                  <td className="py-2.5 px-3">Authentication, account recovery, session management, and access controls.</td>
+                  <td className="py-2.5 px-3">Art. 6(1)(b) Contract Performance</td>
+                  <td className="py-2.5 px-3">Until account deletion by user.</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Encrypted Cloud Backups (.enc / .sqlite)</td>
+                  <td className="py-2.5 px-3">User-requested remote backup synchronization (Premium subscribers only). Client-side encrypted.</td>
+                  <td className="py-2.5 px-3">Art. 6(1)(b) Contract Performance</td>
+                  <td className="py-2.5 px-3">Active subscription + 30-day grace period post-cancellation.</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Server Security Logs (IP Address, Endpoint, HTTP Status, Method)</td>
+                  <td className="py-2.5 px-3">DDoS defense, intrusion detection, API rate limiting, and system diagnostic integrity.</td>
+                  <td className="py-2.5 px-3">Art. 6(1)(f) Legitimate Interests</td>
+                  <td className="py-2.5 px-3">365 calendar days (1 year) pursuant to CERT-In Directions 2022 & IT Act Sec 70B.</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Newsletter Email Address</td>
+                  <td className="py-2.5 px-3">Sending product feature updates and security changelogs.</td>
+                  <td className="py-2.5 px-3">Art. 6(1)(a) Freely Given Consent</td>
+                  <td className="py-2.5 px-3">Until user unsubscribes or requests deletion.</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-zinc-200">Helpdesk Tickets & Inquiries (Name, Phone, Email, Campus/Room)</td>
+                  <td className="py-2.5 px-3">Facilitating customer technical support, troubleshooting, and campus IT resolutions.</td>
+                  <td className="py-2.5 px-3">Art. 6(1)(b) Service Contract</td>
+                  <td className="py-2.5 px-3">180 days following ticket resolution.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>3. Children's Data & Age Verification (DPDP Act Section 9)</h3>
+          <p>
+            Under Section 9 of the DPDP Act, 2023, an individual below the age of <strong>18 years</strong> is legally designated as a child.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li>Logbook Plus does not knowingly collect, process, or monitor personal data of children under 18 without <strong>verifiable parental consent</strong>.</li>
+            <li>All individuals registering an account on Logbook Plus must affirmative-declare they are 18 years of age or older during signup.</li>
+            <li>We strictly adhere to Section 9(3) prohibition against undertaking tracking, behavioral profiling, or targeted advertising directed at minors.</li>
+            <li>For school/campus helpdesk modules, support requests concerning minor students must be submitted solely by authorized school faculty or parents/legal guardians. If we discover any personal data of a minor collected without verified consent, it is immediately purged from our servers.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>4. Data Principal & Data Subject Rights</h3>
+          <p>
+            Users in India (under DPDP Sections 11–14), the European Union (GDPR Articles 15–22), and California (CCPA/CPRA) enjoy the following actionable statutory rights:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li><strong>Right of Access & Portability (DSAR):</strong> You may inspect your personal data and download a machine-readable JSON copy through your Account Dashboard under <em>"Export Personal Data (DSAR)"</em> or via written request to our Grievance Officer.</li>
+            <li><strong>Right to Correction & Completion:</strong> You may correct inaccurate or incomplete credentials directly in settings or via verified support request.</li>
+            <li><strong>Right to Erasure / Deletion:</strong> You have an absolute right to permanently delete your account, encrypted vault files, and profile credentials. Self-service instant deletion is available at <a href="/delete-account/" className="text-accent-blue hover:underline">/delete-account/</a>.</li>
+            <li><strong>Right to Withdraw Consent:</strong> You may withdraw consent at any time. Withdrawal of newsletter consent is instantaneous via our one-click unsubscribe mechanism.</li>
+            <li><strong>Right of Nomination (DPDP Sec 14):</strong> You have the right to nominate another individual who shall, in the event of death or incapacity, exercise your Data Principal rights.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>5. Third-Party Sub-Processors & International Data Transfers</h3>
+          <p>
+            We do not sell, rent, or trade your personal data. We utilize selected third-party service providers solely for essential operational capabilities:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li><strong>Google Play Billing (Google LLC):</strong> In-app purchase verification and subscription token management. Operates under Google's enterprise privacy framework.</li>
+            <li><strong>Cloudflare Inc.:</strong> Edge CDN and DDoS network defense. Traffic is filtered over encrypted TLS 1.3 tunnels.</li>
+            <li><strong>Telegram Bot API:</strong> Real-time automated server security alerts and critical error telemetry. Personal identifiers are anonymized/redacted before transmission.</li>
+            <li><strong>WhatsApp Cloud / Notification Webhooks:</strong> Transmitting opt-in helpdesk ticket status updates to administrators and requesters.</li>
+          </ul>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Any international cross-border transfer of data conforms to Section 16 of the DPDP Act and Standard Contractual Clauses (SCCs) under GDPR Chapter V.
+          </p>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>6. Security Safeguards & Breach Notification Policy</h3>
+          <p>
+            In compliance with Section 8(6) of the DPDP Act, Indian CERT-In directions, and GDPR Article 33:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li>All data in transit is encrypted using <strong>TLS 1.3 / HTTPS</strong>. Vault backups are protected locally with user-defined <strong>AES-256</strong> client-side encryption.</li>
+            <li>Passwords and security answers are stored using salted one-way <strong>bcrypt hashes</strong> (factor 10).</li>
+            <li>In the event of a confirmed personal data security breach, Logbook Plus will notify the <strong>Data Protection Board of India</strong>, the Indian Computer Emergency Response Team (CERT-In) within 6 hours of discovery, and affected Data Principals without undue delay.</li>
+          </ul>
+
+          <h3 className="text-lg font-bold mt-6" style={{ color: 'var(--text-primary)' }}>7. California Privacy Disclosures (CCPA / CPRA Notice at Collection)</h3>
+          <p>
+            Under the California Consumer Privacy Act (CCPA) as amended by the CPRA:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <li><strong>No Sale or Sharing of Personal Information:</strong> We do NOT sell your personal data or share it with third parties for cross-context behavioral advertising.</li>
+            <li><strong>Sensitive Personal Information (SPI):</strong> We collect account credentials and security questions solely to secure your account. We do not use or disclose SPI for purposes other than performing the requested service.</li>
+            <li><strong>Non-Discrimination:</strong> We do not discriminate against any user for exercising any CCPA/CPRA rights.</li>
           </ul>
         </div>
       )
@@ -670,10 +813,24 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
           ) : (
             <form onSubmit={handleContactSubmit} className="space-y-4">
               <div className="space-y-1.5">
+                <label className="text-sm font-bold uppercase block pl-1" style={{ color: 'var(--text-muted)' }}>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue"
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
                 <label className="text-sm font-bold uppercase block pl-1" style={{ color: 'var(--text-muted)' }}>Email Address</label>
                 <input
                   type="email"
                   placeholder="name@company.com"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
                   className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue"
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   required
@@ -695,14 +852,34 @@ export default function PolicyView({ initialDoc = 'security', onNavigate }) {
                 <textarea
                   rows="4"
                   placeholder="Describe your request..."
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
                   className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-blue"
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   required
                 />
               </div>
+
+              {/* DPDP / GDPR Affirmative Consent Checkbox */}
+              <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                <label className="flex items-start gap-2.5 text-xs text-left cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={contactConsent}
+                    onChange={(e) => setContactConsent(e.target.checked)}
+                    className="mt-0.5 rounded border-zinc-700 accent-blue-500 cursor-pointer"
+                    required
+                  />
+                  <span>
+                    I consent to the collection and processing of my name, email address, and inquiry details by Logbook Plus solely for addressing this request in accordance with the <a href="/privacy/" className="text-accent-blue hover:underline">Privacy Policy</a>.
+                  </span>
+                </label>
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                disabled={!contactConsent}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-blue to-accent-purple text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
               >
                 Send Message
               </button>

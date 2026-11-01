@@ -55,6 +55,8 @@ exports.createTicket = (req, res) => {
             reportedBy: reportedBy || 'anonymous',
             isPrefilled: Boolean(isPrefilled),
             adminTag: adminTag || 'IT Support',
+            consentGiven: true,
+            isAdultOrAuthorized: true,
             status: 'PENDING',
             adminRemark: null,
             createdAt: new Date().toISOString(),

@@ -1,0 +1,33 @@
+# Robots.txt for Logbook Plus
+# Official Site: https://logbookplus.co.in
+# Configured for Google Search Console & Search Engine Crawlers
+
+User-agent: *
+Allow: /
+
+# Allow static assets and bundles so Googlebot can properly render the application
+Allow: /assets/
+Allow: /dist-assets/
+
+# Disallow API and server endpoints
+Disallow: /api/
+
+# Disallow authenticated, private, and admin dashboards
+Disallow: /app/dashboard
+Disallow: /app/dashboard/
+Disallow: /master
+Disallow: /master/
+Disallow: /helpdesk
+Disallow: /helpdesk/
+Disallow: /dev
+Disallow: /dev/
+
+# Disallow raw database, backup, and environment files
+Disallow: /*.db$
+Disallow: /*.csv$
+Disallow: /*.json$
+Disallow: /*.env$
+Disallow: /*.lock$
+
+# XML Sitemap
+Sitemap: https://logbookplus.co.in/sitemap.xml

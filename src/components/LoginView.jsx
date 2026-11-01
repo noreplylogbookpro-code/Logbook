@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Shield, Mail, Lock, User, HelpCircle, ArrowRight, 
-  ShieldCheck, Eye, EyeOff, Smartphone, ExternalLink, 
+import {
+  Shield, Mail, Lock, User, HelpCircle, ArrowRight,
+  ShieldCheck, Eye, EyeOff, Smartphone, ExternalLink,
   Copy, CheckCircle2, Sparkles
 } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
@@ -27,6 +27,9 @@ export default function LoginView({ onNavigate }) {
   const [name, setName] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState(SECURITY_QUESTIONS[0]);
   const [securityAnswer, setSecurityAnswer] = useState('');
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showItemizedNotice, setShowItemizedNotice] = useState(false);
 
   // Forgot password states
   const [forgotQuestion, setForgotQuestion] = useState('');
@@ -141,8 +144,8 @@ export default function LoginView({ onNavigate }) {
     const appDeepLink = `logbookplus://auth?token=${encodeURIComponent(token)}&userId=${encodeURIComponent(user?.id || user?.userId || '')}&name=${encodeURIComponent(user?.username || user?.name || '')}`;
 
     if (redirectUri) {
-      const targetUrl = redirectUri.includes('?') 
-        ? `${redirectUri}&token=${encodeURIComponent(token)}` 
+      const targetUrl = redirectUri.includes('?')
+        ? `${redirectUri}&token=${encodeURIComponent(token)}`
         : `${redirectUri}?token=${encodeURIComponent(token)}`;
       window.location.href = targetUrl;
     } else if (isAppSource) {
@@ -185,6 +188,14 @@ export default function LoginView({ onNavigate }) {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    if (!ageConfirmed) {
+      setErrorMsg('Under DPDP Act 2023, you must confirm you are 18 years of age or older to register.');
+      return;
+    }
+    if (!termsAccepted) {
+      setErrorMsg('Please review and accept the Terms of Use and Privacy Policy.');
+      return;
+    }
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(true);
@@ -198,7 +209,10 @@ export default function LoginView({ onNavigate }) {
           email: email.trim(),
           password,
           securityQuestion,
-          securityAnswer
+          securityAnswer,
+          ageConfirmed: true,
+          termsAccepted: true,
+          consentTimestamp: new Date().toISOString()
         })
       });
       const data = await res.json();
@@ -207,6 +221,8 @@ export default function LoginView({ onNavigate }) {
         setSuccessMsg('Account created successfully! Please sign in.');
         setMode('login');
         setPassword('');
+        setAgeConfirmed(false);
+        setTermsAccepted(false);
       } else {
         setErrorMsg(data.error || data.message || 'Signup failed');
       }
@@ -367,33 +383,30 @@ export default function LoginView({ onNavigate }) {
             <button
               type="button"
               onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'login' 
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' 
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'login'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
             >
               {t('signIn')}
             </button>
             <button
               type="button"
               onClick={() => { setMode('signup'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'signup' 
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' 
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'signup'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
             >
               {t('signUp')}
             </button>
             <button
               type="button"
               onClick={() => { setMode('forgot'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                mode === 'forgot' 
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' 
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${mode === 'forgot'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
             >
               Reset
             </button>
@@ -580,10 +593,78 @@ export default function LoginView({ onNavigate }) {
               />
             </div>
 
+            {/* Itemized Transparency Notice & Consent Architecture (DPDP Sec 5, 9 & GDPR Art 7, 13) */}
+            <div className="space-y-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowItemizedNotice(!showItemizedNotice)}
+                className="text-[11px] font-semibold text-accent-blue hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>{showItemizedNotice ? '▼ Hide' : '▶ View'} Itemized Data Notice (DPDP Act, 2023)</span>
+              </button>
+
+              {showItemizedNotice && (
+                <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 text-[11px] space-y-1 text-left text-zinc-600 dark:text-zinc-300">
+                  <p className="font-bold text-accent-blue">Summary of Data Collection & Rights:</p>
+                  <p>• <strong>Collected:</strong> Username, email, encrypted password, hashed recovery answer.</p>
+                  <p>• <strong>Purpose:</strong> Account authentication, recovery, and access management.</p>
+                  <p>• <strong>Your Rights:</strong> Access, correction, complete erasure, and grievance redressal through our Grievance Officer (<a href="mailto:grievance@logbookplus.co.in" className="text-accent-blue underline">grievance@logbookplus.co.in</a>).</p>
+                  <p>• <strong>Minors (&lt;18):</strong> Must not register without verifiable parental consent.</p>
+                </div>
+              )}
+
+              {/* Age Gating Checkbox (DPDP Act 2023 Section 9) */}
+              <label className="flex items-start gap-2 text-xs text-left cursor-pointer text-zinc-600 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="mt-0.5 rounded border-zinc-700 accent-blue-500 cursor-pointer"
+                  required
+                />
+                <span>
+                  I confirm that I am <strong>18 years of age or older</strong> (or have verifiable parental/guardian consent under DPDP Act, 2023).
+                </span>
+              </label>
+
+              {/* Terms and Privacy Policy Consent Checkbox */}
+              <label className="flex items-start gap-2 text-xs text-left cursor-pointer text-zinc-600 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 rounded border-zinc-700 accent-blue-500 cursor-pointer"
+                  required
+                />
+                <span>
+                  I agree to the{' '}
+                  <a
+                    href="/terms/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-accent-blue hover:underline font-semibold"
+                  >
+                    Terms of Use
+                  </a>{' '}
+                  and acknowledge the{' '}
+                  <a
+                    href="/privacy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-accent-blue hover:underline font-semibold"
+                  >
+                    Privacy Policy
+                  </a>.
+                </span>
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading || nameAvailable === false || emailAvailable === false}
-              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
+              disabled={loading || nameAvailable === false || emailAvailable === false || !ageConfirmed || !termsAccepted}
+              className="w-full btn-primary-unified py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />

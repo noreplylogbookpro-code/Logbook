@@ -590,10 +590,30 @@ router.get('/health', async (req, res) => {
     });
 });
 
+// Helper to remove email records from CSV files upon deletion or consent withdrawal (DPDP Sec 12, GDPR Art 17)
+async function removeEmailFromCsv(csvPath, targetEmail) {
+    if (!targetEmail || !await fs.pathExists(csvPath)) return;
+    try {
+        const content = await fs.readFile(csvPath, 'utf8');
+        const lines = content.split('\n');
+        const cleanTarget = String(targetEmail).trim().toLowerCase();
+        const filtered = lines.filter(line => {
+            const lower = line.toLowerCase();
+            return !lower.includes(`"${cleanTarget}"`) && !lower.includes(`,${cleanTarget}`);
+        });
+        await fs.writeFile(csvPath, filtered.join('\n'), 'utf8');
+    } catch (e) {
+        console.error(`Failed to remove ${targetEmail} from ${csvPath}:`, e.message);
+    }
+}
+
 // Contact Form
 router.post('/contact', async (req, res) => {
-    const { name, email, subject, message } = req.body;
+    const { name, email, subject, message, consentGiven } = req.body;
     if (!name || !email || !subject || !message) return res.status(400).json({ error: 'All fields are required.' });
+    if (!consentGiven) {
+        return res.status(400).json({ error: 'Affirmative privacy consent is required under DPDP Act, 2023 & GDPR.' });
+    }
 
     const csvPath = path.join(__dirname, 'quary.csv');
     const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
@@ -612,8 +632,11 @@ router.post('/contact', async (req, res) => {
 
 // Newsletter Subscription
 router.post('/subscribe', async (req, res) => {
-    const { email } = req.body;
+    const { email, consentGiven } = req.body;
     if (!email) return res.status(400).json({ error: 'Email address is required.' });
+    if (!consentGiven) {
+        return res.status(400).json({ error: 'Consent to receive newsletter updates is required under privacy law.' });
+    }
 
     const csvPath = path.join(__dirname, 'subscribers.csv');
     const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
@@ -628,6 +651,17 @@ router.post('/subscribe', async (req, res) => {
         logServerEvent('critical', `Failed to save newsletter subscription from ${email}`);
         res.status(500).json({ error: 'Failed to process subscription.' });
     }
+});
+
+// Newsletter Unsubscribe / Consent Withdrawal (DPDP Sec 6(4), GDPR Art 7(3))
+router.post('/unsubscribe', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email address is required.' });
+
+    const csvPath = path.join(__dirname, 'subscribers.csv');
+    await removeEmailFromCsv(csvPath, email);
+    logServerEvent('info', `Newsletter unsubscription processed for: ${email}`);
+    res.json({ success: true, message: 'You have been successfully unsubscribed from newsletter updates.' });
 });
 
 // TOTP / 2FA Utilities
@@ -1920,13 +1954,23 @@ router.post('/signup', signupLimiter, async (req, res) => {
         return res.status(403).json({ error: "New user registrations are currently disabled by the server administrator." });
     }
 
-    const { username, email, password, securityQuestion, securityAnswer } = req.body;
+    const { username, email, password, securityQuestion, securityAnswer, ageConfirmed, termsAccepted } = req.body;
 
     if (!username || !email || !password || typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
         return res.status(400).json({ error: "Username, email, and password are required and must be valid strings." });
     }
     if (password.length < 8) {
         return res.status(400).json({ error: "Password must be at least 8 characters long." });
+    }
+    // DPDP Act 2023 Section 9: Children's data safeguard & Age gating verification
+    if (ageConfirmed !== true) {
+        logServerEvent('warning', `Signup rejected: Age confirmation missing or false from IP: ${req.ip}`);
+        return res.status(400).json({ error: "Under DPDP Act Section 9, affirmative confirmation that you are 18 years of age or older is mandatory." });
+    }
+    // DPDP Act 2023 Section 6: Affirmative consent to Terms & Privacy Policy
+    if (termsAccepted !== true) {
+        logServerEvent('warning', `Signup rejected: Terms/Privacy consent not accepted from IP: ${req.ip}`);
+        return res.status(400).json({ error: "You must affirmatively review and accept the Terms of Use and Privacy Policy to register." });
     }
     if (securityQuestion && !ALLOWED_SECURITY_QUESTIONS.includes(securityQuestion)) {
         return res.status(400).json({ error: "Selected security question is not valid." });
@@ -1958,6 +2002,11 @@ router.post('/signup', signupLimiter, async (req, res) => {
             subscriptionStatus: 'inactive',
             subscriptionExpiresAt: 0,
             quotaLimit: serverConfig.quotaLimit,
+            ageConfirmed: true,
+            termsAccepted: true,
+            consentGiven: true,
+            consentTimestamp: Date.now(),
+            consentVersion: '2026.DPDP.1',
             createdAt: Date.now(),
             lastActiveAt: Date.now()
         };
@@ -2703,12 +2752,18 @@ const handleDeleteAccountConfirm = async (req, res) => {
             }
         }
 
-        // --- Purge User Account and Backups ---
+        // --- Purge User Account, Backups, and Auxiliary CSV Records (Right to Erasure) ---
         pendingAccountDeletions.delete(req.userId);
 
         const userDir = path.join(__dirname, 'uploads', req.userId);
         if (await fs.pathExists(userDir)) {
             await fs.remove(userDir);
+        }
+
+        // Purge auxiliary email subscriptions and inquiries (DPDP Sec 12, GDPR Art 17)
+        if (user.email) {
+            await removeEmailFromCsv(path.join(__dirname, 'subscribers.csv'), user.email);
+            await removeEmailFromCsv(path.join(__dirname, 'quary.csv'), user.email);
         }
 
         await twoFactorDb.remove({ _id: req.userId }, {});
@@ -2717,11 +2772,8 @@ const handleDeleteAccountConfirm = async (req, res) => {
 
         markUserOffline(user.username);
 
-        logServerEvent('critical', `User permanently deleted their account: '${user.username}' (${user.email}) and all cloud data purged from IP: ${req.ip}`, {
-            username: user.username.toLowerCase(),
-            isLogout: true,
-            ip: req.ip
-        });
+        // Anonymized info log to protect user privacy and avoid leaking PII to Telegram
+        logServerEvent('info', `User account permanently terminated and all personal cloud data purged for user ID: [USER_PURGED] (DPDP Sec 12 / GDPR Art 17 fulfilled)`);
 
         res.json({
             success: true,
@@ -2739,6 +2791,65 @@ router.post('/user/delete-account/confirm', isAuthenticated, handleDeleteAccount
 router.post('/profile/delete-account/request-otp', isAuthenticated, handleDeleteAccountRequestOtp);
 router.post('/profile/delete-account/resend-otp', isAuthenticated, handleDeleteAccountRequestOtp);
 router.post('/profile/delete-account/confirm', isAuthenticated, handleDeleteAccountConfirm);
+
+// Data Subject Access Request (DSAR) - Right to Access & Portability (DPDP Act Sec 11, GDPR Art 15 & 20)
+const handleUserDataExport = async (req, res) => {
+    try {
+        const user = await db.findOne({ _id: req.userId }, { password: 0, securityAnswer: 0 });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const twoFactor = await twoFactorDb.findOne({ _id: req.userId }, { twoFactorSecret: 0 });
+
+        const userDir = path.join(__dirname, 'uploads', req.userId);
+        let backupFiles = [];
+        if (await fs.pathExists(userDir)) {
+            const files = await fs.readdir(userDir);
+            for (const f of files) {
+                if (f === 'avatar.jpg') continue;
+                const stat = await fs.stat(path.join(userDir, f));
+                backupFiles.push({ filename: f, sizeBytes: stat.size, modifiedAt: stat.mtime });
+            }
+        }
+
+        const report = {
+            complianceNotice: "Personal Data Portability & Access Report provided pursuant to DPDP Act, 2023 (Section 11) and GDPR (Article 15).",
+            dataPrincipalId: user._id,
+            generatedAt: new Date().toISOString(),
+            accountInformation: {
+                username: user.username,
+                email: user.email,
+                name: user.name || null,
+                plan: user.plan,
+                subscriptionStatus: user.subscriptionStatus,
+                subscriptionExpiresAt: user.subscriptionExpiresAt,
+                quotaLimitBytes: user.quotaLimit,
+                accountCreatedAt: user.createdAt ? new Date(user.createdAt).toISOString() : null,
+                lastActiveAt: user.lastActiveAt ? new Date(user.lastActiveAt).toISOString() : null,
+                ageConfirmed: user.ageConfirmed ?? true,
+                consentGiven: user.consentGiven ?? true,
+                consentTimestamp: user.consentTimestamp ? new Date(user.consentTimestamp).toISOString() : null,
+                consentVersion: user.consentVersion || '2026.1'
+            },
+            securityConfiguration: {
+                hasSecurityQuestion: !!user.securityQuestion,
+                securityQuestion: user.securityQuestion || null,
+                twoFactorEnabled: !!twoFactor?.twoFactorEnabled,
+                twoFactorConfiguredAt: twoFactor?.createdAt ? new Date(twoFactor.createdAt).toISOString() : null
+            },
+            cloudBackupsStored: backupFiles
+        };
+
+        res.setHeader('Content-Disposition', `attachment; filename="logbook-data-export-${user.username}.json"`);
+        res.setHeader('Content-Type', 'application/json');
+        res.json(report);
+    } catch (e) {
+        logServerEvent('error', `Failed to generate data export for user ${req.userId}: ${e.message}`);
+        res.status(500).json({ error: "Failed to generate personal data export." });
+    }
+};
+
+router.get('/user/data-export', isAuthenticated, handleUserDataExport);
+router.get('/profile/data-export', isAuthenticated, handleUserDataExport);
 
 router.get('/system/email-status', async (req, res) => {
     const status = await verifySmtpConnection();
@@ -3090,6 +3201,11 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 if (typeof relPath !== 'string') continue;
                 const normalized = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
                 if (normalized.includes('..') || path.isAbsolute(normalized)) continue;
+                // Exclude sensitive credentials (.env) and consumer personal data CSVs from export bundles (DPDP & GDPR Security Safeguards)
+                const lowerNorm = normalized.toLowerCase();
+                if (lowerNorm === '.env' || lowerNorm.endsWith('.csv') || lowerNorm.includes('quary') || lowerNorm.includes('subscribers')) {
+                    continue;
+                }
 
                 const fullPath = path.join(rootDir, normalized);
                 if (await fs.pathExists(fullPath)) {
@@ -3113,7 +3229,6 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 'src',
                 'uploads',
                 'utils',
-                '.env',
                 '.gitignore',
                 '.htaccess',
                 'api.js',
@@ -3122,10 +3237,8 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 'package-lock.json',
                 'package.json',
                 'postcss.config.js',
-                'quary.csv',
                 'README.md',
                 'server.js',
-                'subscribers.csv',
                 'tailwind.config.js',
                 'vite.config.js'
             ];

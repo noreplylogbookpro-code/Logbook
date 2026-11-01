@@ -21,8 +21,9 @@ const {
 } = require('./utils/serverState');
 const { getSubscriptionForSchool } = require('./utils/dbHelper');
 
-// API Router
+// API Router & Client User-Agent Guard
 const apiRouter = require('./api');
+const { classifyClient } = require('./middleware/userAgentGuard');
 const { startTelegramPolling } = require('./utils/telegramBotService');
 
 const app = express();
@@ -210,6 +211,17 @@ app.use((req, res, next) => {
     next();
 });
 
+// Search engine optimization & crawler endpoints (Google Search Console, Bing Webmaster)
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+
 // Serve static assets
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
@@ -271,7 +283,8 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- Mount Modular API Router ---
+// --- Mount Modular API Router with Client User-Agent Classifier ---
+app.use('/api', classifyClient);
 app.use('/api', apiRouter);
 
 // SPA Wildcard Route Fallback for React paths
