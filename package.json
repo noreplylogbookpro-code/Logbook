@@ -7,6 +7,11 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "vite build && node scripts/post-build.js",
     "deploy": "concurrently \"npm run build\" \"npm run server\"",
+    "test": "node scripts/test-seo-crawlability.js && node scripts/test-phase3-validation.js && node scripts/verify-all-apis.js && node scripts/test-security-suite.js",
+    "test:phase3": "node scripts/test-phase3-validation.js",
+    "test:seo": "node scripts/test-seo-crawlability.js",
+    "test:api": "node scripts/verify-all-apis.js",
+    "test:security": "node scripts/test-security-suite.js",
     "test:stats": "node scripts/test-telegram-alert.js"
   },
   "overrides": {

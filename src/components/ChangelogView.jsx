@@ -33,15 +33,12 @@ export default function ChangelogView({ onNavigate }) {
 
   return (
     <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left overflow-hidden">
-      
+
       {/* Ambient Background Glow Blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-blue-500/5 dark:bg-blue-600/10 blur-[100px] animate-pulse" />
-        <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-600/10 blur-[100px]" />
-      </div>
+
 
       <div className="relative z-10 max-w-4xl mx-auto space-y-12 sm:space-y-16">
-        
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -50,7 +47,7 @@ export default function ChangelogView({ onNavigate }) {
           className="space-y-4 text-center sm:text-left"
         >
           <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs"
-               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>

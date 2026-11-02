@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Database, EyeOff, Activity, Check, ShieldCheck, Server, Lock } from 'lucide-react';
+import { Database, EyeOff, Activity, Check, ShieldCheck, Server, Lock, Camera, FileSpreadsheet, HardDrive } from 'lucide-react';
 import { useLanguage } from '../useLanguage.js';
 
 export default function BentoFeatures() {
@@ -12,8 +12,15 @@ export default function BentoFeatures() {
       title: 'Local Encrypted DB',
       desc: 'Your financial history never leaves your device unencrypted. We utilize AES-256 local database encryption on top of standard platform security. You hold the keys.',
       badgeType: 'code',
-      codePrefix: 'const status = ',
-      codeHighlight: '"Encrypted";'
+      codePrefix: 'const cipher = ',
+      codeHighlight: '"AES-256-GCM";'
+    },
+    {
+      icon: HardDrive,
+      title: 'Offline Expense Tracking',
+      desc: 'Sub-millisecond read/write speeds with on-device SQLite. Record transactions, organize categories, and view charts anywhere without cellular reception or Wi-Fi.',
+      badgeType: 'check',
+      checkText: '100% Offline'
     },
     {
       icon: EyeOff,
@@ -21,19 +28,39 @@ export default function BentoFeatures() {
       desc: 'No Google Analytics. No Facebook Pixels. No crashlytics tools that phone home. The app binary is entirely clean of third-party telemetry, ad beacons, and surveillance.',
       badgeType: 'code',
       codePrefix: 'export default ',
-      codeHighlight: 'OfflineOnly;'
+      codeHighlight: 'ZeroTelemetry;'
     },
     {
-      icon: Activity,
-      title: 'Transparent Cash Flow',
-      desc: 'Gain unparalleled insights into your spending habits with powerful, locally computed analytics. Full control, categorization, and reporting without cloud lag.',
+      icon: Camera,
+      title: 'Receipt Photo Organization',
+      desc: 'Attach multiple bill photos and invoice snapshots directly to every expense entry. Images are sealed inside your sandboxed vault and preserved in backups.',
       badgeType: 'check',
-      checkText: '100% On-Device'
+      checkText: 'Attached on Device'
+    },
+    {
+      icon: FileSpreadsheet,
+      title: 'Multi-Format Reports & Export',
+      desc: 'Generate clean personal accounting reports for tax filing and audits. Export custom date ranges seamlessly to Microsoft Excel (.xlsx), Word (.docx), or PDF.',
+      badgeType: 'check',
+      checkText: 'Excel • Word • PDF'
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Encrypted Backup & Restore',
+      desc: 'Create password-protected backup archives for instant device migration, or synchronize encrypted vaults to your private WebDAV or Nextcloud server.',
+      badgeType: 'code',
+      codePrefix: 'sync = ',
+      codeHighlight: 'WebDAV.enabled;'
     }
   ];
 
   return (
-    <section className="py-20 sm:py-28 px-4 sm:px-6 md:px-8 border-t relative overflow-hidden" style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)' }}>
+    <section
+      id="features"
+      aria-labelledby="features-heading"
+      className="py-20 sm:py-28 px-4 sm:px-6 md:px-8 border-t relative overflow-hidden"
+      style={{ backgroundColor: 'var(--bg-base)', borderColor: 'var(--border)' }}
+    >
 
       {/* Background Soft Glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
@@ -50,11 +77,15 @@ export default function BentoFeatures() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-3xl mb-14 sm:mb-20 text-center mx-auto space-y-4"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono bg-blue-500/10 text-accent-blue border border-blue-500/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono bg-blue-500/10 text-[#2467B9] dark:text-blue-400 border border-blue-500/20">
             <ShieldCheck className="w-3.5 h-3.5" />
             Sovereign Architecture
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-light)' }}>
+          <h2
+            id="features-heading"
+            className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Radical Privacy by Design
           </h2>
           <p className="text-base sm:text-lg leading-relaxed max-w-2xl mx-auto" style={{ color: 'var(--text-muted)' }}>
@@ -87,7 +118,7 @@ export default function BentoFeatures() {
                     color: 'var(--text-primary)'
                   }}
                 >
-                  <feat.icon className="w-6 h-6 text-accent-blue" />
+                  <feat.icon className="w-6 h-6 text-[#2467B9] dark:text-blue-400" />
                 </div>
 
                 <h3 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>

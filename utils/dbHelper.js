@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 require('dotenv').config({ quiet: true });
 
 const DB_DIR = path.join(__dirname, '../database');
@@ -64,25 +65,27 @@ function initDB(school) {
         const staffUser = (process.env.DEFAULT_STAFF_USER).trim().toLowerCase();
         const staffPass = process.env.DEFAULT_STAFF_PASS;
 
+        const hashPass = (p) => p ? bcrypt.hashSync(p.toString().trim(), 10) : '';
+
         fs.writeFileSync(usersFile, JSON.stringify([
             {
                 id: 1,
                 username: superUser,
-                password: superPass,
+                password: hashPass(superPass),
                 role: 'SUPER_ADMIN',
                 fullName: 'Super Administrator'
             },
             {
                 id: 2,
                 username: adminUser,
-                password: adminPass,
+                password: hashPass(adminPass),
                 role: 'ADMIN',
                 fullName: 'IT Administrator'
             },
             {
                 id: 3,
                 username: staffUser,
-                password: staffPass,
+                password: hashPass(staffPass),
                 role: 'USER',
                 fullName: 'Main Office Staff'
             }

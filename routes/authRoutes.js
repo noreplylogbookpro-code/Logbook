@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const { logServerEvent } = require('../utils/logger');
+const { extractCookie } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -42,17 +43,23 @@ const createLimiter = (windowMins, maxRequests, errMsg) => rateLimit({
 // Dedicated rate limiters for auth endpoints
 const authLoginLimiter = createLimiter(15, 10, 'Too many login attempts. Try again in 15 minutes.');
 const authCreateUserLimiter = createLimiter(60, 20, 'Too many user creation attempts. Try again after an hour.');
-
-// Updated to limit to 3 attempts per 24 hours to prevent abuse
 const authResetPasswordLimiter = createLimiter(1440, 3, 'Too many password reset attempts. Please try again after 24 hours.');
 
 // --- Middleware: Verify Helpdesk JWT and extract role from token ---
 const verifyHelpdeskToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        token = extractCookie(req, 'helpdeskToken');
+    }
 
     if (!token) {
         return res.status(401).json({ success: false, error: 'Authentication required. Please log in.' });
+    }
+
+    if (!JWT_SECRET) {
+        return res.status(500).json({ success: false, error: 'Authentication configuration error.' });
     }
 
     try {
@@ -60,13 +67,12 @@ const verifyHelpdeskToken = (req, res, next) => {
         if (!decoded.helpdeskUser) {
             return res.status(403).json({ success: false, error: 'Invalid helpdesk session token.' });
         }
-        // Attach verified token data to request — this is the ONLY trusted source of role
+        // Attach verified token data to request — this is the ONLY trusted source of role and identity
         req.helpdeskAuth = {
             username: decoded.username,
             role: decoded.role,
             school: decoded.school
         };
-        // Also set headers from verified token so controllers read correct values
         req.headers['x-caller-role'] = decoded.role;
         req.headers['x-caller-username'] = decoded.username;
         if (decoded.school) req.headers['x-school-key'] = decoded.school;
@@ -80,10 +86,10 @@ const verifyHelpdeskToken = (req, res, next) => {
 const requireAdminRole = [
     verifyHelpdeskToken,
     (req, res, next) => {
-        const callerRole = req.helpdeskAuth.role;
+        const callerRole = req.helpdeskAuth?.role;
         if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
             const clientIp = getClientIp(req);
-            logServerEvent('warning', `Unauthorized administrative action attempted on ${req.originalUrl || req.url} by '${req.helpdeskAuth.username}' from IP: ${clientIp}`);
+            logServerEvent('warning', `Unauthorized administrative action attempted on ${req.originalUrl || req.url} by '${req.helpdeskAuth?.username}' from IP: ${clientIp}`);
             return res.status(403).json({
                 success: false,
                 error: 'Access denied: Administrative privileges (ADMIN or SUPER_ADMIN) are required.'
@@ -104,8 +110,7 @@ router.delete('/users/:id', requireAdminRole, authController.deleteUser);
 router.patch('/users/:id/role', requireAdminRole, authController.updateUserRole);
 router.post('/reset-password', authResetPasswordLimiter, requireAdminRole, authController.resetPassword);
 
-// SECURITY: /config endpoint removed — it previously leaked ALL admin credentials publicly.
-// Default usernames (NOT passwords) are available only to authenticated master admins if needed.
+// SECURITY: /config endpoint was removed — it previously leaked ALL admin credentials publicly.
 
 module.exports = router;
 module.exports.verifyHelpdeskToken = verifyHelpdeskToken;

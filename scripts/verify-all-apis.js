@@ -195,12 +195,11 @@ async function runApiVerification() {
         // ====================================================
         console.log('\n--- SUITE 3: Helpdesk Campus System ---');
 
-        // 15. Helpdesk Config
+        // 15. Helpdesk Config is removed to prevent credential leakage
         res = await fetch(`${baseUrl}/v1/auth/config`);
-        data = await res.json();
-        assert(res.status === 200 && data.superAdminUser === 'master', 'GET /api/v1/auth/config', `(superAdmin: ${data.superAdminUser})`);
+        assert(res.status === 404, 'GET /api/v1/auth/config is disabled (HTTP 404 expected)', `(status: ${res.status})`);
 
-        // 16. Helpdesk Login as Super Admin (Master) in NHSST - verifying fix for expired license error
+        // 16. Helpdesk Login as Super Admin (Master) in NHSST
         res = await fetch(`${baseUrl}/v1/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -213,9 +212,10 @@ async function runApiVerification() {
         data = await res.json();
         assert(res.status === 200 && data.success === true && data.data?.role === 'SUPER_ADMIN', 'POST /api/v1/auth/login (Master Super Admin)', `(role: ${data.data?.role}, school: ${data.data?.school})`);
 
+        const helpdeskToken = data.helpdeskToken;
         const helpdeskHeaders = {
             'Content-Type': 'application/json',
-            'x-caller-role': 'SUPER_ADMIN',
+            'Authorization': `Bearer ${helpdeskToken}`,
             'x-school-key': 'NHSST'
         };
 
@@ -261,7 +261,9 @@ async function runApiVerification() {
                 email: testEmail,
                 password: testPassword,
                 securityQuestion: 'What was the name of your first pet?',
-                securityAnswer: 'Fluffy'
+                securityAnswer: 'Fluffy',
+                ageConfirmed: true,
+                termsAccepted: true
             })
         });
         data = await res.json();

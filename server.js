@@ -1,10 +1,16 @@
 // server.js
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
-const crypto = require('crypto');
+const { ROUTE_ALIASES, getSeoForPath } = require('./utils/seoData');
+const { renderHtmlForRoute } = require('./utils/seoEngine');
 require('dotenv').config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
+// Fail-safe security configuration validation
+const { validateSecurityConfiguration, encryptDatabaseText } = require('./config/security');
+validateSecurityConfiguration({ exitOnError: true });
 
 // Custom encapsulated modules
 const { db, twoFactorDb, logsDb } = require('./config/db');
@@ -35,38 +41,87 @@ app.set('trust proxy', 1);
 const helmet = require('helmet');
 const compression = require('compression');
 
+// --- Privacy Helpers for Log Sanitization ---
+function anonymizeIdentifier(id) {
+    if (!id || typeof id !== 'string') return undefined;
+    const clean = id.trim();
+    if (clean.includes('@')) {
+        return clean.replace(/^([^@]{1,2})[^@]*@(.*)$/, '$1***@$2');
+    }
+    if (clean.length > 4) {
+        return clean.substring(0, 2) + '***' + clean.substring(clean.length - 2);
+    }
+    return clean.substring(0, 1) + '***';
+}
+
+function anonymizeIp(ip) {
+    if (!ip || typeof ip !== 'string') return 'masked-ip';
+    const clean = ip.replace('::ffff:', '').trim();
+    if (clean === '127.0.0.1' || clean === '::1') return clean;
+    if (clean.includes('.')) {
+        return clean.replace(/\.\d+$/, '.xxx');
+    }
+    return 'masked-ip';
+}
+
 // --- CORS Configuration: Whitelist allowed origins ---
-const ALLOWED_ORIGINS = [
+const PRODUCTION_ALLOWED_ORIGINS = [
+    'https://logbookplus.co.in',
+    'https://www.logbookplus.co.in',
+    'https://master.logbookplus.co.in',
+    'https://helpdesk.logbookplus.co.in',
+];
+
+const DEV_ALLOWED_ORIGINS = [
     'http://localhost:8080',
     'http://127.0.0.1:8080',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://logbookplus.co.in',
-    'https://www.logbookplus.co.in',
-    'https://master.logbookplus.co.in',
-    'https://helpdesk.logbookplus.co.in',
-].filter(Boolean);
-
-if (process.env.ALLOWED_ORIGINS) {
-    const extra = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
-    ALLOWED_ORIGINS.push(...extra);
-}
+];
 
 const isAllowedOrigin = (origin) => {
-    // Allow non-browser requests (mobile apps, curl, server-to-server)
+    // Non-browser requests (native mobile apps, server-to-server, curl) have no Origin header
     if (!origin) return true;
 
-    // Direct whitelist match
-    if (ALLOWED_ORIGINS.includes(origin)) return true;
+    // Check exact production whitelist match
+    if (PRODUCTION_ALLOWED_ORIGINS.includes(origin)) return true;
 
-    // Any localhost, loopback, or 0.0.0.0 (with or without port, http or https)
+    // Custom origins explicitly configured via environment
+    if (process.env.ALLOWED_ORIGINS) {
+        const extra = process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
+        if (extra.includes(origin)) return true;
+    }
+
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Production: Allow HTTPS subdomains of logbookplus.co.in
+    if (isProduction) {
+        if (/^https:\/\/([a-zA-Z0-9-]+\.)*logbookplus\.co\.in$/i.test(origin)) {
+            return true;
+        }
+        // Dev tunnels in production only if explicitly opted in
+        if (process.env.ENABLE_DEV_TUNNELS === 'true') {
+            if (
+                origin.endsWith('.serveo.net') ||
+                origin.endsWith('.ngrok-free.app') ||
+                origin.endsWith('.ngrok.io') ||
+                origin.endsWith('.trycloudflare.com')
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Development mode: Allow local development origins & dev tunnels
+    if (DEV_ALLOWED_ORIGINS.includes(origin)) return true;
+
     if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i.test(origin)) {
         return true;
     }
 
-    // Local LAN testing (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
     if (
         /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/i.test(origin) ||
         /^https?:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/i.test(origin) ||
@@ -75,12 +130,6 @@ const isAllowedOrigin = (origin) => {
         return true;
     }
 
-    // All logbookplus.co.in subdomains
-    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*logbookplus\.co\.in(:\d+)?$/i.test(origin)) {
-        return true;
-    }
-
-    // Dev tunnels (serveo, ngrok, cloudflare)
     if (
         origin.endsWith('.serveo.net') ||
         origin.endsWith('.ngrok-free.app') ||
@@ -110,16 +159,21 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            // Strict CSP: removed unsafe-inline, added exact sha256 for the inline theme switcher
+            scriptSrc: ["'self'", "'sha256-7of+l5rYmsUuabf+eBX4CXRadrhf7gCG61f9UJUCy14='"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "blob:"],
             connectSrc: ["'self'", "https://api.telegram.org", "https://api.callmebot.com"],
             frameAncestors: ["'none'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
         }
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
 app.use(compression());
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
@@ -127,10 +181,30 @@ app.use((req, res, next) => {
     next();
 });
 
+// Lightweight cookie parsing middleware for dual-mode auth
+app.use((req, res, next) => {
+    if (!req.cookies && req.headers['cookie']) {
+        const list = {};
+        req.headers['cookie'].split(';').forEach(cookie => {
+            const parts = cookie.split('=');
+            const name = parts[0]?.trim();
+            if (name) {
+                try {
+                    list[name] = decodeURIComponent(parts.slice(1).join('=').trim());
+                } catch (_) {
+                    list[name] = parts.slice(1).join('=').trim();
+                }
+            }
+        });
+        req.cookies = list;
+    }
+    next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request Logger & Network Diagnostics Middleware
+// Request Logger & Network Diagnostics Middleware (with DPDP / GDPR Privacy Redaction)
 app.use((req, res, next) => {
     const start = Date.now();
     networkStats.totalRequests++;
@@ -173,7 +247,10 @@ app.use((req, res, next) => {
 
         console.log(`[HTTP] ${req.method} ${url} - ${res.statusCode} (${duration}ms)`);
         if (req.method === 'POST' && (url.includes('login') || url.includes('signup'))) {
-            console.log(`  User: ${req.body?.username || req.body?.email}`);
+            const rawUser = req.body?.username || req.body?.email;
+            if (rawUser) {
+                console.log(`  User: ${anonymizeIdentifier(rawUser)}`);
+            }
         }
 
         const isLogoutRequest = url.includes('/logout');
@@ -200,13 +277,12 @@ app.use((req, res, next) => {
                 level = 'warning';
             }
 
+            const safeUserLabel = activeUser ? anonymizeIdentifier(activeUser) : undefined;
             let msg = isLogoutRequest && res.statusCode < 400
-                ? `User logged out: '${activeUser || 'unknown'}'`
+                ? `User logged out: '${safeUserLabel || 'unknown'}'`
                 : `[HTTP] ${req.method} ${url} - ${res.statusCode} (${duration}ms)`;
-            if (!isLogoutRequest && activeUser && typeof activeUser === 'string') {
-                msg += ` (User: ${activeUser})`;
-            } else if (!isLogoutRequest && req.body && (req.body.username || req.body.email)) {
-                msg += ` (User: ${req.body.username || req.body.email})`;
+            if (!isLogoutRequest && safeUserLabel) {
+                msg += ` (User: ${safeUserLabel})`;
             }
 
             logServerEvent(level, msg, {
@@ -214,8 +290,8 @@ app.use((req, res, next) => {
                 url,
                 status: res.statusCode,
                 durationMs: duration,
-                ip: req.ip,
-                username: (activeUser && typeof activeUser === 'string') ? activeUser.toLowerCase() : undefined,
+                ip: anonymizeIp(req.ip),
+                username: safeUserLabel,
                 school: targetSchool,
                 isLogout: isLogoutRequest && res.statusCode < 400
             });
@@ -258,7 +334,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Search engine optimization & crawler endpoints (Google Search Console, Bing Webmaster)
+// Search engine optimization & crawler endpoints
 app.get('/robots.txt', (req, res) => {
     res.type('text/plain; charset=utf-8');
     res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
@@ -278,9 +354,69 @@ app.get('/favicon.ico', (req, res) => {
     res.redirect(301, '/assets/images/app_logo.webp');
 });
 
-// Serve static assets
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// Canonical Hostname & Protocol Enforcer (301 Permanent Redirect)
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const host = rawHost.split(':')[0].toLowerCase();
+
+    // www -> non-www redirect (e.g. www.logbookplus.co.in -> logbookplus.co.in)
+    if (host.startsWith('www.')) {
+        const canonicalHost = host.replace(/^www\./, '');
+        return res.redirect(301, `https://${canonicalHost}${req.originalUrl}`);
+    }
+
+    // HTTP -> HTTPS redirect in production behind proxies
+    const proto = req.headers['x-forwarded-proto'];
+    if (process.env.NODE_ENV === 'production' && proto === 'http' && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+        return res.redirect(301, `https://${host}${req.originalUrl}`);
+    }
+
+    next();
+});
+
+// Trailing Slash Normalization & Route Aliases Enforcer (301 Permanent Redirect)
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const rawPath = req.path;
+
+    // Skip API, assets, dist-assets, and static files
+    if (rawPath.startsWith('/api') || rawPath.startsWith('/assets') || rawPath.startsWith('/dist-assets') || rawPath.includes('.')) {
+        return next();
+    }
+    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const host = rawHost.split(':')[0].toLowerCase();
+    if (host.startsWith('master.') || host.startsWith('helpdesk.')) {
+        return next();
+    }
+
+    // Trailing slash redirect: /pricing/ -> /pricing
+    if (rawPath.length > 1 && rawPath.endsWith('/')) {
+        const cleanPath = rawPath.replace(/\/+$/, '');
+        const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return res.redirect(301, cleanPath + queryString);
+    }
+
+    // Alias 301 redirects: /faq -> /help-center, /docs -> /documentation, etc.
+    const cleanLower = rawPath.toLowerCase();
+    if (ROUTE_ALIASES[cleanLower]) {
+        const target = ROUTE_ALIASES[cleanLower];
+        const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return res.redirect(301, target + queryString);
+    }
+
+    next();
+});
+
+// Serve static assets with production caching policies
+app.use('/dist-assets', express.static(path.join(__dirname, 'public', 'dist-assets'), {
+    maxAge: '1y',
+    immutable: true
+}));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), {
+    maxAge: '1d'
+}));
+app.use(express.static(path.join(__dirname, 'public'), { redirect: false, index: false }));
 
 // Helpdesk Subscription Suspension Guard Middleware (Applies only to Helpdesk subdomain & routes)
 app.use((req, res, next) => {
@@ -316,7 +452,6 @@ app.use((req, res, next) => {
     }
 
     const targetSchool = req.headers['x-school-key'] || req.query.school || (req.body && req.body.school) || 'NHSST';
-
     const callerRole = req.headers['x-caller-role'] || req.query.role || (req.body && req.body.role) || '';
     if (callerRole === 'SUPER_ADMIN') {
         return next();
@@ -343,41 +478,67 @@ app.use((req, res, next) => {
 app.use('/api', classifyClient);
 app.use('/api', apiRouter);
 
-// SPA Wildcard Route Fallback for React paths
+// SPA Wildcard Route Fallback with Dynamic SEO Injection & True 404 Status
 app.use((req, res, next) => {
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
         return next();
     }
     if (req.path.startsWith('/api') || req.path.includes('.')) {
         return next();
     }
+
+    // Set standard HTML revalidation header for all SPA and prerendered routes
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+
     if (req.path.startsWith('/master')) {
         return res.sendFile(path.join(__dirname, 'public', 'master', 'index.html'));
     }
     if (req.path.startsWith('/helpdesk')) {
         return res.sendFile(path.join(__dirname, 'public', 'helpdesk', 'index.html'));
     }
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+
+    // Private authenticated client dashboard
+    const cleanPath = req.path.replace(/^\/|\/$/g, '');
+    if (cleanPath === 'app/dashboard') {
+        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+
+    // Check if route has tailored SEO metadata (static pages or blog posts)
+    const seo = getSeoForPath(req.path);
+    if (seo) {
+        // 1. If prerendered static HTML file exists on disk, serve it
+        const prerenderFile = req.path === '/'
+            ? path.join(__dirname, 'public', 'index.html')
+            : path.join(__dirname, 'public', cleanPath, 'index.html');
+
+        if (fs.existsSync(prerenderFile)) {
+            return res.sendFile(prerenderFile);
+        }
+
+        // 2. Otherwise dynamically render SEO HTML
+        try {
+            const baseTemplate = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+            const renderedHtml = renderHtmlForRoute(baseTemplate, req.path);
+            if (renderedHtml) {
+                res.type('text/html; charset=utf-8');
+                return res.send(renderedHtml);
+            }
+        } catch (e) {
+            console.error(`[SEO Render Error] ${e.message}`);
+        }
+        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+
+    // Unrecognized route -> Return True HTTP 404 status (prevents Soft 404s)
+    res.status(404);
+    const notFoundPage = path.join(__dirname, 'public', '404.html');
+    if (fs.existsSync(notFoundPage)) {
+        return res.sendFile(notFoundPage);
+    }
+    res.type('text/html; charset=utf-8').send('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><p>The requested page does not exist.</p><a href="/">Return Home</a></body></html>');
 });
 
-// --- Database Migration Utility ---
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
-const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
-
-function encryptText(text) {
-    if (!text) return text;
-    try {
-        const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipheriv('aes-256-cbc', dbEncryptionKeyBuffer, iv);
-        let encrypted = cipher.update(text, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        return iv.toString('hex') + ':' + encrypted;
-    } catch (e) {
-        logServerEvent('error', `Text encryption failure: ${e.message}`);
-        return text;
-    }
-}
-
+// --- Database Migration Utility (Transparent AES-256-GCM / CBC Migration) ---
 async function migrateTwoFactorSecrets() {
     try {
         if (process.env.DISABLE_MASTER_2FA === 'true') {
@@ -393,15 +554,15 @@ async function migrateTwoFactorSecrets() {
             let updated = false;
             const $set = {};
             if (doc.tempTwoFactorSecret && !doc.tempTwoFactorSecret.includes(':')) {
-                $set.tempTwoFactorSecret = encryptText(doc.tempTwoFactorSecret);
+                $set.tempTwoFactorSecret = encryptDatabaseText(doc.tempTwoFactorSecret);
                 updated = true;
             }
             if (doc.twoFactorSecret && !doc.twoFactorSecret.includes(':')) {
-                $set.twoFactorSecret = encryptText(doc.twoFactorSecret);
+                $set.twoFactorSecret = encryptDatabaseText(doc.twoFactorSecret);
                 updated = true;
             }
             if (doc.lastUsedTOTPCounter !== undefined && doc.lastUsedTOTPCounter !== null && !String(doc.lastUsedTOTPCounter).includes(':')) {
-                $set.lastUsedTOTPCounter = encryptText(String(doc.lastUsedTOTPCounter));
+                $set.lastUsedTOTPCounter = encryptDatabaseText(String(doc.lastUsedTOTPCounter));
                 updated = true;
             }
             if (updated) {
@@ -418,32 +579,9 @@ async function migrateTwoFactorSecrets() {
     }
 }
 
-// --- Security Posture Check ---
-function auditSecurityPosture() {
-    const defaultInsecurePasswords = ['123456', 'admin123', 'staff123', 'password', 'admin'];
-    const warnings = [];
-    if (defaultInsecurePasswords.includes((process.env.MASTER_PASS || '').trim())) {
-        warnings.push("MASTER_PASS is using an insecure default value! Update it in your .env before launching.");
-    }
-    if (defaultInsecurePasswords.includes((process.env.SUPER_ADMIN_PASS || '').trim())) {
-        warnings.push("SUPER_ADMIN_PASS is using an insecure default value! Update it in your .env before launching.");
-    }
-    if (defaultInsecurePasswords.includes((process.env.DEFAULT_ADMIN_PASS || '').trim())) {
-        warnings.push("DEFAULT_ADMIN_PASS is using an insecure default value! Update it in your .env before launching.");
-    }
-    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
-        warnings.push("JWT_SECRET is short or missing! Ensure you generate a strong 256-bit secret key.");
-    }
-    for (const warn of warnings) {
-        logServerEvent('alarm', `[SECURITY AUDIT] ${warn}`);
-        console.warn(`\x1b[33m⚠️  [SECURITY AUDIT] ${warn}\x1b[0m`);
-    }
-}
-
 // --- Bootstrap Server ---
 app.listen(PORT, '0.0.0.0', async () => {
-    logServerEvent('info', `Server started successfully and running at http://localhost:${PORT}`);
-    auditSecurityPosture();
+    logServerEvent('info', `Server started successfully and running on port ${PORT}`);
     await migrateTwoFactorSecrets();
     const restored = await initSessionsFromLogs(logsDb);
     if (restored > 0) {

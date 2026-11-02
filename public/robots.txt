@@ -4,19 +4,19 @@
 
 User-agent: *
 Allow: /
-Allow: /llms.txt
-Allow: /sitemap.xml
-
-# Allow static assets and bundles so Googlebot can properly render the application
 Allow: /assets/
 Allow: /dist-assets/
+Allow: /sitemap.xml
+Allow: /llms.txt
 
-# Disallow API and server endpoints
-Disallow: /api/
-
-# Disallow authenticated, private, and admin dashboards
+# Disallow private user vault dashboard
 Disallow: /app/dashboard
 Disallow: /app/dashboard/
+
+# Disallow backend APIs
+Disallow: /api/
+
+# Disallow administrative and helpdesk internal consoles
 Disallow: /master
 Disallow: /master/
 Disallow: /helpdesk
@@ -24,12 +24,5 @@ Disallow: /helpdesk/
 Disallow: /dev
 Disallow: /dev/
 
-# Disallow raw database, backup, and environment files
-Disallow: /*.db$
-Disallow: /*.csv$
-Disallow: /*.json$
-Disallow: /*.env$
-Disallow: /*.lock$
-
-# XML Sitemap
+# Conventional XML Sitemap
 Sitemap: https://logbookplus.co.in/sitemap.xml

@@ -1,48 +1,155 @@
+# ==============================================================================
+# LOGBOOK PLUS - HARDENED PRODUCTION APACHE CONFIGURATION (.htaccess)
+# ==============================================================================
 RewriteEngine On
 
-# 🔹 API requests -> forward to Node backend
+# ------------------------------------------------------------------------------
+# 1. SECURITY & ACCESS RESTRICTIONS
+# ------------------------------------------------------------------------------
+
+# Disable directory listing / browsing
+Options -Indexes -MultiViews
+
+# Block access to hidden files and directories (.git, .env, .wrangler, .idea, etc.)
+RewriteCond %{REQUEST_URI} "(\.|\/)\.(git|env|wrangler|idea|vscode|svn|hg)" [NC,OR]
+RewriteRule ^ - [F,L]
+
+# Deny access to sensitive files, credentials, configurations & source files (llms.txt is allowed)
+<FilesMatch "^(\.env.*|\.git.*|\.htaccess|\.htpasswd|config\.yml|package\.json|package-lock\.json|api\.js|server\.js|postcss\.config\.js|tailwind\.config\.js|vite\.config\..*)$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to database, log, backup, credentials and data export extensions
+<FilesMatch "\.(db|sqlite|sqlite-shm|sqlite-wal|json|log|bak|csv|key|pem|cert|crt)$">
+    Require all denied
+</FilesMatch>
+
+# Explicitly deny direct access to backend server source folders and storage
+RewriteRule ^(database|google_auth|controllers|routes|middleware|utils|scripts|src|config|logs|uploads)/ - [F,L]
+
+# ------------------------------------------------------------------------------
+# 2. CANONICAL HOSTNAME, HTTPS & URL NORMALIZATION
+# ------------------------------------------------------------------------------
+
+# Enforce HTTPS
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP_HOST} !^localhost [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+RewriteRule ^(.*)$ https://logbookplus.co.in/$1 [R=301,L]
+
+# Enforce canonical non-www hostname
+RewriteCond %{HTTP_HOST} ^www\.logbookplus\.co\.in [NC]
+RewriteRule ^(.*)$ https://logbookplus.co.in/$1 [R=301,L]
+
+# Normalize trailing slashes on subpages (exclude files, directories, API, assets)
+RewriteCond %{REQUEST_METHOD} GET
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/dist-assets/
+RewriteCond %{REQUEST_URI} !^/master/
+RewriteCond %{REQUEST_URI} !^/helpdesk/
+RewriteCond %{REQUEST_URI} !-d
+RewriteCond %{REQUEST_URI} ^/(.+)/$
+RewriteRule ^ /%1 [R=301,L]
+
+# Canonical 301 redirects for route aliases
+RewriteRule ^faq/?$ /help-center [R=301,L]
+RewriteRule ^docs/?$ /documentation [R=301,L]
+RewriteRule ^contact-us/?$ /contact [R=301,L]
+RewriteRule ^cookie-policy/?$ /cookie [R=301,L]
+RewriteRule ^cookies/?$ /cookie [R=301,L]
+RewriteRule ^delete-account-policy/?$ /delete-account [R=301,L]
+RewriteRule ^account-deletion/?$ /delete-account [R=301,L]
+
+# ------------------------------------------------------------------------------
+# 3. HTTP SECURITY HEADERS & MIME TYPES
+# ------------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # Caching for immutable hashed dist bundles (1 year)
+    <FilesMatch "\.(js|css|webp|png|jpg|jpeg|gif|svg|woff2|woff)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Cache revalidation for HTML routes
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "public, max-age=0, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+<Files "robots.txt">
+    ForceType "text/plain; charset=utf-8"
+</Files>
+<Files "llms.txt">
+    ForceType "text/plain; charset=utf-8"
+</Files>
+<Files "sitemap.xml">
+    ForceType "application/xml; charset=utf-8"
+</Files>
+
+# ------------------------------------------------------------------------------
+# 4. PROXY API REQUESTS TO BACKEND SERVICE
+# ------------------------------------------------------------------------------
 RewriteRule ^api/(.*)$ http://localhost:8080/api/$1 [P,L]
 
-# 🔹 Block direct /master access on non-subdomain host
+# ------------------------------------------------------------------------------
+# 5. SUBDOMAIN ACCESS CONTROL
+# ------------------------------------------------------------------------------
+# Block direct /master access on non-subdomain host
 RewriteCond %{HTTP_HOST} !^master\. [NC]
 RewriteRule ^master(/.*)?$ - [R=404,L]
 
-# 🔹 Block direct /helpdesk access on non-subdomain host
+# Block direct /helpdesk access on non-subdomain host
 RewriteCond %{HTTP_HOST} !^helpdesk\. [NC]
 RewriteRule ^helpdesk(/.*)?$ - [R=404,L]
 
-# 🔹 Serve files directly from public/ folder if they exist in public/
+# ------------------------------------------------------------------------------
+# 6. PUBLIC STATIC ASSETS & PRERENDERED ROUTES
+# ------------------------------------------------------------------------------
+# Serve static public assets from public/ folder if they exist
 RewriteCond %{DOCUMENT_ROOT}/public/%{REQUEST_URI} -f
 RewriteRule ^(.*)$ public/$1 [L]
 
-# 🔹 Allow direct access ONLY to existing files in root (e.g. assets)
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^ - [L]
+# Serve prerendered route directories containing index.html (e.g. public/pricing/index.html)
+RewriteCond %{DOCUMENT_ROOT}/public/%{REQUEST_URI}/index.html -f
+RewriteRule ^(.*)$ public/$1/index.html [L]
 
-# 🔹 Subdomain: master.logbookplus.co.in -> route to public/master/ folder
+# Allow public images from /assets/
+RewriteRule ^assets/(.*)$ assets/$1 [L]
+
+# ------------------------------------------------------------------------------
+# 7. SPA ROUTING & FALLBACKS
+# ------------------------------------------------------------------------------
+# Subdomain: master.logbookplus.co.in -> route to public/master/ folder
 RewriteCond %{HTTP_HOST} ^master\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{REQUEST_URI} !^/public/master/
 RewriteRule ^(.*)$ public/master/$1 [L]
 
-# 🔹 SPA fallback for master subdomain
+# SPA fallback for master subdomain
 RewriteCond %{HTTP_HOST} ^master\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteRule ^ public/master/index.html [L]
 
-# 🔹 Subdomain: helpdesk.logbookplus.co.in -> route to public/helpdesk/ folder
+# Subdomain: helpdesk.logbookplus.co.in -> route to public/helpdesk/ folder
 RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{REQUEST_URI} !^/public/helpdesk/
 RewriteRule ^(.*)$ public/helpdesk/$1 [L]
 
-# 🔹 SPA fallback for helpdesk subdomain
+# SPA fallback for helpdesk subdomain
 RewriteCond %{HTTP_HOST} ^helpdesk\. [NC]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteRule ^ public/helpdesk/index.html [L]
 
-# 🔹 Main SPA fallback for main domain -> route to compiled public/index.html
+# Main SPA fallback for main domain -> route to compiled public/index.html
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteRule ^ public/index.html [L]

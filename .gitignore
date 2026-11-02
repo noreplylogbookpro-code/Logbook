@@ -4,15 +4,20 @@ jspm_packages/
 
 # Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+
+# Cloudflare Wrangler runtime state & local emulators
+.wrangler/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # Databases & local storage
 *.db
 *.db~
 *~
+database/
 server_users.db
 server_logs.db
 users.db
@@ -22,6 +27,7 @@ uploads/
 
 # Form query exports / contact communications
 quary.csv
+subscribers.csv
 *.csv
 
 # Log files
@@ -31,26 +37,28 @@ yarn-error.log*
 logs/
 *.log
 
-# Backup files
+# Backup files & archives
 *.bak
-# OS metadata
+*.zip
+*.tar
+*.gz
+
+# Cloud Service Accounts & private credentials
+google_auth/
+*.pem
+*.key
+*.cert
+*.crt
+*.json
+
+# IDE and OS metadata
 .DS_Store
 Thumbs.db
-#Google_auth
-google_auth/
-#Hosting Platform
-.htaccess
-#public assets
-public/
-!public/robots.txt
-!public/sitemap.xml
-!public/index.html
-!public/404.html
-!public/master/
-!public/helpdesk/
-!public/dist-assets/
-!public/wrangler.json
 .idea/
-#database
-database/
+.vscode/
+.wrangler/
 
+
+# Build outputs
+dist/
+dist-ssr/

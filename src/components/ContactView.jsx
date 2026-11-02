@@ -63,15 +63,12 @@ export default function ContactView({ onNavigate }) {
 
   return (
     <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left overflow-hidden">
-      
+
       {/* Ambient Background Glow Blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-blue-500/5 dark:bg-blue-600/10 blur-[100px] animate-pulse" />
-        <div className="absolute top-1/3 -right-20 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-600/10 blur-[100px]" />
-      </div>
+
 
       <div className="relative z-10 w-full space-y-12 sm:space-y-16">
-        
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -80,7 +77,7 @@ export default function ContactView({ onNavigate }) {
           className="space-y-4 text-center sm:text-left"
         >
           <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border shadow-xs"
-               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
@@ -118,9 +115,8 @@ export default function ContactView({ onNavigate }) {
                       key={item.name}
                       type="button"
                       onClick={() => setContactSubject(item.name)}
-                      className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${
-                        isSelected ? 'ring-2 ring-blue-500/50 shadow-md scale-[1.02]' : 'hover:scale-[1.02]'
-                      }`}
+                      className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${isSelected ? 'ring-2 ring-blue-500/50 shadow-md scale-[1.02]' : 'hover:scale-[1.02]'
+                        }`}
                       style={isSelected
                         ? { borderColor: '#3b82f6', background: 'rgba(59,130,246,0.12)', color: 'var(--text-primary)' }
                         : { borderColor: 'var(--border)', background: 'var(--bg-input)', color: 'var(--text-muted)' }}
@@ -268,7 +264,7 @@ export default function ContactView({ onNavigate }) {
               <div className="space-y-4">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 shadow-2xs"
-                       style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
                     <Mail className="w-5 h-5 text-accent-blue" />
                   </div>
                   <div>
@@ -281,7 +277,7 @@ export default function ContactView({ onNavigate }) {
 
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 shadow-2xs"
-                       style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
                     <Clock className="w-5 h-5 text-accent-blue" />
                   </div>
                   <div>
@@ -294,7 +290,7 @@ export default function ContactView({ onNavigate }) {
 
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 shadow-2xs"
-                       style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border)' }}>
                     <MapPin className="w-5 h-5 text-accent-blue" />
                   </div>
                   <div>

@@ -7,8 +7,19 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Helper to extract school key from headers or request parameters
 const getSchool = (req) => {
     const school = req.headers['x-school-key'] || req.query.school || (req.body && req.body.school);
-    if (!school) return (process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
+    if (!school) return (process.env.VITE_SCHOOL_CODE || 'NHSST').toUpperCase().trim();
     return school.toUpperCase().trim();
+};
+
+/**
+ * Extracts and strictly verifies caller identity and role from verified JWT payload.
+ * NEVER trusts unverified client body parameters or raw query parameters for authorization.
+ */
+const getVerifiedCaller = (req) => {
+    const role = (req.helpdeskAuth?.role || req.tokenPayload?.role || '').toUpperCase();
+    const username = (req.helpdeskAuth?.username || req.tokenPayload?.username || '').toLowerCase();
+    const school = req.helpdeskAuth?.school || req.tokenPayload?.school || getSchool(req);
+    return { role, username, school };
 };
 
 /**
@@ -17,25 +28,24 @@ const getSchool = (req) => {
  */
 exports.login = async (req, res) => {
     const { username, password, school } = req.body;
-    const targetSchool = (school || process.env.VITE_SCHOOL_CODE).toUpperCase().trim();
+    const targetSchool = (school || process.env.VITE_SCHOOL_CODE || 'NHSST').toUpperCase().trim();
 
     if (!username || !password) {
         return res.status(400).json({ success: false, error: 'Username and password are required.' });
     }
 
     // Global Super Admin / Default Admin check against environment credentials or DB credentials
-
-    const superUser = (process.env.SUPER_ADMIN_USER).trim().toLowerCase();
-    const redirectMail = (process.env.REDIRECT_MAIL).trim().toLowerCase();
-    const defaultAdminUser = (process.env.DEFAULT_ADMIN_USER).trim().toLowerCase();
+    const superUser = (process.env.SUPER_ADMIN_USER || '').trim().toLowerCase();
+    const redirectMail = (process.env.REDIRECT_MAIL || 'support@logbookplus.co.in').trim().toLowerCase();
+    const defaultAdminUser = (process.env.DEFAULT_ADMIN_USER || '').trim().toLowerCase();
 
     const validSuperPasses = [
-        (process.env.SUPER_ADMIN_PASS).trim(),
-        (process.env.MASTER_PASS).trim(),
+        (process.env.SUPER_ADMIN_PASS || '').trim(),
+        (process.env.MASTER_PASS || '').trim(),
     ].filter(Boolean);
 
     const validAdminPasses = [
-        (process.env.DEFAULT_ADMIN_PASS).trim(),
+        (process.env.DEFAULT_ADMIN_PASS || '').trim(),
     ].filter(Boolean);
 
     const normUser = username.trim().toLowerCase();
@@ -72,6 +82,16 @@ exports.login = async (req, res) => {
                 JWT_SECRET,
                 { expiresIn: '8h' }
             );
+
+            // Optional dual-mode: Set HttpOnly cookie for browser compatibility
+            try {
+                res.cookie('helpdeskToken', helpdeskToken, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 8 * 60 * 60 * 1000
+                });
+            } catch (_) { }
 
             return res.status(200).json({
                 success: true,
@@ -136,6 +156,15 @@ exports.login = async (req, res) => {
         { expiresIn: '8h' }
     );
 
+    try {
+        res.cookie('helpdeskToken', helpdeskToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 8 * 60 * 60 * 1000
+        });
+    } catch (_) { }
+
     return res.status(200).json({
         success: true,
         message: 'Login successful.',
@@ -157,7 +186,7 @@ exports.login = async (req, res) => {
 exports.createUser = async (req, res) => {
     const { fullName, username, password, role, roleBadge, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+    const { role: callerRole } = getVerifiedCaller(req);
 
     if (!fullName || !username || !password) {
         return res.status(400).json({ success: false, error: 'Full name, username, and password are required.' });
@@ -214,7 +243,7 @@ exports.createUser = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     const { username, newPassword, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+    const { role: callerRole } = getVerifiedCaller(req);
 
     if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
         return res.status(403).json({ success: false, error: 'Administrative privileges (ADMIN or SUPER_ADMIN) are required to reset passwords.' });
@@ -259,7 +288,7 @@ exports.resetPassword = async (req, res) => {
                 break;
             }
         }
-    } catch (e) { }
+    } catch (_) { }
 
     if (foundAndUpdated) {
         return res.status(200).json({
@@ -276,7 +305,7 @@ exports.resetPassword = async (req, res) => {
  * @desc    Get all registered users for a school
  */
 exports.getUsers = (req, res) => {
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+    const { role: callerRole } = getVerifiedCaller(req);
     if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
         return res.status(403).json({ success: false, error: 'Administrative privileges are required to view user accounts.' });
     }
@@ -298,8 +327,7 @@ exports.getUsers = (req, res) => {
  */
 exports.deleteUser = (req, res) => {
     const userId = parseInt(req.params.id, 10);
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
-    const callerUsername = req.headers['x-caller-username'] || '';
+    const { role: callerRole, username: callerUsername } = getVerifiedCaller(req);
     const targetSchool = getSchool(req);
 
     if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
@@ -348,6 +376,7 @@ exports.deleteUser = (req, res) => {
 exports.updateProfile = (req, res) => {
     const { username, fullName, school } = req.body;
     const targetSchool = school ? school.toUpperCase().trim() : getSchool(req);
+    const { role: callerRole, username: callerUsername } = getVerifiedCaller(req);
 
     if (!username || !fullName || !fullName.trim()) {
         return res.status(400).json({ success: false, error: 'Username and new full name are required.' });
@@ -355,6 +384,11 @@ exports.updateProfile = (req, res) => {
 
     const normUser = username.trim().toLowerCase();
     const newName = fullName.trim();
+
+    // IDOR Prevention: Callers can only update their own profile unless they are SUPER_ADMIN
+    if (normUser !== callerUsername && callerRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, error: 'You are only authorized to modify your own profile.' });
+    }
 
     // Check if updating Super Admin
     const superUser = (process.env.SUPER_ADMIN_USER || '').trim().toLowerCase();
@@ -444,7 +478,7 @@ exports.updateUserRole = (req, res) => {
     const userId = parseInt(req.params.id, 10);
     const { role, roleBadge } = req.body;
     const targetSchool = getSchool(req);
-    const callerRole = (req.headers['x-caller-role'] || req.query.role || req.body?.callerRole || '').toUpperCase();
+    const { role: callerRole } = getVerifiedCaller(req);
 
     if (callerRole !== 'ADMIN' && callerRole !== 'SUPER_ADMIN') {
         return res.status(403).json({ success: false, error: 'Administrative privileges are required to update user roles.' });

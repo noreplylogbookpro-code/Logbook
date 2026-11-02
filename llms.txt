@@ -20,6 +20,8 @@ Logbook Plus streamlines double-entry record keeping, multi-tenant academic depa
 - [Web Application Login](https://logbookplus.co.in/app): Authentication portal for institutional accountants, staff, and administrators.
 - [IT Helpdesk Portal](https://helpdesk.logbookplus.co.in/): Dedicated ticketing and customer service portal for institutional issues and ticket tracking.
 - [Changelog](https://logbookplus.co.in/changelog): Continuous product updates, bug fixes, and feature releases.
+- [Documentation](https://logbookplus.co.in/documentation): Cryptographic specifications, SQLite storage engine, WebDAV sync, and developer APIs.
+- [Community](https://logbookplus.co.in/community): Community channels, GitHub open source repositories, and security bug bounty disclosures.
 - [Blog](https://logbookplus.co.in/blog): Financial engineering articles, institution bookkeeping best practices, and release deep-dives.
 - [Help Center & FAQ](https://logbookplus.co.in/help-center): Guides for setup, backup restoration, fee structure configuration, and user permissions.
 - [Careers](https://logbookplus.co.in/careers): Open engineering, design, and operations roles at Logbook Plus.

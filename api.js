@@ -14,7 +14,15 @@ require('dotenv').config({ quiet: true });
 
 // Custom encapsulated modules
 const { db, usersDb, logsDb, changelogDb, licensesDb, twoFactorDb, blogsDb, developerNotesDb } = require('./config/db');
-const { JWT_SECRET, isAuthenticated, isMasterAuth } = require('./middleware/auth');
+const { JWT_SECRET, isAuthenticated, isMasterAuth, extractCookie } = require('./middleware/auth');
+const {
+    validateSecurityConfiguration,
+    timingSafeEqual,
+    encryptDatabaseText: encryptText,
+    decryptDatabaseText: decryptText,
+    getFileEncryptionKeyBuffer,
+    verifyLicenseKeySafe
+} = require('./config/security');
 const { logServerEvent } = require('./utils/logger');
 const {
     serverConfig,
@@ -100,21 +108,25 @@ router.use((req, res, next) => {
 
 // --- Master / Admin Authentication Middleware ---
 // Accepts either:
-// 1. Admin API Key via 'X-Admin-Key' or 'X-API-Key' HTTP headers (query strings blocked to prevent log leaks)
-// 2. Bearer JWT Token for Master Admin (isMaster: true), SUPER_ADMIN, or ADMIN
+// 1. Admin API Key via 'X-Admin-Key' or 'X-API-Key' HTTP headers (timing-safe check)
+// 2. Bearer JWT Token or HttpOnly Cookie for Master Admin (isMaster: true), SUPER_ADMIN, or ADMIN
 const isAdminOrMasterAuth = (req, res, next) => {
-    // 1. API Key check (Headers only to avoid query-string logging in server/proxy logs)
+    // 1. API Key check
     const apiKey = req.headers['x-admin-key'] || req.headers['x-api-key'];
+    const expectedKey = process.env.ADMIN_API_KEY;
 
-    const expectedKey = process.env.ADMIN_API_KEY || process.env.MASTER_PASS;
-    if (apiKey && expectedKey && (apiKey === expectedKey || apiKey === process.env.ADMIN_API_KEY)) {
+    if (apiKey && expectedKey && timingSafeEqual(apiKey, expectedKey)) {
         req.isAdmin = true;
         return next();
     }
 
-    // 2. JWT Bearer token check
+    // 2. JWT Bearer token or HttpOnly Cookie check
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+        token = extractCookie(req, 'masterToken') || extractCookie(req, 'authToken') || extractCookie(req, 'helpdeskToken');
+    }
+
     if (token) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
@@ -129,7 +141,7 @@ const isAdminOrMasterAuth = (req, res, next) => {
     }
 
     return res.status(401).json({
-        error: "Admin authentication required. Provide a valid Bearer token or X-Admin-Key header."
+        error: "Admin authentication required. Provide a valid Bearer token, HttpOnly cookie, or X-Admin-Key header."
     });
 };
 
@@ -197,44 +209,8 @@ router.post('/master/subscriptions/toggle', isAdminOrMasterAuth, handleToggleSub
 router.use('/v1/tickets', ticketRoutes);
 router.use('/v1/auth', helpdeskAuthRoutes);
 
-// File Encryption Configuration & Helpers
-const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY;
-const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
-
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
-const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
-
-function encryptText(text) {
-    if (!text) return text;
-    try {
-        const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipheriv('aes-256-cbc', dbEncryptionKeyBuffer, iv);
-        let encrypted = cipher.update(text, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        return iv.toString('hex') + ':' + encrypted;
-    } catch (e) {
-        logServerEvent('error', `Text encryption failure: ${e.message}`);
-        return text;
-    }
-}
-
-function decryptText(encryptedText) {
-    if (!encryptedText) return encryptedText;
-    try {
-        const parts = encryptedText.split(':');
-        if (parts.length !== 2) {
-            return encryptedText;
-        }
-        const iv = Buffer.from(parts[0], 'hex');
-        const encrypted = parts[1];
-        const decipher = crypto.createDecipheriv('aes-256-cbc', dbEncryptionKeyBuffer, iv);
-        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
-    } catch (e) {
-        return encryptedText;
-    }
-}
+// File & Database Encryption Configuration (Authenticated AES-256-GCM + Legacy AES-256-CBC)
+const fileEncryptionKeyBuffer = getFileEncryptionKeyBuffer();
 
 async function encryptFile(filePath) {
     const tempPath = filePath + '.tmp';
@@ -322,11 +298,12 @@ async function sendOrDecryptFile(filePath, filename, res) {
 const ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
 
 const getSafeUploadDir = (rawId) => {
-    const safeId = path.basename(String(rawId || 'default')).replace(/[^a-zA-Z0-9_-]/g, '');
+    const sanitized = String(rawId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const safeId = sanitized || 'default_user';
     const uploadsDir = path.resolve(__dirname, 'uploads');
     const targetDir = path.resolve(uploadsDir, safeId);
-    if (!targetDir.startsWith(uploadsDir)) {
-        return path.resolve(uploadsDir, 'default');
+    if (!targetDir.startsWith(uploadsDir) || targetDir === uploadsDir) {
+        return path.resolve(uploadsDir, 'default_user');
     }
     return targetDir;
 };
@@ -402,18 +379,8 @@ const LICENSE_SECRET = process.env.LICENSE_SECRET;
 
 function verifyLicenseKey(licenseKey) {
     if (!licenseKey) return false;
-    try {
-        const decoded = jwt.verify(licenseKey, LICENSE_SECRET);
-        if (decoded && decoded.type === 'self-hosted') {
-            if (decoded.expiresAt && Date.now() > decoded.expiresAt) {
-                return false;
-            }
-            return true;
-        }
-    } catch (e) {
-        return false;
-    }
-    return false;
+    const result = verifyLicenseKeySafe(licenseKey);
+    return result.valid === true;
 }
 
 const GOOGLE_PLAY_PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME;
@@ -590,20 +557,35 @@ router.get('/health', async (req, res) => {
     });
 });
 
+// Helper to prevent CSV Formula Injection (CWE-1236)
+function sanitizeCsvValue(val) {
+    if (val === null || val === undefined) return '""';
+    let str = String(val);
+    // Neutralize formula triggers (=, +, -, @, tabs, carriage returns)
+    if (/^[=\+\-@\t\r]/.test(str)) {
+        str = "'" + str;
+    }
+    return `"${str.replace(/"/g, '""')}"`;
+}
+
 // Helper to remove email records from CSV files upon deletion or consent withdrawal (DPDP Sec 12, GDPR Art 17)
 async function removeEmailFromCsv(csvPath, targetEmail) {
-    if (!targetEmail || !await fs.pathExists(csvPath)) return;
-    try {
-        const content = await fs.readFile(csvPath, 'utf8');
-        const lines = content.split('\n');
-        const cleanTarget = String(targetEmail).trim().toLowerCase();
-        const filtered = lines.filter(line => {
-            const lower = line.toLowerCase();
-            return !lower.includes(`"${cleanTarget}"`) && !lower.includes(`,${cleanTarget}`);
-        });
-        await fs.writeFile(csvPath, filtered.join('\n'), 'utf8');
-    } catch (e) {
-        console.error(`Failed to remove ${targetEmail} from ${csvPath}:`, e.message);
+    if (!targetEmail) return;
+    const targets = [csvPath, path.join(__dirname, 'database', path.basename(csvPath))];
+    for (const target of targets) {
+        if (!await fs.pathExists(target)) continue;
+        try {
+            const content = await fs.readFile(target, 'utf8');
+            const lines = content.split('\n');
+            const cleanTarget = String(targetEmail).trim().toLowerCase();
+            const filtered = lines.filter(line => {
+                const lower = line.toLowerCase();
+                return !lower.includes(`"${cleanTarget}"`) && !lower.includes(`,${cleanTarget}`);
+            });
+            await fs.writeFile(target, filtered.join('\n'), 'utf8');
+        } catch (e) {
+            console.error(`Failed to remove ${targetEmail} from ${target}:`, e.message);
+        }
     }
 }
 
@@ -615,17 +597,19 @@ router.post('/contact', async (req, res) => {
         return res.status(400).json({ error: 'Affirmative privacy consent is required under DPDP Act, 2023 & GDPR.' });
     }
 
-    const csvPath = path.join(__dirname, 'quary.csv');
-    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const row = [escape(new Date().toISOString()), escape(name), escape(email), escape(subject), escape(message)].join(',') + '\n';
+    const dbDir = path.join(__dirname, 'database');
+    await fs.ensureDir(dbDir);
+    const csvPath = path.join(dbDir, 'quary.csv');
+    const row = [sanitizeCsvValue(new Date().toISOString()), sanitizeCsvValue(name), sanitizeCsvValue(email), sanitizeCsvValue(subject), sanitizeCsvValue(message)].join(',') + '\n';
 
     try {
         if (!await fs.pathExists(csvPath)) await fs.writeFile(csvPath, 'Timestamp,Name,Email,Subject,Message\n');
         await fs.appendFile(csvPath, row);
-        logServerEvent('info', `Contact inquiry received from ${name} (${email}): ${subject}`);
+        const safeSubject = sanitizeCsvValue(subject);
+        logServerEvent('info', `Contact inquiry received for subject: ${safeSubject}`);
         res.json({ success: true, message: 'Thank you! Your message has been saved.' });
     } catch (e) {
-        logServerEvent('critical', `Failed to save contact inquiry from ${name} (${email})`);
+        logServerEvent('critical', `Failed to save contact inquiry`);
         res.status(500).json({ error: 'Failed to preserve communication payload.' });
     }
 });
@@ -638,17 +622,18 @@ router.post('/subscribe', async (req, res) => {
         return res.status(400).json({ error: 'Consent to receive newsletter updates is required under privacy law.' });
     }
 
-    const csvPath = path.join(__dirname, 'subscribers.csv');
-    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const row = [escape(new Date().toISOString()), escape(email)].join(',') + '\n';
+    const dbDir = path.join(__dirname, 'database');
+    await fs.ensureDir(dbDir);
+    const csvPath = path.join(dbDir, 'subscribers.csv');
+    const row = [sanitizeCsvValue(new Date().toISOString()), sanitizeCsvValue(email)].join(',') + '\n';
 
     try {
         if (!await fs.pathExists(csvPath)) await fs.writeFile(csvPath, 'Timestamp,Email\n');
         await fs.appendFile(csvPath, row);
-        logServerEvent('info', `Newsletter subscription received from ${email}`);
+        logServerEvent('info', `Newsletter subscription received.`);
         res.json({ success: true, message: 'Subscribed successfully!' });
     } catch (e) {
-        logServerEvent('critical', `Failed to save newsletter subscription from ${email}`);
+        logServerEvent('critical', `Failed to save newsletter subscription`);
         res.status(500).json({ error: 'Failed to process subscription.' });
     }
 });
@@ -658,9 +643,9 @@ router.post('/unsubscribe', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email address is required.' });
 
-    const csvPath = path.join(__dirname, 'subscribers.csv');
+    const csvPath = path.join(__dirname, 'database', 'subscribers.csv');
     await removeEmailFromCsv(csvPath, email);
-    logServerEvent('info', `Newsletter unsubscription processed for: ${email}`);
+    logServerEvent('info', `Newsletter unsubscription processed.`);
     res.json({ success: true, message: 'You have been successfully unsubscribed from newsletter updates.' });
 });
 
@@ -1870,7 +1855,29 @@ router.delete('/master/developer-notes/:id', isAdminOrMasterAuth, handleDeleteDe
  * Predefined commands like `/devnote <Title> | <Message>` automatically publish
  * or update active Developer Notes shown in the app and website.
  */
-router.post('/telegram/webhook', async (req, res) => {
+/**
+ * Telegram Bot Webhook Authentication Middleware
+ * Enforces X-Telegram-Bot-Api-Secret-Token validation when TELEGRAM_WEBHOOK_SECRET is configured.
+ */
+const verifyTelegramWebhookSecret = (req, res, next) => {
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (webhookSecret) {
+        const receivedToken = req.headers['x-telegram-bot-api-secret-token'];
+        if (!receivedToken || !timingSafeEqual(String(receivedToken), String(webhookSecret))) {
+            logServerEvent('alarm', `Unauthorized Telegram webhook attempt blocked from IP: ${req.ip}`);
+            return res.status(401).json({ error: "Unauthorized webhook token." });
+        }
+    }
+    next();
+};
+
+/**
+ * Telegram Bot Webhook Endpoint
+ * Allows Telegram Bot to push message updates to the server.
+ * Predefined commands like `/devnote <Title> | <Message>` automatically publish
+ * or update active Developer Notes shown in the app and website.
+ */
+router.post('/telegram/webhook', verifyTelegramWebhookSecret, async (req, res) => {
     try {
         const update = req.body;
         const result = await handleTelegramUpdate(update);
@@ -1881,7 +1888,7 @@ router.post('/telegram/webhook', async (req, res) => {
     }
 });
 
-router.post('/webhook/telegram', async (req, res) => {
+router.post('/webhook/telegram', verifyTelegramWebhookSecret, async (req, res) => {
     try {
         const update = req.body;
         const result = await handleTelegramUpdate(update);
@@ -2425,13 +2432,16 @@ router.get('/profile/avatar', isAuthenticated, async (req, res) => {
 });
 
 router.get('/profile/avatar/:userId', async (req, res) => {
-    const safeUserId = path.basename(req.params.userId);
-    const avatarPath = path.join(__dirname, 'uploads', safeUserId, 'avatar.jpg');
-    if (await fs.pathExists(avatarPath)) {
-        res.sendFile(avatarPath);
-    } else {
-        res.status(404).send('Avatar not found');
+    const rawId = String(req.params.userId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!rawId) {
+        return res.status(404).send('Avatar not found');
     }
+    const uploadsDir = path.resolve(__dirname, 'uploads');
+    const avatarPath = path.resolve(uploadsDir, rawId, 'avatar.jpg');
+    if (!avatarPath.startsWith(uploadsDir) || !(await fs.pathExists(avatarPath))) {
+        return res.status(404).send('Avatar not found');
+    }
+    res.sendFile(avatarPath);
 });
 
 router.post('/profile', isAuthenticated, async (req, res) => {
@@ -2985,6 +2995,13 @@ const handleCancelSubscription = async (req, res) => {
 };
 
 const handleActivateSubscription = async (req, res) => {
+    // In production, mock self-activation is strictly blocked for unverified regular users
+    const isMasterAdmin = req.tokenPayload?.isMaster || req.tokenPayload?.role === 'SUPER_ADMIN';
+    if (process.env.NODE_ENV === 'production' && !isMasterAdmin) {
+        logServerEvent('warning', `Blocked unauthorized mock subscription self-activation attempt for user ID '${req.userId}'`);
+        return res.status(403).json({ error: "Direct subscription self-activation is disabled in production. Use Google Play purchase verification." });
+    }
+
     const days = parseInt(req.body.days) || 30;
     const expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
     try {
@@ -3001,6 +3018,12 @@ const handleActivateSubscription = async (req, res) => {
 };
 
 const handleLicensePurchase = async (req, res) => {
+    const isMasterAdmin = req.tokenPayload?.isMaster || req.tokenPayload?.role === 'SUPER_ADMIN';
+    if (process.env.NODE_ENV === 'production' && !isMasterAdmin) {
+        logServerEvent('warning', `Blocked unauthorized mock license self-activation attempt for user ID '${req.userId}'`);
+        return res.status(403).json({ error: "Direct license self-activation is disabled in production. Please purchase via verified checkout." });
+    }
+
     const expiresAt = Date.now() + (365 * 24 * 60 * 60 * 1000);
     try {
         await db.update(
@@ -3019,6 +3042,11 @@ router.post('/subscription/cancel', isAuthenticated, handleCancelSubscription);
 router.post('/subscription/cancel-mock', isAuthenticated, handleCancelSubscription);
 
 router.post('/checkout/session-mock', isAuthenticated, async (req, res) => {
+    const isMasterAdmin = req.tokenPayload?.isMaster || req.tokenPayload?.role === 'SUPER_ADMIN';
+    if (process.env.NODE_ENV === 'production' && !isMasterAdmin) {
+        return res.status(403).json({ error: "Mock checkout is disabled in production." });
+    }
+
     const days = 30;
     const expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
     try {
@@ -3112,14 +3140,13 @@ router.get('/master/licenses', isMasterAuth, async (req, res) => {
     }
 });
 
-const BACKUP_EXCLUDE_DIRS = new Set(['node_modules', '.git', '.idea', '.agents']);
-const BACKUP_EXCLUDE_FILES = new Set([]);
+const BACKUP_EXCLUDE_DIRS = new Set(['node_modules', '.git', '.idea', '.agents', '.wrangler', 'google_auth']);
+const BACKUP_EXCLUDE_FILES = new Set(['.env', '.env.local', '.env.development', '.env.production', 'quary.csv', 'subscribers.csv']);
 
 const BACKUP_CATEGORIES = [
     { id: 'databases', label: 'Databases', icon: 'HardDrive', patterns: [/\.db$/], prefixes: ['database/'] },
     { id: 'user_data', label: 'User Uploads', icon: 'FolderOpen', prefixes: ['uploads/'] },
-    { id: 'configuration', label: 'Configuration', icon: 'Settings', exact: ['.env', 'config.yml'], prefixes: ['google_auth/'] },
-    { id: 'csv_exports', label: 'CSV / Exports', icon: 'FileCheck', patterns: [/\.csv$/] },
+    { id: 'configuration', label: 'Configuration', icon: 'Settings', exact: ['config.yml'] },
     { id: 'server_code', label: 'Server Code', icon: 'Terminal', exact: ['server.js', 'api.js'], prefixes: ['config/', 'controllers/', 'routes/', 'middleware/', 'scripts/', 'utils/'] },
     { id: 'frontend_source', label: 'Frontend Source', icon: 'Cloud', prefixes: ['src/'] },
     { id: 'static_assets', label: 'Static Assets', icon: 'FolderOpen', prefixes: ['public/', 'assets/'] },
@@ -3132,12 +3159,13 @@ async function scanDirectory(dirPath, rootDir, results = []) {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
         for (const entry of entries) {
             if (BACKUP_EXCLUDE_DIRS.has(entry.name)) continue;
+            if (entry.name.startsWith('.env') || entry.name.endsWith('.csv') || entry.name.endsWith('.sqlite')) continue;
             const fullPath = path.join(dirPath, entry.name);
             if (entry.isDirectory()) {
                 await scanDirectory(fullPath, rootDir, results);
             } else if (entry.isFile()) {
                 const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-                if (BACKUP_EXCLUDE_FILES.has(relativePath)) continue;
+                if (BACKUP_EXCLUDE_FILES.has(relativePath) || relativePath.startsWith('.env') || relativePath.startsWith('google_auth/')) continue;
                 try {
                     const stat = await fs.stat(fullPath);
                     results.push({
@@ -3200,9 +3228,18 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 if (typeof relPath !== 'string') continue;
                 const normalized = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
                 if (normalized.includes('..') || path.isAbsolute(normalized)) continue;
-                // Exclude sensitive credentials (.env) and consumer personal data CSVs from export bundles (DPDP & GDPR Security Safeguards)
+                // Exclude sensitive credentials (.env), git metadata, cloud credentials, and consumer personal data CSVs
                 const lowerNorm = normalized.toLowerCase();
-                if (lowerNorm === '.env' || lowerNorm.endsWith('.csv') || lowerNorm.includes('quary') || lowerNorm.includes('subscribers')) {
+                if (
+                    lowerNorm === '.env' ||
+                    lowerNorm.startsWith('.env') ||
+                    lowerNorm.startsWith('.git') ||
+                    lowerNorm.startsWith('.wrangler') ||
+                    lowerNorm.startsWith('google_auth') ||
+                    lowerNorm.endsWith('.csv') ||
+                    lowerNorm.includes('quary') ||
+                    lowerNorm.includes('subscribers')
+                ) {
                     continue;
                 }
 
@@ -3220,7 +3257,6 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                 'config',
                 'controllers',
                 'database',
-                'google_auth',
                 'middleware',
                 'public',
                 'routes',
@@ -3254,9 +3290,11 @@ router.all('/master/backup/export', isMasterAuth, async (req, res) => {
                             const fp = path.join(dir, entry.name);
                             const rp = path.join(rel, entry.name);
                             if (entry.isDirectory()) {
-                                if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.idea' || entry.name === '.agents') continue;
+                                if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.idea' || entry.name === '.agents' || entry.name === '.wrangler' || entry.name === 'google_auth') continue;
                                 await scan(fp, rp);
                             } else {
+                                const lowerName = entry.name.toLowerCase();
+                                if (lowerName.startsWith('.env') || lowerName.endsWith('.csv') || lowerName.includes('quary') || lowerName.includes('subscribers')) continue;
                                 manifestFiles.push({ relativePath: rp.replace(/\\/g, '/'), fullPath: fp });
                             }
                         }
@@ -3445,6 +3483,25 @@ router.post('/master/backup/import', isMasterAuth, backupUpload.single('backup')
             const normalized = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, '');
             if (normalized.includes('..') || path.isAbsolute(normalized)) {
                 logServerEvent('warning', `Backup import: blocked suspicious relative path '${relPath}'`);
+                skippedCount++;
+                continue;
+            }
+
+            // SECURITY: Block attempts to overwrite system execution files, environment secrets, or credentials
+            const lowerNorm = normalized.toLowerCase();
+            if (
+                lowerNorm.startsWith('.env') ||
+                lowerNorm.startsWith('.git') ||
+                lowerNorm.startsWith('.wrangler') ||
+                lowerNorm === 'server.js' ||
+                lowerNorm === 'api.js' ||
+                lowerNorm === 'package.json' ||
+                lowerNorm === 'package-lock.json' ||
+                lowerNorm === '.htaccess' ||
+                lowerNorm.startsWith('config/') ||
+                lowerNorm.startsWith('google_auth/')
+            ) {
+                logServerEvent('alarm', `Backup import blocked overwrite of protected system file: '${normalized}'`);
                 skippedCount++;
                 continue;
             }

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/webp" href="/dist-assets/app_logo-BNeph5lN.webp" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Why Local-First Database Design Matters | Logbook Plus Tech Blog</title>
+  <meta name="description" content="Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://logbookplus.co.in/blog/why-local-first-database-design-matters" />
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="https://logbookplus.co.in/sitemap.xml" />
+
+  <!-- Open Graph / Social Sharing (Facebook, LinkedIn, WhatsApp, Telegram) -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://logbookplus.co.in/blog/why-local-first-database-design-matters" />
+  <meta property="og:title" content="Why Local-First Database Design Matters | Logbook Plus Tech Blog" />
+  <meta property="og:description" content="Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets." />
+  <meta property="og:image" content="https://logbookplus.co.in/assets/images/general.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:image:alt" content="Logbook Plus Logo" />
+  <meta property="og:site_name" content="Logbook Plus" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:url" content="https://logbookplus.co.in/blog/why-local-first-database-design-matters" />
+  <meta name="twitter:title" content="Why Local-First Database Design Matters | Logbook Plus Tech Blog" />
+  <meta name="twitter:description" content="Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets." />
+  <meta name="twitter:image" content="https://logbookplus.co.in/assets/images/general.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script>
+    (function() {
+      try {
+        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <script type="module" crossorigin src="/dist-assets/index-Cc_UMSy9.js"></script>
+  <link rel="modulepreload" crossorigin href="/dist-assets/vendor-react-BnZ8s_yO.js">
+  <link rel="modulepreload" crossorigin href="/dist-assets/vendor-motion-3FE2bywq.js">
+  <link rel="stylesheet" crossorigin href="/dist-assets/index-itswYUtt.css">
+  <script type="application/ld+json" id="structured-data-jsonld">
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://logbookplus.co.in/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": "https://logbookplus.co.in/blog"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Why Local-First Database Design Matters",
+        "item": "https://logbookplus.co.in/blog/why-local-first-database-design-matters"
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Why Local-First Database Design Matters",
+    "description": "Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets.",
+    "image": "https://logbookplus.co.in/assets/images/general.png",
+    "datePublished": "2026-07-02",
+    "dateModified": "2026-07-02",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://logbookplus.co.in/blog/why-local-first-database-design-matters"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "Logbook Team",
+      "url": "https://logbookplus.co.in"
+    },
+    "publisher": {
+      "@id": "https://logbookplus.co.in/#organization"
+    }
+  }
+]
+  </script>
+</head>
+
+<body class="bg-[#09090b] text-zinc-100 overflow-x-hidden font-sans antialiased">
+  <div id="root">
+          <article class="max-w-4xl mx-auto p-6 space-y-6">
+            <header class="space-y-3">
+              <span class="text-xs font-mono text-blue-400 font-bold uppercase">Database</span>
+              <h1 class="text-4xl font-extrabold tracking-tight">Why Local-First Database Design Matters</h1>
+              <p class="text-xs text-zinc-400 font-mono">Published: 2026-07-02 by Logbook Team</p>
+            </header>
+            <div class="prose prose-invert max-w-none text-zinc-300 space-y-4 pt-4 border-t border-zinc-800">
+              <p>Analyzing latency, server down-time resilience, and zero-telemetry models using sandboxed client-side SQLite targets.</p>
+              <div>At Logbook Plus, we believe that your financial logs should be completely under your control. Standard modern software architecture relies heavily on third-party cloud hosting, which makes your apps dependent on active internet connections, introduces latency, and exposes your telemetry data to server breaches.<br/><br/>Local-first design turns this model on its head. By hosting database read and write instances directly on the client sandbox (e.g. SQLite or NeDB), database write paint speeds average less than 5 milliseconds. Additionally, since all calculations run client-side, the app remains fully functional in offline scenarios (such as flights or remote zones).<br/><br/>When backups are required, the client encrypts the database locally using military-grade AES-256 before transmitting the payload to the server. The server acts purely as an opaque storage repository, meaning even we cannot decrypt your records. This ensures absolute security and total ownership.</div>
+            </div>
+            <footer class="pt-8 border-t border-zinc-800">
+              <a href="/blog" class="text-blue-400 hover:underline">← Back to all articles</a>
+            </footer>
+          </article>
+        </div>
+</body>
+
+</html>

@@ -73,12 +73,6 @@ export default function PricingView() {
   return (
     <div className="py-10 sm:py-16 md:py-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-left overflow-hidden">
 
-      {/* Ambient Background Glow Blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-20 -left-20 w-72 sm:w-80 h-72 sm:h-80 rounded-full bg-blue-500/5 dark:bg-blue-600/10 blur-[90px] sm:blur-[100px] animate-pulse" />
-        <div className="absolute top-1/3 -right-20 w-72 sm:w-80 h-72 sm:h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-600/10 blur-[90px] sm:blur-[100px]" />
-      </div>
-
       <div className="relative z-10 space-y-10 sm:space-y-14 md:space-y-16">
 
         {/* Header */}

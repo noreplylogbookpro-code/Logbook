@@ -52,11 +52,16 @@
    ========================================================= */
 
 :root {
+  /* Official Logbook Plus Brand Blue */
+  --brand-blue: #2467B9;
+  --brand-blue-hover: #1d5396;
+  --brand-blue-active: #164278;
+
   /* Color Scheme Tokens */
-  --primary: #2563eb;
+  --primary: #2467B9;
   --on-primary: #ffffff;
-  --primary-container: #b6cbfd;
-  --on-primary-container: #1e3a8a;
+  --primary-container: #d8e6ff;
+  --on-primary-container: #001c3b;
 
   --secondary: #0ea5e9;
   --on-secondary: #ffffff;
@@ -97,24 +102,24 @@
   --border: #e2e8f0;
   --border-hover: #cbd5e1;
   --border-input: #cbd5e1;
-  --border-focus: #2563eb;
+  --border-focus: #2467B9;
 
   /* Text */
   --text-primary: #000000;
   --text-secondary: #334155;
   --text-muted: #475569;
   --text-placeholder: #64748b;
-  --text-light: #2563eb;
+  --text-light: #2467B9;
   --text-dark: #ffffff;
 
   /* Gradients */
-  --gradient-blue: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
-  --background-gradient: linear-gradient(to right, #2563eb, #3b82f6, #93c5fd);
+  --gradient-blue: linear-gradient(to right, #2467B9, #388bfd, #93c5fd);
+  --background-gradient: linear-gradient(to right, #2467B9, #388bfd, #93c5fd);
   /* Buttons - Light mode */
-  --btn-primary-bg: #2563eb;
+  --btn-primary-bg: #2467B9;
   --btn-primary-text: #ffffff;
-  --btn-primary-border: #2563eb;
-  --btn-primary-hover-bg: #1d4ed8;
+  --btn-primary-border: #2467B9;
+  --btn-primary-hover-bg: #1d5396;
   --btn-primary-hover-text: #ffffff;
 
   --btn-secondary-bg: #ffffff;
@@ -603,4 +608,32 @@ input::-webkit-credentials-auto-fill-button {
   pointer-events: none !important;
   position: absolute !important;
   right: 0 !important;
+}
+
+/* =========================================================
+   ACCESSIBILITY & FOCUS ENHANCEMENTS (WCAG 2.1 AA)
+   ========================================================= */
+
+/* Keyboard Focus Indicators */
+:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Ensure accessible touch targets on interactive controls */
+.touch-target-min {
+  min-height: 44px;
+  min-width: 44px;
 }

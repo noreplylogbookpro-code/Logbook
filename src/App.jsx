@@ -1,10 +1,15 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Hero from './components/Hero.jsx';
 import BentoFeatures from './components/BentoFeatures.jsx';
-import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe } from 'lucide-react';
+import AppShowcase from './components/AppShowcase.jsx';
+import ArchitectureSection from './components/ArchitectureSection.jsx';
+import HomeFaq from './components/HomeFaq.jsx';
+import MobileInstallBar from './components/MobileInstallBar.jsx';
+import { ArrowRight, ShieldCheck, Menu, X, Sun, Moon, Globe, Download, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemTheme } from './hooks/useSystemTheme.js';
 import { useLanguage, LanguageProvider } from './useLanguage.js';
+import { useSeo } from './hooks/useSeo.js';
 import CookieConsentBanner from './components/CookieConsentBanner.jsx';
 
 const AboutView = lazy(() => import('./components/AboutView.jsx'));
@@ -34,6 +39,9 @@ function AppContent() {
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
+
+  // Sync route-level SEO metadata, canonical link & Open Graph tags
+  useSeo(currentPath);
 
   // Trigger smooth loading indicator upon route navigation
   useEffect(() => {
@@ -169,11 +177,36 @@ function AppContent() {
   }, [isLoggedIn]);
 
   const navigate = (path) => {
+    if (path.startsWith('/#') || path.startsWith('#')) {
+      const hash = path.replace(/^\/?#/, '');
+      if (window.location.pathname !== '/') {
+        window.history.pushState(null, '', `/#${hash}`);
+        setCurrentPath('/');
+        setTimeout(() => {
+          const el = document.getElementById(hash);
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 120);
+      } else {
+        window.history.pushState(null, '', `/#${hash}`);
+        const el = document.getElementById(hash);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+      setIsMobileMenuOpen(false);
+      return;
+    }
     window.history.pushState(null, '', path);
     setCurrentPath(path);
     setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.replace('#', '');
+      const el = document.getElementById(id);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 200);
+    }
+  }, [currentPath]);
 
   const handleGlobalClick = (e) => {
     const anchor = e.target.closest('a');
@@ -203,6 +236,7 @@ function AppContent() {
 
   let view = 'home';
   let initialDoc = 'security';
+  let blogSlug = null;
 
   if (isHelpdeskHost) {
     view = 'helpdesk';
@@ -212,42 +246,47 @@ function AppContent() {
     } else {
       view = 'master';
     }
-  } else {
-    if (cleanPath === 'about') {
-      view = 'about';
-    } else if (cleanPath === 'pricing') {
-      view = 'pricing';
-    } else if (cleanPath === 'blog') {
-      view = 'blog';
-    } else if (cleanPath === 'changelog') {
-      view = 'changelog';
-    } else if (cleanPath === 'careers') {
-      view = 'careers';
-    } else if (cleanPath === 'help-center' || cleanPath === 'faq') {
-      view = 'help-center';
-    } else if (cleanPath === 'contact' || cleanPath === 'contact-us') {
-      view = 'contact';
-    } else if (cleanPath === 'documentation' || cleanPath === 'docs') {
-      view = 'documentation';
-    } else if (cleanPath === 'community') {
-      view = 'community';
-    } else if (cleanPath === 'app') {
-      view = 'login';
-    } else if (cleanPath === 'app/dashboard') {
-      view = 'dashboard';
-    } else if ([
-      'security', 'terms', 'privacy', 'cookie', 'cookie-policy', 'cookies', 'refund', 'cloud-backup-policy',
-      'paid-terms', 'delete-account', 'delete-account-policy', 'account-deletion'
-    ].includes(cleanPath)) {
-      view = 'policy';
-      if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
-        initialDoc = 'delete-account';
-      } else if (cleanPath === 'cookie-policy' || cleanPath === 'cookies') {
-        initialDoc = 'cookie';
-      } else {
-        initialDoc = cleanPath;
-      }
+  } else if (cleanPath === '') {
+    view = 'home';
+  } else if (cleanPath === 'about') {
+    view = 'about';
+  } else if (cleanPath === 'pricing') {
+    view = 'pricing';
+  } else if (cleanPath === 'blog' || cleanPath.startsWith('blog/')) {
+    view = 'blog';
+    if (cleanPath.startsWith('blog/')) {
+      blogSlug = cleanPath.replace(/^blog\//, '').trim();
     }
+  } else if (cleanPath === 'changelog') {
+    view = 'changelog';
+  } else if (cleanPath === 'careers') {
+    view = 'careers';
+  } else if (cleanPath === 'help-center' || cleanPath === 'faq') {
+    view = 'help-center';
+  } else if (cleanPath === 'contact' || cleanPath === 'contact-us') {
+    view = 'contact';
+  } else if (cleanPath === 'documentation' || cleanPath === 'docs') {
+    view = 'documentation';
+  } else if (cleanPath === 'community') {
+    view = 'community';
+  } else if (cleanPath === 'app') {
+    view = 'login';
+  } else if (cleanPath === 'app/dashboard') {
+    view = 'dashboard';
+  } else if ([
+    'security', 'terms', 'privacy', 'cookie', 'cookie-policy', 'cookies', 'refund', 'cloud-backup-policy',
+    'paid-terms', 'delete-account', 'delete-account-policy', 'account-deletion'
+  ].includes(cleanPath)) {
+    view = 'policy';
+    if (cleanPath === 'delete-account-policy' || cleanPath === 'account-deletion') {
+      initialDoc = 'delete-account';
+    } else if (cleanPath === 'cookie-policy' || cleanPath === 'cookies') {
+      initialDoc = 'cookie';
+    } else {
+      initialDoc = cleanPath;
+    }
+  } else {
+    view = 'notfound';
   }
 
   return (
@@ -256,6 +295,14 @@ function AppContent() {
       className="min-h-screen flex flex-col font-sans select-text overflow-x-hidden relative"
       style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}
     >
+      {/* Skip to Main Content Landmark (WCAG 2.1 AA) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[1000] focus:px-4 focus:py-2.5 focus:bg-[#2467B9] focus:text-white focus:rounded-xl focus:shadow-2xl focus:font-bold focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Top Route Loading Progress Bar */}
       <AnimatePresence>
         {pageLoading && (
@@ -270,7 +317,8 @@ function AppContent() {
       </AnimatePresence>
       {view !== 'master' && view !== 'devportal' && view !== 'helpdesk' && (
         <header
-          className={`w-full py-6 px-6 md:px-12 border-b sticky top-0 z-50 ${isMobileMenuOpen ? 'md:backdrop-blur-md' : 'backdrop-blur-md'}`}
+          role="banner"
+          className={`w-full py-5 px-6 md:px-12 border-b sticky top-0 z-50 ${isMobileMenuOpen ? 'md:backdrop-blur-md' : 'backdrop-blur-md'}`}
           style={{
             backgroundColor: 'var(--bg-header)',
             borderColor: 'var(--border)',
@@ -281,20 +329,34 @@ function AppContent() {
               <img
                 src="/assets/images/app_logo.webp"
                 alt="Logbook Plus Logo"
-                className="h-8 w-auto rounded-lg"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-lg object-cover"
                 style={{ border: '1px solid var(--border)' }}
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <span className="text-lg font-bold tracking-tight font-sans" style={{ color: 'var(--text-primary)' }}>
-                Logbook <span className="font-semibold" style={{ color: 'var(--text-light)' }}>Plus</span>
+                Logbook <span className="font-semibold text-[#2467B9] dark:text-blue-400">Plus</span>
               </span>
             </a>
 
+            {/* Desktop Navigation Links */}
+            <nav aria-label="Main Navigation" className="hidden lg:flex items-center gap-7">
+              <a href="/#features" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>Features</a>
+              <a href="/#showcase" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>Screenshots</a>
+              <a href="/pricing" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>Pricing</a>
+              <a href="/#faq" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>FAQ</a>
+              <a href="/blog" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>Blog</a>
+              <a href="/about" className="text-xs font-semibold hover:text-[#2467B9] dark:hover:text-blue-400 transition-colors" style={{ color: 'var(--text-secondary)' }}>About</a>
+            </nav>
+
             <div className="flex items-center gap-2 md:hidden">
               <button
-                className="p-2"
+                className="p-2 rounded-lg"
                 style={{ color: 'var(--text-primary)' }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={isMobileMenuOpen}
               >
                 {isMobileMenuOpen ? <X /> : <Menu />}
               </button>
@@ -325,10 +387,33 @@ function AppContent() {
                 <button
                   className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
+                  aria-label="Close menu"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Mobile Drawer Navigation Links */}
+              <nav aria-label="Mobile Navigation" className="flex flex-col gap-1 py-3 border-y md:hidden" style={{ borderColor: 'var(--border)' }}>
+                <a href="/" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>Home</a>
+                <a href="/#features" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>Features</a>
+                <a href="/#showcase" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>App Screenshots</a>
+                <a href="/pricing" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>Pricing & Plans</a>
+                <a href="/#faq" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>FAQ</a>
+                <a href="/blog" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>Engineering Blog</a>
+                <a href="/about" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>About Logbook Plus</a>
+                <a href="/contact" className="px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ color: 'var(--text-primary)' }}>Support & Contact</a>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.logbookplus"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary mt-3 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                  style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)' }}
+                >
+                  <Download className="w-4 h-4 shrink-0" />
+                  <span>Get on Google Play</span>
+                </a>
+              </nav>
 
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                 {/* Language Selector */}
@@ -408,25 +493,25 @@ function AppContent() {
                 ) : (
                   <>
                     <a
-                      href="/app/dashboard/"
+                      href="/app/dashboard"
                       className="px-4 py-2 rounded-lg text-xs font-semibold transition-all w-full md:w-auto text-center"
                       style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
                     >{t('dashboard')}</a>
                     <button
-                      onClick={() => { localStorage.removeItem('authToken'); setIsLoggedIn(false); navigate('/app/'); }}
+                      onClick={() => { localStorage.removeItem('authToken'); setIsLoggedIn(false); navigate('/app'); }}
                       className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 w-full md:w-auto"
                     >{t('signOut')}</button>
                   </>
                 )
               ) : (
-                <a href="/app/" className="btn-primary-unified px-4 py-2 rounded-lg text-xs font-semibold transition-colors w-full md:w-auto text-center cursor-pointer">{t('launchConsole')}</a>
+                <a href="/app" className="btn-primary-unified px-4 py-2 rounded-lg text-xs font-semibold transition-colors w-full md:w-auto text-center cursor-pointer">{t('launchConsole')}</a>
               )}
             </div>
           </div>
         </header>
       )}
 
-      <main className="flex-grow flex flex-col">
+      <main id="main-content" tabIndex="-1" className="flex-grow flex flex-col focus:outline-none">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
             <div className="w-9 h-9 border-2 border-accent-blue border-t-transparent rounded-full animate-spin"></div>
@@ -446,29 +531,72 @@ function AppContent() {
                 <>
                   <Hero />
                   <BentoFeatures />
+                  <AppShowcase />
+                  <ArchitectureSection />
+                  <HomeFaq />
                   <motion.section
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-50px' }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                    className="py-24 px-6 md:px-12 bg-input relative text-center border-t border"
+                    className="py-20 sm:py-28 px-4 sm:px-6 md:px-12 relative text-center border-t"
                     style={{
+                      backgroundColor: 'var(--bg-surface)',
                       borderColor: 'var(--border)',
                     }}
                   >
-                    <div className="w-full max-w-7xl mx-auto space-y-6">
-                      <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight text-primary">{t('readyToControl')}</h3>
-                      <a href={isLoggedIn ? "/app/dashboard/" : "/app/"} className="btn-primary-unified inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer">
-                        {isLoggedIn ? t('goToDashboard') : t('accessBackups')}
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </a>
+                    <div className="w-full max-w-4xl mx-auto space-y-6">
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-blue-500/10 text-[#2467B9] dark:text-blue-400 border border-blue-500/20">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>100% Free Core Expense Tracking</span>
+                      </div>
+                      <h3 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                        Take Control of Your Personal Finances
+                      </h3>
+                      <p className="text-base sm:text-lg leading-relaxed max-w-2xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+                        Download Logbook Plus for Android on Google Play today. Start tracking expenses offline in seconds with zero account required.
+                      </p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+                        <a
+                          href="https://play.google.com/store/apps/details?id=com.logbookplus"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary min-h-[50px] px-8 py-3.5 rounded-xl font-bold transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-3 shadow-lg cursor-pointer"
+                          style={{
+                            backgroundColor: 'var(--btn-primary-bg)',
+                            color: 'var(--btn-primary-text)'
+                          }}
+                        >
+                          <Download className="w-5 h-5 shrink-0" />
+                          <span>Install from Google Play</span>
+                        </a>
+                        <a
+                          href={isLoggedIn ? "/app/dashboard" : "/app"}
+                          className="btn-secondary min-h-[50px] px-6 py-3.5 rounded-xl font-semibold transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                          style={{
+                            backgroundColor: 'var(--bg-input)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)'
+                          }}
+                        >
+                          <Lock className="w-4 h-4 text-emerald-500" />
+                          <span>{isLoggedIn ? t('goToDashboard') : 'Explore Web Vault'}</span>
+                          <ArrowRight className="w-4 h-4 ml-1 opacity-70" />
+                        </a>
+                      </div>
+                      <div className="pt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                        <span>&bull; Android 8.0+</span>
+                        <span>&bull; Lightweight ~17 MB</span>
+                        <span>&bull; Offline SQLite</span>
+                        <span>&bull; Zero Ads</span>
+                      </div>
                     </div>
                   </motion.section>
                 </>
               )}
               {view === 'about' && <AboutView onNavigate={navigate} />}
               {view === 'pricing' && <PricingView onNavigate={navigate} />}
-              {view === 'blog' && <BlogView onNavigate={navigate} />}
+              {view === 'blog' && <BlogView onNavigate={navigate} blogSlug={blogSlug} />}
               {view === 'changelog' && <ChangelogView onNavigate={navigate} />}
               {view === 'careers' && <CareersView onNavigate={navigate} />}
               {view === 'help-center' && <HelpCenterView onNavigate={navigate} />}
@@ -481,6 +609,16 @@ function AppContent() {
               {view === 'master' && <MasterView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
               {view === 'devportal' && <DevPortalView onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
               {view === 'helpdesk' && <HelpdeskDashboard onNavigate={navigate} theme={theme} toggleTheme={toggleTheme} />}
+              {view === 'notfound' && (
+                <div className="py-24 px-6 text-center space-y-4 max-w-md mx-auto">
+                  <span className="font-mono text-5xl font-bold text-zinc-500">404</span>
+                  <h1 className="text-2xl font-extrabold tracking-tight">Page Not Found</h1>
+                  <p className="text-sm text-zinc-400">The requested page does not exist or has moved.</p>
+                  <button onClick={() => navigate('/')} className="btn-primary-unified px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">
+                    Return Home
+                  </button>
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </Suspense>
@@ -566,7 +704,7 @@ function AppContent() {
                         required
                       />
                       <span>
-                        I consent to receive product releases and security updates pursuant to the <a href="/privacy/" className="underline hover:text-accent-blue">Privacy Policy</a> (unsubscribe anytime).
+                        I consent to receive product releases and security updates pursuant to the <a href="/privacy" className="underline hover:text-accent-blue">Privacy Policy</a> (unsubscribe anytime).
                       </span>
                     </label>
                   </form>
@@ -580,35 +718,37 @@ function AppContent() {
                 <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerProduct')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
                   <li><a href="/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('features')}</a></li>
-                  <li><a href="/pricing/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('pricing')}</a></li>
-                  <li><a href="/security/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('securityPolicy')}</a></li>
-                  <li><a href="/changelog/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('changelog')}</a></li>
+                  <li><a href="/pricing" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('pricing')}</a></li>
+                  <li><a href="/security" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('securityPolicy')}</a></li>
+                  <li><a href="/documentation" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">Documentation</a></li>
+                  <li><a href="/changelog" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('changelog')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerCompany')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/about/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('aboutUs')}</a></li>
-                  <li><a href="/blog/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('Blog')}</a></li>
-                  <li><a href="/careers/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('careers')}</a></li>
-                  <li><a href="/contact/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('contactSales')}</a></li>
+                  <li><a href="/about" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('aboutUs')}</a></li>
+                  <li><a href="/blog" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('Blog')}</a></li>
+                  <li><a href="/careers" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('careers')}</a></li>
+                  <li><a href="/community" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">Community</a></li>
+                  <li><a href="/contact" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('contactSales')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerSupport')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/help-center/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('helpCenter')}</a></li>
+                  <li><a href="/help-center" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('helpCenter')}</a></li>
                 </ul>
               </div>
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold tracking-wider uppercase font-mono" style={{ color: 'var(--text-primary)' }}>{t('footerLegal')}</h4>
                 <ul className="space-y-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <li><a href="/terms/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('termsOfUse')}</a></li>
-                  <li><a href="/privacy/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('privacyPolicy')}</a></li>
-                  <li><a href="/cookie/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('cookiePolicy') || 'Cookie Policy'}</a></li>
-                  <li><a href="/refund/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('refundPolicy')}</a></li>
-                  <li><a href="/cloud-backup-policy/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('backupPolicy')}</a></li>
-                  <li><a href="/delete-account/" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
+                  <li><a href="/terms" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('termsOfUse')}</a></li>
+                  <li><a href="/privacy" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('privacyPolicy')}</a></li>
+                  <li><a href="/cookie" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('cookiePolicy') || 'Cookie Policy'}</a></li>
+                  <li><a href="/refund" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('refundPolicy')}</a></li>
+                  <li><a href="/cloud-backup-policy" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('backupPolicy')}</a></li>
+                  <li><a href="/delete-account" className="hover:text-zinc-950 dark:hover:text-zinc-100 transition-colors">{t('deleteAccountPolicy') || 'Delete Account Policy'}</a></li>
                   <li>
                     <button
                       type="button"
@@ -676,6 +816,9 @@ function AppContent() {
 
       {/* Cookie & Privacy Consent Banner */}
       <CookieConsentBanner />
+
+      {/* Mobile Sticky Install Bar for Qualified Android Conversion */}
+      <MobileInstallBar />
     </div>
   );
 }

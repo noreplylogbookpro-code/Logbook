@@ -1,0 +1,49 @@
+# Logbook Plus
+
+> Logbook Plus is an enterprise-grade financial intelligence, expense tracking, and campus fee ledger platform designed for modern academic institutions, organizations, and professionals.
+
+Logbook Plus streamlines double-entry record keeping, multi-tenant academic departmental ledgers, real-time fee reconciliation, automated dispute ticketing, and zero-knowledge encrypted backups. It provides cross-platform access across web portals, dedicated subdomains (Master Admin Console, IT Helpdesk), and native Android applications.
+
+## Core Features & Architecture
+
+- **Multi-Tenant Academic Finance**: School-isolated ledger management with custom fee categories, term auditing, and student accounts.
+- **Enterprise Helpdesk & Ticketing**: Dedicated sub-system for customer support, automatic Telegram bot escalations, and SLA tracking.
+- **Master Super-Admin Console**: Centralized license keys, domain health telemetry, live user session monitoring, and audit logs.
+- **Client Guard & Security**: User-agent enforcement, TOTP 2-Factor Authentication, PBKDF2/AES-GCM encrypted cloud backups, and WebDAV sync.
+- **Cross-Platform Ecosystem**: High-performance React web client, Express REST API backend, and native Android application with offline-first local storage.
+
+## Key Web Pages & Portals
+
+- [Home Page](https://logbookplus.co.in/): Overview of Logbook Plus platform, modern expense intelligence, and features.
+- [Pricing](https://logbookplus.co.in/pricing): Tiered plans for single users, departments, and enterprise educational institutions.
+- [About Us](https://logbookplus.co.in/about): Mission, security posture, and background of the Logbook Plus engineering team.
+- [Web Application Login](https://logbookplus.co.in/app): Authentication portal for institutional accountants, staff, and administrators.
+- [IT Helpdesk Portal](https://helpdesk.logbookplus.co.in/): Dedicated ticketing and customer service portal for institutional issues and ticket tracking.
+- [Changelog](https://logbookplus.co.in/changelog): Continuous product updates, bug fixes, and feature releases.
+- [Documentation](https://logbookplus.co.in/documentation): Cryptographic specifications, SQLite storage engine, WebDAV sync, and developer APIs.
+- [Community](https://logbookplus.co.in/community): Community channels, GitHub open source repositories, and security bug bounty disclosures.
+- [Blog](https://logbookplus.co.in/blog): Financial engineering articles, institution bookkeeping best practices, and release deep-dives.
+- [Help Center & FAQ](https://logbookplus.co.in/help-center): Guides for setup, backup restoration, fee structure configuration, and user permissions.
+- [Careers](https://logbookplus.co.in/careers): Open engineering, design, and operations roles at Logbook Plus.
+- [Contact Sales & Support](https://logbookplus.co.in/contact): Direct contact channels, sales inquiries, and support email.
+
+## Trust, Security & Compliance
+
+- [Security Policy](https://logbookplus.co.in/security): Encryption standards, session isolation, and vulnerability disclosure.
+- [Privacy Policy](https://logbookplus.co.in/privacy): Data privacy commitments, telemetry disclosures, and GDPR/DPDP alignment.
+- [Terms of Service](https://logbookplus.co.in/terms): User agreement and terms of platform access.
+- [Refund Policy](https://logbookplus.co.in/refund): Subscription cancellation, renewal, and refund terms.
+- [Cloud Backup Policy](https://logbookplus.co.in/cloud-backup-policy): Zero-knowledge backup encryption, retention cycles, and WebDAV protocols.
+- [Paid Services Terms](https://logbookplus.co.in/paid-terms): Commercial terms for enterprise institutional licenses and SLA guarantees.
+- [Account Deletion](https://logbookplus.co.in/delete-account): Self-service account removal and irreversible ledger purge process.
+
+## Developer & API Resources
+
+- [Official Android App on Google Play](https://play.google.com/store/apps/details?id=com.logbookplus): Mobile client for Android devices.
+- [GitHub Repository](https://github.com/noreplylogbookpro-code/Logbook): Source repository, issue tracker, and release binaries.
+- [Discord Community](https://discord.gg/dRtT67ehK): Community chat and live developer support.
+
+## Optional
+
+- [Robots Configuration](https://logbookplus.co.in/robots.txt): Crawler rules and disallowed administrative endpoints.
+- [XML Sitemap](https://logbookplus.co.in/sitemap.xml): Machine-readable index of all public canonical URLs.

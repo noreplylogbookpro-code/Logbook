@@ -36,11 +36,19 @@ function sanitizeMetadata(metadata = {}) {
 
     for (const key of Object.keys(sanitized)) {
         const lowerKey = key.toLowerCase();
-        if (lowerKey.includes('otp') || lowerKey.includes('code') || lowerKey.includes('pass') || lowerKey.includes('secret')) {
+        if (lowerKey.includes('otp') || lowerKey.includes('code') || lowerKey.includes('pass') || lowerKey.includes('secret') || lowerKey.includes('token') || lowerKey.includes('key')) {
             sanitized[key] = '[REDACTED]';
         } else if (lowerKey.includes('html') || lowerKey.includes('body')) {
             if (typeof sanitized[key] === 'string' && (sanitized[key].includes('<') || sanitized[key].length > 200)) {
                 sanitized[key] = '[PAYLOAD_REDACTED]';
+            }
+        } else if (lowerKey === 'ip' && typeof sanitized[key] === 'string') {
+            const raw = sanitized[key].replace('::ffff:', '').trim();
+            sanitized[key] = (raw === '127.0.0.1' || raw === '::1') ? raw : (raw.includes('.') ? raw.replace(/\.\d+$/, '.xxx') : 'masked-ip');
+        } else if ((lowerKey === 'username' || lowerKey === 'email') && typeof sanitized[key] === 'string') {
+            const val = sanitized[key].trim();
+            if (val.includes('@')) {
+                sanitized[key] = val.replace(/^([^@]{1,2})[^@]*@(.*)$/, '$1***@$2');
             }
         }
     }

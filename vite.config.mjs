@@ -4,6 +4,27 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 import fs from 'fs';
 import path from 'path';
 
+// Plugin: Clean stale hashed bundles before each build
+function cleanDistAssetsPlugin() {
+  return {
+    name: 'clean-dist-assets',
+    buildStart() {
+      const distAssetsDir = path.resolve('public', 'dist-assets');
+      if (fs.existsSync(distAssetsDir)) {
+        const files = fs.readdirSync(distAssetsDir);
+        for (const file of files) {
+          try {
+            fs.unlinkSync(path.join(distAssetsDir, file));
+          } catch (e) {
+            console.warn(`[clean-dist-assets] Failed to remove ${file}:`, e.message);
+          }
+        }
+        console.log(`[clean-dist-assets] Cleaned ${files.length} old asset(s) from public/dist-assets`);
+      }
+    }
+  };
+}
+
 // Plugin: after every build, copy public/index.html → public/master/index.html & helpdesk/index.html
 function copyMasterHtml() {
   return {
@@ -60,7 +81,7 @@ function serveAssetsPlugin() {
 
 export default defineConfig({
   publicDir: false,
-  plugins: [react(),cloudflare(), copyMasterHtml(), serveAssetsPlugin()],
+  plugins: [cleanDistAssetsPlugin(), react(), cloudflare(), copyMasterHtml(), serveAssetsPlugin()],
   server: {
     port: 3000,
     watch: {

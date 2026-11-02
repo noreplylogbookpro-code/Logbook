@@ -477,12 +477,11 @@ async function handleTelegramUpdate(update, callerBotToken = null) {
         .map(id => id.trim())
         .filter(Boolean);
 
-    const isAuthorized = !authorizedChatId ||
-        chatId === authorizedChatId ||
-        chatId === serverChatId ||
-        isPrivateChat ||
-        adminChatIds.includes(chatId) ||
-        (message.from && adminChatIds.includes(String(message.from.id)));
+    const isAuthorized = Boolean(
+        (authorizedChatId && chatId === authorizedChatId) ||
+        (serverChatId && chatId === serverChatId) ||
+        (adminChatIds.length > 0 && (adminChatIds.includes(chatId) || (message.from && adminChatIds.includes(String(message.from.id)))))
+    );
 
     // Parse command with private chat awareness
     const parsed = parseDevNoteCommand(text, isPrivateChat);
