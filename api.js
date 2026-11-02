@@ -198,10 +198,10 @@ router.use('/v1/tickets', ticketRoutes);
 router.use('/v1/auth', helpdeskAuthRoutes);
 
 // File Encryption Configuration & Helpers
-const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || 'logbookplus_default_file_key_32b';
+const FILE_ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY;
 const fileEncryptionKeyBuffer = crypto.createHash('sha256').update(FILE_ENCRYPTION_KEY).digest();
 
-const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || 'logbookplus_default_db_key_32b_';
+const DB_ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY;
 const dbEncryptionKeyBuffer = crypto.createHash('sha256').update(DB_ENCRYPTION_KEY).digest();
 
 function encryptText(text) {
@@ -398,7 +398,7 @@ const uploadBlogImage = multer({
     }
 });
 
-const LICENSE_SECRET = process.env.LICENSE_SECRET || "logbook-plus-master-secret-key-2026";
+const LICENSE_SECRET = process.env.LICENSE_SECRET;
 
 function verifyLicenseKey(licenseKey) {
     if (!licenseKey) return false;
@@ -436,7 +436,7 @@ try {
 }
 
 async function verifyPlaySubscription(purchaseToken, productId, packageName) {
-    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME;
     if (packageName === indusPkg) {
         logServerEvent('info', `Indus App Store subscription bypass for ${productId}`);
         return { valid: true, expiryTimeMillis: Date.now() + 30 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
@@ -466,7 +466,7 @@ async function verifyPlaySubscription(purchaseToken, productId, packageName) {
 }
 
 async function verifyPlayProduct(purchaseToken, productId, packageName) {
-    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus';
+    const indusPkg = process.env.INDUS_APP_STORE_PACKAGE_NAME;
     if (packageName === indusPkg) {
         logServerEvent('info', `Indus App Store product bypass for ${productId}`);
         return { valid: true, expiryTimeMillis: Date.now() + 365 * 24 * 60 * 60 * 1000, planType: determinePlanType(productId) };
@@ -580,7 +580,7 @@ router.get('/health', async (req, res) => {
     const playApiReady = androidPublisher !== null;
     res.json({
         status: 'ok',
-        version: process.env.npm_package_version || '1.0.0',
+        version: process.env.npm_package_version,
         environment: isProduction ? 'production' : 'development',
         uptime: Math.floor(process.uptime()),
         db: dbOk ? 'connected' : 'error',
@@ -947,7 +947,7 @@ router.get('/master/users', isMasterAuth, async (req, res) => {
                     userLatestLogMap.set(u, {
                         timestamp: logTime,
                         ip: log.metadata?.ip || '',
-                        school: log.metadata?.school || 'LOGBOOK',
+                        school: log.metadata?.school || '',
                         isLogout
                     });
                 }
@@ -1204,7 +1204,7 @@ const handleGetMasterStats = async (req, res) => {
             totalUsers: userCount,
             totalStorageMB: (totalStorageBytes / 1024 / 1024).toFixed(2),
             uptimeSeconds: Math.floor(process.uptime()),
-            masterUser: (process.env.SUPER_ADMIN_USER || 'master'),
+            masterUser: (process.env.SUPER_ADMIN_USER),
             quotaLimitMB: 100,
             cpuUsage: cpuPercent,
             cpuCores: cpus.length,
@@ -1229,7 +1229,7 @@ const handleGetMasterStats = async (req, res) => {
             totalUsers: 0,
             totalStorageMB: "0.00",
             uptimeSeconds: Math.floor(process.uptime()),
-            masterUser: (process.env.SUPER_ADMIN_USER || 'master'),
+            masterUser: (process.env.SUPER_ADMIN_USER),
             quotaLimitMB: 100,
             cpuUsage: 0,
             cpuCores: 1,
@@ -1916,16 +1916,15 @@ router.post('/check-username', signupLimiter, async (req, res) => {
 });
 
 const handleCheckStore = (req, res) => {
-    const defaultPlayStore = 'https://play.google.com/store/apps/details?id=com.ex.logbookplus';
-    const playStoreUrl = process.env.PLAY_STORE_URL || defaultPlayStore;
-    const indusStoreUrl = process.env.INDUS_STORE_URL || 'https://www.indusappstore.com';
+    const playStoreUrl = process.env.PLAY_STORE_URL;
+    const indusStoreUrl = process.env.INDUS_STORE_URL;
 
     return res.status(200).json({
         available: true,
         playStoreUrl,
         indusStoreUrl,
-        appPackageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.ex.logbookplus',
-        indusPackageName: process.env.INDUS_APP_STORE_PACKAGE_NAME || 'com.ex.logbookplus'
+        appPackageName: process.env.GOOGLE_PLAY_PACKAGE_NAME,
+        indusPackageName: process.env.INDUS_APP_STORE_PACKAGE_NAME
     });
 };
 

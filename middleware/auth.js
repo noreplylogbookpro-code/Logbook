@@ -2,7 +2,7 @@
 require('dotenv').config({ quiet: true });
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'PnxKdbF0XxJwCcao1yemufCPM0gzyAJXajMh2YtyNbk=';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Extracts and verifies JWT from Authorization header
